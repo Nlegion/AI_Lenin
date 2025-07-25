@@ -4,6 +4,11 @@ tmp/tmp.py
 *.doc
 *.rtf
 *.RTF
+*.bin
+*.pickle
+data/raw/
+*.sqlite3
+
 
 venv/
 /proteus_repo/
