@@ -1,10 +1,6 @@
 import requests
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-bot_token =  os.getenv("TELEGRAM_BOT_TOKEN")
+bot_token = "8267003872:AAH083D6OXb_Me8ho4MrjJ70aMqJ9NQTGfk"
 channel_username = "@ai_lenin_news_chat"  # Например: "@lenin_news"
 
 # Получить ID канала
