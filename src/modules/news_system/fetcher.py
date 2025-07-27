@@ -1,11 +1,9 @@
 import feedparser
 import requests
-import asyncio
 import hashlib
 import logging
 from datetime import datetime, timedelta
 from src.core.settings.config import Settings
-from telethon import TelegramClient
 
 logger = logging.getLogger(__name__)
 
@@ -35,54 +33,72 @@ class NewsFetcher:
     def fetch_newsapi(self) -> list:
         try:
             url = "https://newsapi.org/v2/top-headlines"
-            response = requests.get(url, params={
+            params = {
                 'apiKey': self.config.NEWSAPI_KEY,
-                'sources': 'bbc-news,reuters',
-                'pageSize': 20
-            }, timeout=10)
+                'country': 'ru',
+                'language': 'ru',
+                'pageSize': 50
+            }
 
-            return [{
-                "id": self._generate_id(article['url']),
-                "title": article['title'],
-                "content": article['description'],
-                "source": f"NewsAPI: {article['source']['name']}",
-                "date": datetime.fromisoformat(article['publishedAt'][:-1]),
-                "url": article['url']
-            } for article in response.json().get('articles', [])]
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+
+            articles = response.json().get('articles', [])
+            russian_articles = []
+
+            for article in articles:
+                if article.get('language', 'ru') != 'ru':
+                    continue
+
+                if not all([article.get('title'), article.get('url')]):
+                    continue
+
+                try:
+                    pub_date = article['publishedAt'].replace('Z', '+00:00')
+                    date = datetime.fromisoformat(pub_date)
+                except:
+                    date = datetime.utcnow()
+
+                russian_articles.append({
+                    "id": self._generate_id(article['url']),
+                    "title": article['title'],
+                    "content": article.get('description', article['title']),
+                    "source": f"NewsAPI: {article['source']['name']}",
+                    "date": date,
+                    "url": article['url']
+                })
+
+            return russian_articles
         except Exception as e:
             logger.error(f"Ошибка NewsAPI: {str(e)}")
-            return []
-
-    async def _fetch_telegram_channel(self, channel: str) -> list:
-        try:
-            client = TelegramClient('session', self.config.TELEGRAM_API_ID, self.config.TELEGRAM_API_HASH)
-            await client.start()
-
-            return [{
-                "id": self._generate_id(f"{channel}_{msg.id}"),
-                "title": msg.text[:100],
-                "content": msg.text,
-                "source": f"Telegram: {channel}",
-                "date": msg.date,
-                "url": f"https://t.me/{channel}/{msg.id}"
-            } async for msg in client.iter_messages(channel, limit=50) if msg.text]
-        except Exception as e:
-            logger.error(f"Ошибка Telegram {channel}: {str(e)}")
             return []
 
     def fetch_all(self) -> list:
         news_items = []
 
-        # RSS
-        for url in ["https://lenta.ru/rss/news", "https://www.interfax.ru/rss.asp"]:
+        # RSS источники
+        rss_sources = [
+            "https://lenta.ru/rss/news",
+            "https://www.interfax.ru/rss.asp",
+            "https://ria.ru/export/rss2/archive/index.xml",
+            "https://tass.ru/rss/v2.xml",
+        ]
+
+        for url in rss_sources:
             news_items.extend(self.fetch_rss(url))
 
-        # NewsAPI
+        # Новости из NewsAPI
         news_items.extend(self.fetch_newsapi())
 
-        # Telegram
-        for channel in ["rian_ru", "tass_agency"]:
-            news_items.extend(asyncio.run(self._fetch_telegram_channel(channel)))
+        # Фильтрация по языку (кириллица)
+        filtered_items = []
+        for item in news_items:
+            text = f"{item['title']} {item['content']}"
+            if any('\u0400' <= char <= '\u04FF' for char in text):
+                filtered_items.append(item)
 
-        # Фильтрация по дате
-        return [item for item in news_items if datetime.now() - item['date'] < timedelta(days=3)]
+        # Фильтрация по дате (последние 3 дня)
+        return [
+            item for item in filtered_items
+            if datetime.now() - item['date'] < timedelta(days=3)
+        ]

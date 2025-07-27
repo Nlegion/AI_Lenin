@@ -18,7 +18,7 @@ class TelegramPublisher:
             message = (
                 f"<b>📰 {html.escape(title)}</b>\n\n"
                 f"<i>💬 Анализ Владимира Ильича Ленина:</i>\n"
-                f"{html.escape(analysis)}\n\n"
+                f"{analysis}\n\n"
                 f"<a href='{html.escape(url)}'>Источник</a>"
             )
 

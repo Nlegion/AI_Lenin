@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
@@ -6,6 +7,11 @@ from sqlalchemy import pool
 from alembic import context
 import structlog
 import logging
+
+if sys.platform.startswith("win"):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+    os.environ["PYTHONUTF8"] = "1"
 
 project_root = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(project_root))

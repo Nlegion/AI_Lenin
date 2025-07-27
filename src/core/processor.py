@@ -2,12 +2,15 @@ import asyncio
 import time
 import logging
 from src.core.database.repositories.news_repository import NewsRepository
-from src.core.database.db_manager import AsyncDBManager
 from src.modules.news_system.fetcher import NewsFetcher
 from src.core.lenin_analyzer import LeninAnalyzer
 from src.core.publisher import TelegramPublisher
 from src.core.settings.config import Settings
 from src.core.utils.decorators import handle_errors
+from src.core.database.db_core import session_scope
+import gc
+import torch
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +18,22 @@ logger = logging.getLogger(__name__)
 class NewsProcessor:
     def __init__(self):
         self.config = Settings()
+        logger.info("Инициализация NewsFetcher")
         self.fetcher = NewsFetcher()
-        self.analyzer = LeninAnalyzer()
+
+        logger.info("Инициализация LeninAnalyzer")
+        try:
+            self.analyzer = LeninAnalyzer()
+            logger.info("LeninAnalyzer успешно инициализирован")
+        except Exception as e:
+            logger.exception(f"Ошибка инициализации LeninAnalyzer: {str(e)}")
+            raise
+
+        logger.info("Инициализация TelegramPublisher")
         self.publisher = TelegramPublisher()
+        logger.info("TelegramPublisher инициализирован")
+
+        logger.info("Инициализация NewsProcessor завершена")
         self.stats = {
             "news_fetched": 0,
             "news_processed": 0,
@@ -29,7 +45,7 @@ class NewsProcessor:
     async def fetch_new_news(self):
         try:
             news_items = self.fetcher.fetch_all()
-            async with AsyncDBManager().session_scope() as session:
+            async with session_scope() as session:
                 repo = NewsRepository(session)
                 await repo.save_news(news_items)
             self.stats["news_fetched"] += len(news_items)
@@ -41,13 +57,17 @@ class NewsProcessor:
     @handle_errors
     async def process_pending_news(self):
         try:
-            async with AsyncDBManager().session_scope() as session:
+            async with session_scope() as session:
                 repo = NewsRepository(session)
-                unprocessed = await repo.get_unprocessed_news(limit=5)
+                unprocessed = await repo.get_unprocessed_news(limit=1)  # Только 1 новость за раз
 
                 for news in unprocessed:
                     try:
-                        # Асинхронный запуск синхронной генерации
+                        # Очистка памяти перед обработкой
+                        gc.collect()
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+
                         loop = asyncio.get_running_loop()
                         analysis = await loop.run_in_executor(
                             None,
@@ -56,6 +76,9 @@ class NewsProcessor:
                         )
                         await repo.save_analysis(news.id, analysis)
                         self.stats["news_processed"] += 1
+
+                        # Пауза для охлаждения GPU
+                        await asyncio.sleep(10)
                     except Exception as e:
                         logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
                         self.stats["errors"] += 1
@@ -67,7 +90,7 @@ class NewsProcessor:
     @handle_errors
     async def publish_pending_analyses(self):
         try:
-            async with AsyncDBManager().session_scope() as session:
+            async with session_scope() as session:
                 repo = NewsRepository(session)
                 unpublished = await repo.get_unpublished_analysis(limit=5)
 
@@ -119,25 +142,26 @@ class NewsProcessor:
     @handle_errors
     async def start_periodic_processing(self):
         logger.info("Запуск периодической обработки")
-        await self.publisher.send_admin_notification("🚀 Система ИИ-Ленин запущена")
-
         try:
+            await self.publisher.send_admin_notification("🚀 Система ИИ-Ленин запущена")
+            logger.info("Уведомление администратору отправлено")
+
             # Первоначальная обработка
+            logger.info("Запуск первого цикла обработки")
             await self.run_full_cycle()
+            logger.info("Первый цикл обработки завершен")
 
             # Основной цикл
             while True:
+                logger.info("Начало нового цикла обработки")
                 start_time = time.time()
                 await self.run_full_cycle()
-
                 elapsed = time.time() - start_time
                 sleep_time = max(1, self.config.UPDATE_INTERVAL - elapsed)
+                logger.info(f"Цикл завершен за {elapsed:.2f} сек. Ожидание {sleep_time} сек.")
                 await asyncio.sleep(sleep_time)
 
-        except asyncio.CancelledError:
-            logger.info("Остановка по запросу")
         except Exception as e:
-            logger.exception(f"Критическая ошибка: {str(e)}")
-        finally:
-            await self.publisher.send_admin_notification("🛑 Система ИИ-Ленин остановлена")
-            logger.info("Система остановлена")
+            logger.exception(f"Ошибка в основном цикле: {str(e)}")
+            await self.publisher.send_admin_notification(f"🛑 Критическая ошибка: {str(e)[:500]}")
+            raise

@@ -2,6 +2,7 @@ from sqlalchemy import select, update, insert
 from sqlalchemy.orm import selectinload
 from src.core.database.models.models import News, Analysis
 from src.core.utils.decorators import handle_db_errors
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from datetime import datetime
 
 
@@ -11,16 +12,23 @@ class NewsRepository:
 
     @handle_db_errors
     async def save_news(self, news_items: list):
-        for item in news_items:
-            stmt = insert(News).values(
-                id=item['id'],
-                title=item['title'],
-                content=item['content'],
-                source=item['source'],
-                date=item['date'],
-                url=item['url']
-            ).on_conflict_do_nothing(index_elements=['id'])
-            await self.session.execute(stmt)
+        if not news_items:
+            return
+
+        # Подготовка данных для пакетной вставки
+        data = [{
+            "id": item['id'],
+            "title": item['title'],
+            "content": item['content'],
+            "source": item['source'],
+            "date": item['date'],
+            "url": item['url']
+        } for item in news_items]
+
+        # Исправленный запрос для SQLite
+        stmt = sqlite_insert(News).values(data)
+        stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+        await self.session.execute(stmt)
 
     @handle_db_errors
     async def get_unprocessed_news(self, limit: int = 10):
@@ -34,10 +42,12 @@ class NewsRepository:
 
     @handle_db_errors
     async def save_analysis(self, news_id: str, analysis: str):
-        stmt = insert(Analysis).values(
+        # Исправленный запрос для SQLite
+        stmt = sqlite_insert(Analysis).values(
             news_id=news_id,
             analysis=analysis
-        ).on_conflict_do_update(
+        )
+        stmt = stmt.on_conflict_do_update(
             index_elements=['news_id'],
             set_={'analysis': analysis}
         )

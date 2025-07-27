@@ -9,14 +9,13 @@ logger = structlog.get_logger()
 
 Base = declarative_base()
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
-
-DATABASE_URL = f"sqlite+aiosqlite:///{os.path.join(project_root, 'survey.db')}"
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+DATABASE_URL = f"sqlite+aiosqlite:///{os.path.join(project_root, 'ai_lenin.db')}"
 
 engine = create_async_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False},
-    echo=False,
+    echo=True,
     logging_name="sqlalchemy.engine"
 )
 

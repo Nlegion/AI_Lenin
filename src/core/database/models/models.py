@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, declarative_base, Mapped, mapped_column
 from datetime import datetime
-
-Base = declarative_base()
+from src.core.database.db_core import Base
 
 class News(Base):
     __tablename__ = 'news'
