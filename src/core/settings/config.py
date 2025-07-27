@@ -7,7 +7,7 @@ load_dotenv()
 
 class Settings:
     # Модель ИИ
-    EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
+    EMBEDDING_MODEL = "models/multilingual-e5-large"
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
@@ -20,7 +20,7 @@ class Settings:
     DB_PATH = "ai_lenin.db"
 
     # Параметры генерации
-    MODEL_NAME = "IlyaGusev/saiga2_7b_lora"
+    MODEL_NAME = "models/saiga2_7b_lora"
     MAX_TOKENS = 256
     TEMPERATURE = 0.8
     TOP_P = 0.95

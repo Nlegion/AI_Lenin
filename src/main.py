@@ -12,7 +12,8 @@ from sqlalchemy import text
 
 setup_logging()
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-
+os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 async def async_main():
     setup_logging()
@@ -60,6 +61,9 @@ async def async_main():
         # Инициализация процессора новостей
         logger.info("Инициализация процессора новостей")
         processor = NewsProcessor()
+
+        # Даем время на запуск потока инициализации
+        await asyncio.sleep(1)
         logger.info("Процессор успешно инициализирован")
 
         # Запуск основного цикла

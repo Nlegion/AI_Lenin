@@ -10,7 +10,7 @@ from src.core.utils.decorators import handle_errors
 from src.core.database.db_core import session_scope
 import gc
 import torch
-
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +21,38 @@ class NewsProcessor:
         logger.info("Инициализация NewsFetcher")
         self.fetcher = NewsFetcher()
 
-        logger.info("Инициализация LeninAnalyzer")
-        try:
-            self.analyzer = LeninAnalyzer()
-            logger.info("LeninAnalyzer успешно инициализирован")
-        except Exception as e:
-            logger.exception(f"Ошибка инициализации LeninAnalyzer: {str(e)}")
-            raise
+        # Инициализация анализатора
+        self.analyzer = None
+        self.analyzer_ready = asyncio.Event()
+
+        logger.info("Запуск задачи инициализации LeninAnalyzer")
+        asyncio.create_task(self.initialize_analyzer_async())
 
         logger.info("Инициализация TelegramPublisher")
         self.publisher = TelegramPublisher()
-        logger.info("TelegramPublisher инициализирован")
 
-        logger.info("Инициализация NewsProcessor завершена")
         self.stats = {
             "news_fetched": 0,
             "news_processed": 0,
             "analyses_published": 0,
             "errors": 0
         }
+
+    @handle_errors
+    async def initialize_analyzer_async(self):
+        try:
+            # Загружаем модель в главном потоке
+            self.analyzer = LeninAnalyzer()
+
+            # Очищаем память сразу после загрузки
+            torch.cuda.empty_cache()
+            gc.collect()
+        except Exception as e:
+            logger.exception(f"Ошибка инициализации: {str(e)}")
+            # Отправляем уведомление об ошибке
+            await self.publisher.send_admin_notification(f"🚨 Ошибка загрузки модели: {str(e)[:300]}")
+        finally:
+            self.analyzer_ready.set()
 
     @handle_errors
     async def fetch_new_news(self):
@@ -56,6 +69,13 @@ class NewsProcessor:
 
     @handle_errors
     async def process_pending_news(self):
+        if not self.analyzer_ready.is_set():
+            logger.info("Ожидание инициализации анализатора...")
+            await asyncio.sleep(5)
+            if not self.analyzer_ready.is_set():
+                logger.warning("Анализатор всё ещё не готов")
+                return
+
         try:
             async with session_scope() as session:
                 repo = NewsRepository(session)
@@ -143,6 +163,8 @@ class NewsProcessor:
     async def start_periodic_processing(self):
         logger.info("Запуск периодической обработки")
         try:
+            # Отправка уведомления о запуске
+            logger.info("Отправка уведомления администратору")
             await self.publisher.send_admin_notification("🚀 Система ИИ-Ленин запущена")
             logger.info("Уведомление администратору отправлено")
 
@@ -152,6 +174,7 @@ class NewsProcessor:
             logger.info("Первый цикл обработки завершен")
 
             # Основной цикл
+            logger.info("Вход в основной цикл обработки")
             while True:
                 logger.info("Начало нового цикла обработки")
                 start_time = time.time()

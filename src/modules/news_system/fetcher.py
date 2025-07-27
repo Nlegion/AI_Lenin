@@ -21,11 +21,12 @@ class NewsFetcher:
             return [{
                 "id": self._generate_id(entry.link),
                 "title": entry.title,
-                "content": entry.description,
+                "content": entry.get('description', entry.title),  # Fallback на заголовок
                 "source": f"RSS: {url}",
-                "date": datetime(*entry.published_parsed[:6]),
+                "date": datetime(*entry.published_parsed[:6]) if hasattr(entry,
+                                                                         'published_parsed') else datetime.utcnow(),
                 "url": entry.link
-            } for entry in feed.entries if hasattr(entry, 'published_parsed')]
+            } for entry in feed.entries if entry.link]
         except Exception as e:
             logger.error(f"Ошибка RSS {url}: {str(e)}")
             return []

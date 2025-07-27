@@ -1,6 +1,7 @@
 import requests
+from src.core.settings.config import Settings
 
-model_id = "IlyaGusev/saiga2_7b_lora"
+model_id = Settings().MODEL_NAME
 response = requests.get(f"https://huggingface.co/api/models/{model_id}")
 
 if response.status_code == 401:

@@ -8,7 +8,7 @@ tmp/tmp.py
 *.pickle
 data/raw/
 *.sqlite3
-
+/models/
 
 venv/
 /proteus_repo/
