@@ -9,12 +9,23 @@ class TelegramService(TelegramClient):
         return await self.send_request('getUpdates', params)
 
     async def send_message(self, chat_id: int, text: str, **kwargs):
-        params = {
-            'chat_id': chat_id,
-            'text': text,
-            **kwargs,
-        }
-        return await self.send_request('sendMessage', params)
+        try:
+            params = {
+                'chat_id': chat_id,
+                'text': text,
+                **kwargs,
+            }
+            response = await self.send_request('sendMessage', params)
+
+            # Проверка структуры ответа
+            if not response or not isinstance(response, dict):
+                logger.error(f"Некорректный ответ Telegram: {response}")
+                return {}
+
+            return response
+        except Exception as e:
+            logger.error(f"Ошибка отправки сообщения: {str(e)}")
+            return {}
 
     async def get_webhook_info(self):
         return await self.send_request('getWebhookInfo')

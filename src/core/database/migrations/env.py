@@ -13,7 +13,7 @@ if sys.platform.startswith("win"):
     sys.stderr.reconfigure(encoding='utf-8')
     os.environ["PYTHONUTF8"] = "1"
 
-project_root = Path(__file__).resolve().parents[4]
+project_root = Path(__file__).resolve().parents[4]  # Поднимаемся на 5 уровней вверх
 sys.path.insert(0, str(project_root))
 
 from src.core.database.db_core import Base

@@ -84,7 +84,7 @@ class NewsRepository:
         await self.session.execute(stmt)
 
     @handle_db_errors
-    async def get_unpublished_analysis(self, limit: int = 5):
+    async def get_unpublished_analysis(self, limit: int = 10):  # Увеличили лимит
         stmt = select(Analysis).join(News).where(
             Analysis.published == False
         ).options(

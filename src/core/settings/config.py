@@ -20,10 +20,15 @@ class Settings:
     DB_PATH = "ai_lenin.db"
 
     # Параметры генерации
-    MODEL_NAME = "models/saiga2_7b_lora"
+    MODEL_PATH = "models/deepseek/deepseek-r1-7b.Q4_K_M.gguf"
     MAX_TOKENS = 256
     TEMPERATURE = 0.8
     TOP_P = 0.95
     UPDATE_INTERVAL = 7200
+    MAX_NEWS_PER_CYCLE = 5
 
     NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
+
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    MODEL_DIR = os.path.join(BASE_DIR, "models", "saiga")
+    VECTOR_DB_PATH = os.path.join(BASE_DIR, "database", "vector_db")

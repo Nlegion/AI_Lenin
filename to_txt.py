@@ -2,7 +2,7 @@ import os
 
 output_file = "project.txt"
 included_extensions = {"py", "html", "ini", "js", "css", "json", "yaml", "yml", "sh", "md"}
-excluded_dirs = {".venv", "tmp", "venv", "logs", "data"}
+excluded_dirs = {".venv", "tmp", "venv", "logs", "data", "models"}
 
 def should_exclude(path):
     for excluded_dir in excluded_dirs:

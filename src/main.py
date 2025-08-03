@@ -23,8 +23,8 @@ async def async_main():
     try:
         # Диагностика GPU
         if torch.cuda.is_available():
-            logger.info(f"Обнаружена GPU: {torch.cuda.get_device_name(0)}")
-            logger.info(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024 ** 3:.2f} GB")
+            total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            logger.info(f"Доступно VRAM: {total_vram:.2f} GB")
         else:
             logger.warning("CUDA недоступна! Работа на CPU будет очень медленной")
 
