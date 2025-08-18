@@ -9,7 +9,7 @@ tmp/tmp.py
 data/raw/
 *.sqlite3
 /models/
-
+venv2/
 venv/
 /proteus_repo/
 *.pak
