@@ -8,8 +8,8 @@ tmp/tmp.py
 *.pickle
 data/raw/
 *.sqlite3
-
-
+/models/
+venv2/
 venv/
 /proteus_repo/
 *.pak
@@ -214,3 +214,12 @@ yarn-debug.log*
 yarn-error.log*
 
 *.json
+
+/llama.cpp/
+/model_cache/
+/database/
+/data/
+/quantize/
+/test_results/
+/zip/
+data/processed/lenin_chunks.jsonl
