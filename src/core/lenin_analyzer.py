@@ -1,11 +1,10 @@
 import logging
 import re
 import os
-import gc
+import aiohttp
 import torch
 import chromadb
 import numpy as np
-from llama_cpp import Llama
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from chromadb import PersistentClient
 from functools import lru_cache
@@ -16,74 +15,24 @@ logger = logging.getLogger(__name__)
 
 class LeninAnalyzer:
     def __init__(self, vector_db_path: str = None):
-        logger.info("Инициализация LeninAnalyzer")
+        logger.info("Инициализация LeninAnalyzer (серверный режим)")
         self.config = Settings()
+        self.server_url = "http://127.0.0.1:8080"
+        self.session = None
 
         # Определение абсолютных путей
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        model_dir = os.path.join(BASE_DIR, "models", "saiga")
 
-        self.model_config = {
-            "model_path": os.path.join(model_dir, "model-q4_K.gguf"),
-            "lora_path": os.path.join(model_dir, "lora_adapter.gguf"),
-            "embedding_model": "all-MiniLM-L6-v2"
-        }
-
-        # Путь к векторной БД по умолчанию
+        # Инициализация векторной БД
         if vector_db_path is None:
             vector_db_path = os.path.join(BASE_DIR, "database", "vector_db")
 
-        self.llm = None
-        self.embedding_function = None
-        self._init_vector_db(vector_db_path)
-        logger.info(f"Векторная БД инициализирована: {vector_db_path}")
-        self.reload_model()
-
-    def reload_model(self):
-        try:
-            if self.llm is not None:
-                logger.info("Выгрузка предыдущей модели...")
-                del self.llm
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                    logger.info("Очищена память CUDA")
-
-            logger.info("Загрузка Saiga-Llama3-8b с LoRA адаптером")
-            n_gpu_layers = 35 if torch.cuda.is_available() else 0
-            n_threads = 8
-
-            self.llm = Llama(
-                model_path=self.model_config["model_path"],
-                lora_path=self.model_config["lora_path"] if os.path.exists(self.model_config["lora_path"]) else None,
-                n_ctx=4096,
-                n_gpu_layers=n_gpu_layers,
-                n_threads=n_threads,
-                chat_format="llama-3",
-                verbose=False,
-                n_batch=256,
-                use_mlock=True
-            )
-            logger.info(f"Модель загружена (GPU слои: {n_gpu_layers}, потоки: {n_threads})")
-        except Exception as e:
-            logger.exception(f"Ошибка загрузки модели: {str(e)}")
-            logger.warning("Попытка загрузки в безопасном режиме...")
-            self.llm = Llama(
-                model_path=self.model_config["model_path"],
-                n_ctx=2048,
-                n_gpu_layers=0,
-                n_threads=4,
-                chat_format="llama-3",
-                verbose=False
-            )
-
-    def _init_vector_db(self, path: str):
         self.embedding_function = SentenceTransformerEmbeddingFunction(
-            model_name=self.model_config["embedding_model"],
+            model_name="all-MiniLM-L6-v2",
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
 
-        self.chroma_client = PersistentClient(path=path)
+        self.chroma_client = PersistentClient(path=vector_db_path)
         try:
             self.collection = self.chroma_client.get_collection(
                 name="lenin_works",
@@ -93,6 +42,17 @@ class LeninAnalyzer:
         except Exception as e:
             logger.error(f"Ошибка загрузки коллекции: {str(e)}")
             self.collection = None
+
+    async def initialize_session(self):
+        """Инициализация HTTP сессии"""
+        if self.session is None:
+            self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300))
+
+    async def close_session(self):
+        """Закрытие HTTP сессии"""
+        if self.session:
+            await self.session.close()
+            self.session = None
 
     @lru_cache(maxsize=500)
     def cached_embedding(self, text: str) -> list:
@@ -124,49 +84,90 @@ class LeninAnalyzer:
             return ""
 
     def clean_analysis(self, text: str) -> str:
-        text = re.sub(
-            r'(\[INST\].*?\[/INST\]|<\/?s>|Анализ Ленина:|```|SYSTEM:|USER:|ASSISTANT:|\([^)]*\)|"|«|»)',
-            '', text
-        )
-        text = re.sub(r'Владимир Ильич (Ленин)?[:,]?\s*', '', text, flags=re.IGNORECASE)
-        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
-        return ' '.join(sentences[:2]).strip()
+        # Жесткое удаление шаблонных фраз
+        forbidden_patterns = [
+            r'Теперь[^.!?]*[.!?]',
+            r'Рассмотрим[^.!?]*[.!?]',
+            r'Анализируя[^.!?]*[.!?]',
+            r'можно сделать вывод[^.!?]*[.!?]',
+            r'данная ситуация[^.!?]*[.!?]',
+            r'В контексте[^.!?]*[.!?]'
+        ]
 
-    def generate_analysis(self, news_title: str, news_content: str) -> str:
+        for pattern in forbidden_patterns:
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+        # Разбиваем на предложения и берем только первые два законченных
+        sentences = []
+        current_sentence = ""
+
+        for char in text:
+            current_sentence += char
+            if char in '.!?':
+                sentences.append(current_sentence.strip())
+                current_sentence = ""
+                if len(sentences) >= 2:
+                    break
+
+        # Если набрали меньше двух предложений, добавляем оставшийся текст
+        if len(sentences) < 2 and current_sentence:
+            sentences.append(current_sentence.strip())
+
+        return ' '.join(sentences[:2])
+
+    async def generate_analysis(self, news_title: str, news_content: str) -> str:
         try:
-            if self.llm is None:
-                self.reload_model()
+            await self.initialize_session()
 
             query = f"{news_title} {news_content[:100]}"
             context = self.retrieve_context(query)
 
             system_prompt = (
-                "Ты — Владимир Ильич Ленин. Дай марксистский анализ классовой борьбы ровно в 2 предложениях. "
-                "Используй революционный стиль без упоминания стран и национальностей. "
-                "Избегай абстрактных рассуждений\n\n"
-                # "В ответе используй термины: пролетариат, буржуазия, революция, эксплуатация."
+                "Дай краткий анализ новости с точки зрения марксиста.\n\n"
+                "Ответ должен быть строго в 2 предложения, конкретный и основанный только на фактах из новости."
+                "Запрещены: вводные фразы, упоминание стран, революции, военных аспектов.\n\n"
+                "Анализируй только: труд, политика, капитал, ресурсы, классовые противоречия."
             )
 
             user_content = f"Контекст: {context}\n\nНовость: {news_title}\n{news_content[:500]}" if context else \
                 f"Новость: {news_title}\n{news_content[:500]}"
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ]
+            # Форматируем запрос для llama.cpp сервера
+            prompt = self._format_llama3_prompt(system_prompt, user_content)
 
-            response = self.llm.create_chat_completion(
-                messages=messages,
-                temperature=0.7,
-                top_p=0.85,
-                max_tokens=150,
-                stop=["<|eot_id|>", "\n\n"],
-                repeat_penalty=1.1
-            )
+            data = {
+                "prompt": prompt,
+                "n_predict": 80,
+                "temperature": 0.3,
+                "top_p": 0.5,
+                "repeat_penalty": 1.4,
+                "stop": ["\n", "###", "Анализ:", "Ленин:", "Теперь", "Рассмотрим", "Новость"]
+            }
 
-            analysis = response['choices'][0]['message']['content'].strip()
-            return self.clean_analysis(analysis)
+            async with self.session.post(
+                    f"{self.server_url}/completion",
+                    json=data,
+                    headers={"Content-Type": "application/json"}
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    content = result.get('content', '').strip()
+                    return self.clean_analysis(content)
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Ошибка сервера: {response.status} - {error_text}")
+                    return "Не удалось сгенерировать анализ."
 
         except Exception as e:
             logger.exception(f"Ошибка генерации: {str(e)}")
             return "Не удалось сгенерировать анализ."
+
+    def _format_llama3_prompt(self, system_prompt: str, user_input: str) -> str:
+        """Форматирует промпт для модели Llama 3"""
+        return (
+            f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
+            f"{system_prompt}<|eot_id|>\n"
+            f"<|start_header_id|>user<|end_header_id|>\n\n"
+            f"{user_input}<|eot_id|>\n"
+            f"<|start_header_id|>assistant<|end_header_id|>\n\n"
+        )

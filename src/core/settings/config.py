@@ -24,8 +24,8 @@ class Settings:
     MAX_TOKENS = 256
     TEMPERATURE = 0.8
     TOP_P = 0.95
-    UPDATE_INTERVAL = 7200
-    MAX_NEWS_PER_CYCLE = 5
+    UPDATE_INTERVAL = 300
+    MAX_NEWS_PER_CYCLE = 3
 
     NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 

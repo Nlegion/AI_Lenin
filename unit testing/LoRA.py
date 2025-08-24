@@ -211,7 +211,7 @@ if __name__ == "__main__":
     # Конфигурация
     INPUT_DATASET = "data/processed/lenin_dataset.jsonl"
     OUTPUT_DATASET = "data/finetune/lenin_lora_final.jsonl"
-    MODEL_PATH = "../models/saiga/model-q4_K.gguf"
+    MODEL_PATH = "../models/saiga/legacy/model-q4_K.gguf"
 
     # Создание датасета
     create_lora_dataset(

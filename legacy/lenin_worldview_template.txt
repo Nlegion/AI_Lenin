@@ -1,0 +1,66 @@
+Структура файла lenin_worldview_template.json
+==================================================
+Тип корневого элемента: dict
+
+Корневой элемент: словарь (dict)
+Количество концептов: 5
+
+Структура элементов:
+
+Концепт #1: 'metadata'
+  Тип данных концепта: dict
+  Ключи в концепте:
+    - 'created': str
+    - 'lenin_volumes': int
+    - 'reference_authors': list
+        Пример содержимого: ['Арманд', 'Чернышевский', 'Пуанкаре', 'Мах', 'Плеханов', 'МарксЭнгельс', 'Аристотель', 'Гегель', 'Ф...
+
+Концепт #2: 'stylometric_profile'
+  Тип данных концепта: dict
+  Ключи в концепте:
+    - 'sentence_length': float
+    - 'lexical_diversity': float
+    - 'function_words': dict
+        Пример содержимого: {'и': 0.03150611184513314, 'в': 0.02789318801384595, 'не': 0.009605563076748841, 'на': 0.00965010222...
+    - 'punctuation': dict
+        Пример содержимого: {'comma': 15902.636363636364, 'semicolon': 521.0363636363635, 'colon': 787.1636363636363, 'dash': 38...
+    - 'paragraph_length': float
+    - 'word_length': float
+
+Концепт #3: 'conceptual_patterns'
+  Тип данных концепта: list
+  Длина списка: 16
+  Тип первого элемента: list
+  Пример содержимого: [['все', 'для', 0.10140405616224649], ['ленин', 'против', 0.10329670329670329], ['ленин', 'стр', 0.1...
+
+Концепт #4: 'evolutionary_trends'
+  Тип данных концепта: dict
+  Ключи в концепте:
+    - 'conceptual_shifts': list
+        Пример содержимого: [{'period': '1900-1900', 'new_terms': ['они', 'демократической', 'буржуазии', 'восстания', 'демократ...
+    - 'stylistic_changes': list
+        Пример содержимого: [{'period': '1900-1900', 'changes': {'sentence_length': {'from': 9.419892209701127, 'to': 10.3977091...
+
+Концепт #5: 'comparison_with_references'
+  Тип данных концепта: dict
+  Ключи в концепте:
+    - 'Аристотель': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 22.36415378006873, 'lexical_diversity': 0.1762599...
+    - 'Арманд': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 15.381581752291622, 'lexical_diversity': 0.270776...
+    - 'Богданов': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 18.173201460025904, 'lexical_diversity': 0.216818...
+    - 'Гегель': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 21.788190929798823, 'lexical_diversity': 0.135337...
+    - 'МарксЭнгельс': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 16.9607120302794, 'lexical_diversity': 0.17942873...
+    - 'Мах': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 15.341346153846153, 'lexical_diversity': 0.268614...
+    - 'Плеханов': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 13.330403968816443, 'lexical_diversity': 0.284820...
+    - 'Пуанкаре': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 17.7661548844272, 'lexical_diversity': 0.18597772...
+    - 'Фейербах': dict
+        Пример содержимого: {'similarity': 0.0, 'profile': {'sentence_length': 17.401633592310315, 'lexical_diversity': 0.206466...
+    - 'Чернышевский': dict
+        Пример содержимого: {'similarity': 0.1430994410012757, 'profile': {'sentence_length': 27.42578849721707, 'lexical_divers...

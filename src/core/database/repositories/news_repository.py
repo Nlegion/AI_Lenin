@@ -19,6 +19,17 @@ class NewsRepository:
         }
 
     @handle_db_errors
+    async def mark_as_processed_without_analysis(self, news_id: str):
+        """Помечает новость как обработанную без сохранения анализа"""
+        stmt = update(News).where(
+            News.id == news_id
+        ).values(
+            processed=True,
+            processed_at=datetime.utcnow()
+        )
+        await self.session.execute(stmt)
+
+    @handle_db_errors
     async def save_news(self, news_items: list):
         if not news_items:
             return

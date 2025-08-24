@@ -214,3 +214,11 @@ yarn-debug.log*
 yarn-error.log*
 
 *.json
+
+/llama.cpp/
+/model_cache/
+/database/
+/data/
+/quantize/
+/test_results/
+/zip/
