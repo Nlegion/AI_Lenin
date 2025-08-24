@@ -222,3 +222,4 @@ yarn-error.log*
 /quantize/
 /test_results/
 /zip/
+data/processed/lenin_chunks.jsonl
