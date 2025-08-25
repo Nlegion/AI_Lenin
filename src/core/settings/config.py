@@ -1,6 +1,8 @@
 import os
 import torch
 from dotenv import load_dotenv
+from pathlib import Path
+
 
 load_dotenv()
 
@@ -32,3 +34,8 @@ class Settings:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     MODEL_DIR = os.path.join(BASE_DIR, "models", "saiga")
     VECTOR_DB_PATH = os.path.join(BASE_DIR, "database", "vector_db")
+
+    ontology_path: str = str(Path(__file__).parent.parent.parent / "data" / "books" / "intellectual")
+
+    class Config:
+        env_file = ".env"

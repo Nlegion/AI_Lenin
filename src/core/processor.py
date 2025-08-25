@@ -3,65 +3,73 @@ import time
 import logging
 from src.core.database.repositories.news_repository import NewsRepository
 from src.modules.news_system.fetcher import NewsFetcher
-from src.core.lenin_analyzer import LeninAnalyzer
+from src.core.lenin_analyzer import EnhancedLeninAnalyzer
 from src.core.publisher import TelegramPublisher
 from src.core.settings.config import Settings
 from src.core.utils.decorators import handle_errors
 from src.core.database.db_core import session_scope
 from src.core.llama_server import LeninServer
+from src.core.rag_system import get_rag_system
 
 logger = logging.getLogger(__name__)
 
 
-class NewsProcessor:
+class OptimizedNewsProcessor:
     def __init__(self):
         self.config = Settings()
-        logger.info("Инициализация NewsFetcher")
+        logger.info("Инициализация OptimizedNewsProcessor")
+
         self.fetcher = NewsFetcher()
         self.analyzer = None
-        self.server = LeninServer()  # Добавляем сервер
+        self.server = LeninServer()
         self.analyzer_ready = asyncio.Event()
-        asyncio.create_task(self.initialize_analyzer_async())
-        logger.info("Инициализация TelegramPublisher")
+
+        # Параллельная инициализация
+        asyncio.create_task(self.initialize_components())
+
         self.publisher = TelegramPublisher()
-        self.stats = {"news_fetched": 0, "news_processed": 0, "analyses_published": 0, "errors": 0}
+        self.stats = {
+            "news_fetched": 0,
+            "news_processed": 0,
+            "analyses_published": 0,
+            "errors": 0,
+            "avg_processing_time": 0
+        }
+        self.processing_times = []
 
-    @handle_errors
-    async def initialize_analyzer_async(self):
+    async def initialize_components(self):
+        """Параллельная инициализация компонентов"""
         try:
-            # Запускаем сервер
-            if not await self.server.start_server():
-                raise Exception("Не удалось запустить сервер llama.cpp")
+            # Инициализация RAG системы в отдельной задаче
+            rag_task = asyncio.create_task(self.initialize_rag())
 
-            # Инициализируем анализатор
-            self.analyzer = LeninAnalyzer()
+            # Инициализация анализатора
+            self.analyzer = EnhancedLeninAnalyzer()
             await self.analyzer.initialize_session()
+
+            # Ожидание завершения инициализации RAG
+            await rag_task
+
+            self.analyzer_ready.set()
+            logger.info("Все компоненты инициализированы")
 
         except Exception as e:
             logger.exception(f"Ошибка инициализации: {str(e)}")
-            await self.publisher.send_admin_notification(f"🚨 Ошибка загрузки модели: {str(e)[:300]}")
-        finally:
-            self.analyzer_ready.set()
+            await self.publisher.send_admin_notification(
+                f"🚨 Критическая ошибка инициализации: {str(e)[:300]}"
+            )
 
-    @handle_errors
-    async def close(self):
-        """Закрытие ресурсов"""
-        if self.analyzer:
-            await self.analyzer.close_session()
-        await self.server.stop_server()
-
-    @handle_errors
-    async def fetch_new_news(self):
+    async def initialize_rag(self):
+        """Инициализация RAG системы"""
         try:
-            news_items = self.fetcher.fetch_all()
-            async with session_scope() as session:
-                repo = NewsRepository(session)
-                await repo.save_news(news_items)
-            self.stats["news_fetched"] += len(news_items)
+            rag_system = get_rag_system()
+            # Проверяем, нужно ли перестроить индекс
+            if rag_system.collection.count() == 0:
+                logger.info("Построение индекса онтологии...")
+                await rag_system.build_ontology_index()
+            logger.info("RAG система готова")
         except Exception as e:
-            logger.error(f"Ошибка при сборе новостей: {str(e)}")
-            self.stats["errors"] += 1
-            await self.publisher.send_admin_notification(f"🚨 Ошибка сбора новостей: {str(e)}")
+            logger.error(f"Ошибка инициализации RAG: {str(e)}")
 
     @handle_errors
     async def process_pending_news(self):
@@ -72,23 +80,29 @@ class NewsProcessor:
         try:
             async with session_scope() as session:
                 repo = NewsRepository(session)
-                # Обрабатываем больше новостей за цикл
-                unprocessed = await repo.get_unprocessed_news(limit=3)
+                unprocessed = await repo.get_unprocessed_news(limit=5)  # Увеличили лимит
 
                 for news in unprocessed:
+                    start_time = time.time()
                     try:
                         analysis = await self.analyzer.generate_analysis(
                             news.title,
                             news.content
                         )
 
-                        # Проверяем качество анализа перед сохранением
                         if self._is_quality_analysis(analysis):
                             await repo.save_analysis(news.id, analysis)
                             self.stats["news_processed"] += 1
+
+                            # Замер времени обработки
+                            processing_time = time.time() - start_time
+                            self.processing_times.append(processing_time)
+                            self.stats["avg_processing_time"] = sum(
+                                self.processing_times[-10:]
+                            ) / min(10, len(self.processing_times))
+
                         else:
                             logger.warning(f"Низкое качество анализа, пропускаем новость {news.id}")
-                            # Помечаем как обработанную, но без анализа
                             await repo.mark_as_processed_without_analysis(news.id)
 
                     except Exception as e:
@@ -99,93 +113,72 @@ class NewsProcessor:
             self.stats["errors"] += 1
 
     def _is_quality_analysis(self, analysis: str) -> bool:
-        if not analysis or len(analysis) < 30:
+        """Улучшенная проверка качества анализа"""
+        if not analysis or len(analysis) < 40:
             return False
 
         # Проверяем на наличие шаблонных фраз
         template_phrases = [
             "теперь", "рассмотрим", "анализируя",
             "можно сделать вывод", "данная ситуация",
-            "в контексте новости"
+            "в контексте новости", "как отмечал"
         ]
 
-        if any(phrase in analysis.lower() for phrase in template_phrases):
+        text_lower = analysis.lower()
+        if any(phrase in text_lower for phrase in template_phrases):
+            return False
+
+        # Проверяем наличие марксистской терминологии
+        marxist_terms = [
+            "класс", "капитал", "пролетариат", "буржуазия",
+            "эксплуатация", "противоречие", "диалектика"
+        ]
+
+        if not any(term in text_lower for term in marxist_terms):
             return False
 
         # Проверяем, что это законченные предложения
-        if analysis.count('.') < 1:  # Хотя бы одна точка
+        if analysis.count('.') < 1:
             return False
 
         return True
 
     @handle_errors
-    async def publish_pending_analyses(self):
-        try:
-            async with session_scope() as session:
-                repo = NewsRepository(session)
-                unpublished = await repo.get_unpublished_analysis(limit=10)  # Увеличили лимит
+    async def run_optimized_cycle(self):
+        """Оптимизированный цикл обработки"""
+        logger.info("Запуск оптимизированного цикла обработки")
 
-                for item in unpublished:
-                    for attempt in range(3):  # 3 попытки
-                        try:
-                            success = await self.publisher.publish_analysis(
-                                item.news_id,
-                                item.news.title,
-                                item.news.url,
-                                item.analysis
-                            )
-                            if success:
-                                await repo.mark_as_published(item.news_id)
-                                break  # Выход при успехе
-                            else:
-                                await asyncio.sleep(2)  # Пауза между попытками
-                        except Exception as e:
-                            logger.error(f"Ошибка публикации (попытка {attempt + 1}): {str(e)}")
-        except Exception as e:
-            logger.error(f"Ошибка в цикле публикации: {str(e)}")
-            self.stats["errors"] += 1
-            await self.publisher.send_admin_notification(f"🚨 Ошибка публикации: {str(e)}")
+        # Параллельное выполнение задач
+        fetch_task = asyncio.create_task(self.fetch_new_news())
+        process_task = asyncio.create_task(self.process_pending_news())
 
-    @handle_errors
-    async def run_full_cycle(self):
-        logger.info("Запуск полного цикла обработки")
-        await self.fetch_new_news()
-        await self.process_pending_news()
+        await asyncio.gather(fetch_task, process_task)
         await self.publish_pending_analyses()
 
         logger.info(
             f"Цикл завершен: Новостей: {self.stats['news_fetched']}, "
             f"Обработано: {self.stats['news_processed']}, "
-            f"Опубликовано: {self.stats['analyses_published']}, "
+            f"Среднее время: {self.stats['avg_processing_time']:.2f}с, "
             f"Ошибок: {self.stats['errors']}"
         )
 
-        # Отчет администратору только при ошибках
-        if self.stats['errors'] > 0:
-            await self.publisher.send_admin_notification(
-                f"⚠️ Цикл завершен с {self.stats['errors']} ошибками. Проверьте логи."
-            )
-
-        # Сброс статистики
-        for key in self.stats:
-            self.stats[key] = 0
-
-    @handle_errors
-    async def start_periodic_processing(self):
-        logger.info("Запуск периодической обработки")
-        await self.publisher.send_admin_notification("🚀 Система ИИ-Ленин запущена")
+    async def start_optimized_processing(self):
+        """Запуск оптимизированной обработки"""
+        logger.info("Запуск оптимизированной обработки")
+        await self.publisher.send_admin_notification("🚀 Система ИИ-Ленин запущена (оптимизированная версия)")
 
         # Первый цикл
-        await self.run_full_cycle()
+        await self.run_optimized_cycle()
 
-        # Основной цикл
+        # Адаптивный основной цикл
         while True:
             start_time = time.time()
-            await self.run_full_cycle()
+            await self.run_optimized_cycle()
             elapsed = time.time() - start_time
 
-            # ФИКС: Максимальное время ожидания - 5 минут (300 секунд)
-            sleep_time = min(300, max(60, 300 - elapsed))  # От 1 до 5 минут
+            # Адаптивная пауза based на времени выполнения
+            target_cycle_time = 180
+            sleep_time = max(30, target_cycle_time - elapsed)  # Не менее 30 секунд
 
             logger.info(f"Ожидание {sleep_time} сек. до следующего цикла")
             await asyncio.sleep(sleep_time)

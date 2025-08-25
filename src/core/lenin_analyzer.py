@@ -1,147 +1,95 @@
 import logging
 import re
-import os
 import aiohttp
 import torch
-import chromadb
 import numpy as np
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-from chromadb import PersistentClient
 from functools import lru_cache
 from src.core.settings.config import Settings
+from src.core.rag_system import get_rag_system
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
 
-class LeninAnalyzer:
+class EnhancedLeninAnalyzer:
     def __init__(self, vector_db_path: str = None):
-        logger.info("Инициализация LeninAnalyzer (серверный режим)")
+        logger.info("Инициализация EnhancedLeninAnalyzer")
         self.config = Settings()
         self.server_url = "http://127.0.0.1:8080"
         self.session = None
-
-        # Определение абсолютных путей
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-        # Инициализация векторной БД
-        if vector_db_path is None:
-            vector_db_path = os.path.join(BASE_DIR, "database", "vector_db")
-
-        self.embedding_function = SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2",
-            device="cuda" if torch.cuda.is_available() else "cpu"
-        )
-
-        self.chroma_client = PersistentClient(path=vector_db_path)
-        try:
-            self.collection = self.chroma_client.get_collection(
-                name="lenin_works",
-                embedding_function=self.embedding_function
-            )
-            logger.info("Коллекция lenin_works успешно загружена")
-        except Exception as e:
-            logger.error(f"Ошибка загрузки коллекции: {str(e)}")
-            self.collection = None
+        self.rag_system = get_rag_system()
+        self.analysis_cache = {}
 
     async def initialize_session(self):
-        """Инициализация HTTP сессии"""
         if self.session is None:
-            self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=300))
+            timeout = aiohttp.ClientTimeout(total=300, sock_connect=30)
+            self.session = aiohttp.ClientSession(timeout=timeout)
 
     async def close_session(self):
-        """Закрытие HTTP сессии"""
         if self.session:
             await self.session.close()
             self.session = None
 
-    @lru_cache(maxsize=500)
-    def cached_embedding(self, text: str) -> list:
-        return self.embedding_function([text])[0]
-
-    def retrieve_context(self, query: str, k: int = 3) -> str:
-        try:
-            if not self.collection or self.collection.count() == 0:
-                return ""
-
-            embedding = self.cached_embedding(query)
-            if isinstance(embedding, np.ndarray):
-                embedding = embedding.tolist()
-
-            results = self.collection.query(
-                query_embeddings=[embedding],
-                n_results=k,
-                include=["documents"]
-            )
-
-            context = " ".join(
-                doc for doc_list in results['documents']
-                for doc in doc_list if isinstance(doc, str)
-            )[:500]
-
-            return context if context else ""
-        except Exception as e:
-            logger.exception(f"Ошибка поиска контекста: {str(e)}")
-            return ""
-
-    def clean_analysis(self, text: str) -> str:
-        # Жесткое удаление шаблонных фраз
-        forbidden_patterns = [
-            r'Теперь[^.!?]*[.!?]',
-            r'Рассмотрим[^.!?]*[.!?]',
-            r'Анализируя[^.!?]*[.!?]',
-            r'можно сделать вывод[^.!?]*[.!?]',
-            r'данная ситуация[^.!?]*[.!?]',
-            r'В контексте[^.!?]*[.!?]'
+    def extract_key_concepts(self, text: str) -> List[str]:
+        """Извлечение ключевых концепций для улучшения поиска"""
+        concepts = []
+        # Марксистско-ленинские термины для приоритетного поиска
+        marxist_terms = [
+            'капитал', 'пролетариат', 'буржуазия', 'эксплуатация',
+            'революция', 'диалектика', 'материализм', 'идеализм',
+            'классовая борьба', 'прибавочная стоимость', 'средства производства'
         ]
 
-        for pattern in forbidden_patterns:
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+        text_lower = text.lower()
+        for term in marxist_terms:
+            if term in text_lower:
+                concepts.append(term)
 
-        # Разбиваем на предложения и берем только первые два законченных
-        sentences = []
-        current_sentence = ""
-
-        for char in text:
-            current_sentence += char
-            if char in '.!?':
-                sentences.append(current_sentence.strip())
-                current_sentence = ""
-                if len(sentences) >= 2:
-                    break
-
-        # Если набрали меньше двух предложений, добавляем оставшийся текст
-        if len(sentences) < 2 and current_sentence:
-            sentences.append(current_sentence.strip())
-
-        return ' '.join(sentences[:2])
+        return concepts[:3]  # Ограничиваем количество концепций
 
     async def generate_analysis(self, news_title: str, news_content: str) -> str:
         try:
             await self.initialize_session()
 
-            query = f"{news_title} {news_content[:100]}"
-            context = self.retrieve_context(query)
+            # Кэширование результатов
+            cache_key = f"{news_title}_{hash(news_content[:200])}"
+            if cache_key in self.analysis_cache:
+                return self.analysis_cache[cache_key]
 
-            system_prompt = (
-                "Дай краткий анализ новости с точки зрения марксиста.\n\n"
-                "Ответ должен быть строго в 2 предложения, конкретный и основанный только на фактах из новости."
-                "Запрещены: вводные фразы, упоминание стран, революции, военных аспектов.\n\n"
-                "Анализируй только: труд, политика, капитал, ресурсы, классовые противоречия."
+            # Извлечение ключевых концепций
+            key_concepts = self.extract_key_concepts(news_content)
+            enhanced_query = f"{news_title} {news_content[:200]} {' '.join(key_concepts)}"
+
+            # Многоуровневый поиск контекста
+            context = self.rag_system.retrieve_relevant_context(
+                enhanced_query,
+                k=5,
+                author_filter="Ленин"
             )
 
-            user_content = f"Контекст: {context}\n\nНовость: {news_title}\n{news_content[:500]}" if context else \
-                f"Новость: {news_title}\n{news_content[:500]}"
+            # Если контекст от Ленина недостаточен, добавляем других авторов
+            if len(context.split()) < 100:
+                additional_context = self.rag_system.retrieve_relevant_context(
+                    enhanced_query,
+                    k=3,
+                    author_filter="МарксЭнгельс"
+                )
+                if additional_context:
+                    context += "\n\n" + additional_context
 
-            # Форматируем запрос для llama.cpp сервера
+            # Оптимизированный промпт
+            system_prompt = self._create_optimized_prompt(context)
+            user_content = f"Новость: {news_title}\n{news_content[:400]}"
+
             prompt = self._format_llama3_prompt(system_prompt, user_content)
 
             data = {
                 "prompt": prompt,
-                "n_predict": 80,
-                "temperature": 0.3,
-                "top_p": 0.5,
-                "repeat_penalty": 1.4,
-                "stop": ["\n", "###", "Анализ:", "Ленин:", "Теперь", "Рассмотрим", "Новость"]
+                "n_predict": 150,
+                "temperature": 0.7,  # Более творческая генерация
+                "top_p": 0.85,
+                "repeat_penalty": 1.3,
+                "stop": ["<|eot_id|>", "\n\n", "###", "Теперь", "Рассмотрим"]
             }
 
             async with self.session.post(
@@ -152,18 +100,68 @@ class LeninAnalyzer:
                 if response.status == 200:
                     result = await response.json()
                     content = result.get('content', '').strip()
-                    return self.clean_analysis(content)
+                    cleaned_content = self.clean_analysis(content)
+
+                    # Кэшируем результат
+                    self.analysis_cache[cache_key] = cleaned_content
+                    if len(self.analysis_cache) > 1000:
+                        self.analysis_cache.clear()
+
+                    return cleaned_content
                 else:
                     error_text = await response.text()
                     logger.error(f"Ошибка сервера: {response.status} - {error_text}")
-                    return "Не удалось сгенерировать анализ."
+                    return "Анализ временно недоступен."
 
         except Exception as e:
             logger.exception(f"Ошибка генерации: {str(e)}")
+            return "Ошибка анализа."
+
+    def _create_optimized_prompt(self, context: str) -> str:
+        """Создание оптимизированного промпта"""
+        return (
+            "Ты — Владимир Ильич Ленин. Проанализируй новость с марксистско-ленинской точки зрения.\n\n"
+            "Контекст для анализа:\n"
+            f"{context}\n\n"
+            "Инструкции:\n"
+            "1. Дайте краткий анализ (2-3 предложения)\n"
+            "2. Сфокусируйтесь на классовых отношениях и экономических противоречиях\n"
+            "3. Избегайте общих фраз и шаблонных выражений\n"
+            "4. Будьте конкретны и аутентичны\n"
+            "5. Начинайте сразу с сути анализа\n"
+            "6. Используйте диалектический подход\n"
+            "7. Укажите на основные противоречия\n\n"
+            "Запрещенные фразы: 'теперь', 'рассмотрим', 'можно сделать вывод', "
+            "'данная ситуация', 'в контексте новости'"
+        )
+
+    def clean_analysis(self, text: str) -> str:
+        """Улучшенная очистка текста от шаблонных фраз"""
+        if not text:
             return "Не удалось сгенерировать анализ."
 
+        # Удаление шаблонных фраз
+        patterns = [
+            r'Теперь[^.!?]*[.!?]', r'Рассмотрим[^.!?]*[.!?]',
+            r'Анализируя[^.!?]*[.!?]', r'можно сделать вывод[^.!?]*[.!?]',
+            r'данная ситуация[^.!?]*[.!?]', r'В контексте[^.!?]*[.!?]',
+            r'Как отмечал[^.!?]*[.!?]', r'С точки зрения[^.!?]*[.!?]'
+        ]
+
+        for pattern in patterns:
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+        # Удаление повторяющихся фраз
+        text = re.sub(r'(.+?)(\1+)', r'\1', text)
+
+        # Выбор лучших предложений
+        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 20]
+        if len(sentences) > 3:
+            sentences = sentences[:3]  # Ограничиваем тремя предложениями
+
+        return '. '.join(sentences) + '.'
+
     def _format_llama3_prompt(self, system_prompt: str, user_input: str) -> str:
-        """Форматирует промпт для модели Llama 3"""
         return (
             f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
             f"{system_prompt}<|eot_id|>\n"
