@@ -22,7 +22,7 @@ class EnhancedRAGSystem:
         if ontology_path:
             self.ontology_path = Path(ontology_path)
         else:
-            self.ontology_path = BASE_DIR / "data" / "books" / "intellectual"
+            self.ontology_path = BASE_DIR / "data" / "books" / "ultimate_cleaned_ontology"
 
         self.vector_db_path = BASE_DIR / "database" / "rag_db"
 
@@ -38,6 +38,29 @@ class EnhancedRAGSystem:
         # Инициализация ChromaDB
         self.chroma_client = PersistentClient(path=str(self.vector_db_path))
         self._init_collection()
+
+        # Паттерны для фильтрации технической информации
+        self.technical_patterns = [
+            r'Москва,.*Миусская площадь',
+            r'Ленинградская типография',
+            r'Печатный Двор',
+            r'Ордена Трудового Красного Знамени',
+            r'Главполиграфпрома',
+            r'Комитета по печати',
+            r'Совета Министров',
+            r'Гатчинская ул',
+            r'ISBN',
+            r'©',
+            r'тираж',
+            r'цена',
+            r'редактор',
+            r'корректор',
+            r'Сдано в набор',
+            r'Подписано к печати',
+            r'Заведующий редакцией',
+            r'Художественный редактор',
+            r'Технический редактор'
+        ]
 
     def _init_collection(self):
         try:
@@ -55,111 +78,58 @@ class EnhancedRAGSystem:
             )
 
     def _get_author_from_path(self, file_path: Path) -> str:
-        """Извлекает имя автора из пути к файлу с улучшенной логикой"""
+        """Извлекает имя автора из пути к файлу"""
         try:
             # Получаем относительный путь от корня онтологии
             relative_path = file_path.relative_to(self.ontology_path)
             parts = relative_path.parts
 
-            # Первая папка - это автор
-            if len(parts) > 0:
+            # Специальная обработка для структуры онтологии
+            if len(parts) >= 2:
                 author = parts[0]
 
-                # Специальные случаи
-                if author == "pss":
-                    return "Ленин"
-                elif author == "single":
-                    # Для файлов в папке single, автор определяется по родительской папке
-                    if len(parts) > 1:
-                        return parts[1]
-                    else:
-                        return "Ленин"  # По умолчанию для папки single
+                # Обработка специальных случаев
+                author_mapping = {
+                    "pss": "Ленин",
+                    "single": "Ленин",  # Для отдельных работ Ленина
+                    "МарксЭнгельс": "Маркс и Энгельс"
+                }
 
+                if author in author_mapping:
+                    return author_mapping[author]
+
+                # Для остальных случаев возвращаем имя автора
                 return author
 
             return "Unknown"
-        except Exception:
-            # Если не можем определить автора из пути, попробуем извлечь из содержимого файла
-            try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read(1000)  # Читаем первые 1000 символов
-
-                # Ищем метаданные об авторе в начале файла
-                author_match = re.search(r'АВТОР:\s*([^\n]+)', content)
-                if author_match:
-                    return author_match.group(1).strip()
-
-                # Ищем упоминания известных авторов в тексте
-                known_authors = ["Ленин", "Маркс", "Энгельс", "Гегель", "Аристотель", "Плеханов", "Богданов"]
-                for author in known_authors:
-                    if author in content:
-                        return author
-
-            except Exception:
-                pass
-
+        except Exception as e:
+            logger.error(f"Ошибка определения автора для {file_path}: {str(e)}")
             return "Unknown"
 
-    def _clean_text(self, text: str) -> str:
-        """Очистка текста от служебной информации и колонтитулов"""
-        # Удаляем техническую информацию о публикации
-        patterns_to_remove = [
-            r'Гатчинская ул., 26',
-            r'Главполиграфпрома?',
-            r'Комитета по печати',
-            r'имени А\. М\. Горького',
-            r'Совета Министров СССР',
-            r'Заведующий редакцией',
-            r'Редактор',
-            r'Художник',
-            r'Художественный редактор',
-            r'Технический редактор',
-            r'Корректор',
-            r'Сдано в набор',
-            r'Подписано к печати',
-            r'Тираж',
-            r'Цена',
-            r'©',
-            r'ISBN',
-            r'том \d+',
-            r'Том \d+',
-            r'\b\d{1,3}\b',  # Одиночные числа (номера страниц)
-        ]
-
-        for pattern in patterns_to_remove:
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-
-        # Удаляем повторяющиеся пробелы и пустые строки
-        text = re.sub(r'\s+', ' ', text)
-        text = re.sub(r'^\s*$', '', text, flags=re.MULTILINE)
-
-        return text.strip()
-
-    def _is_content_text(self, text: str) -> bool:
-        """Проверяет, является ли текст содержательным (а не техническим)"""
-        if len(text) < 50:  # Слишком короткий текст
-            return False
+    def _is_technical_text(self, text: str) -> bool:
+        """Проверяет, является ли текст технической информацией"""
+        text_lower = text.lower()
 
         # Проверяем на наличие технических фраз
-        technical_phrases = [
-            'тираж', 'цена', 'редактор', 'корректор',
-            'сдано в набор', 'подписано к печати'
-        ]
+        for pattern in self.technical_patterns:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
 
-        text_lower = text.lower()
-        for phrase in technical_phrases:
-            if phrase in text_lower:
-                return False
+        # Проверяем на наличие большого количества цифр и специальных символов
+        digit_ratio = len(re.findall(r'\d', text)) / len(text) if len(text) > 0 else 0
+        special_char_ratio = len(re.findall(r'[\[\]{}()<>|\\/*+=#^$@%]', text)) / len(text) if len(text) > 0 else 0
 
-        # Проверяем, что текст содержит осмысленные слова
-        word_count = len(re.findall(r'\b\w{3,}\b', text))
-        if word_count < 5:  # Мало осмысленных слов
-            return False
+        if digit_ratio > 0.1 or special_char_ratio > 0.05:
+            return True
 
-        return True
+        # Короткие строки без букв считаем техническими
+        if len(text) < 20 and not any(c.isalpha() for c in text):
+            return True
+
+        return False
 
     async def process_text_file(self, file_path: Path) -> List[Dict]:
-        """Асинхронная обработка текстовых файлов с улучшенной очисткой"""
+        """Асинхронная обработка текстовых файлов"""
         try:
             async with aiofiles.open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = await f.read()
@@ -168,23 +138,8 @@ class EnhancedRAGSystem:
             if "project_structure" in file_path.name.lower():
                 return []
 
-            # Извлекаем автора из метаданных в начале файла
-            author = "Unknown"
-            work = file_path.stem
-
-            # Ищем метаданные в начале файла
-            metadata_match = re.search(r'АВТОР:\s*([^\n]+)\nРАБОТА:\s*([^\n]+)\n\n', content)
-            if metadata_match:
-                author = metadata_match.group(1).strip()
-                work = metadata_match.group(2).strip()
-                # Удаляем метаданные из содержимого
-                content = content[metadata_match.end():]
-            else:
-                # Если метаданных нет, определяем автора из пути
-                author = self._get_author_from_path(file_path)
-
-            # Очистка текста от остаточной технической информации
-            content = self._clean_text(content)
+            # Получаем автора из пути
+            author = self._get_author_from_path(file_path)
 
             # Адаптивное разбиение на чанки
             chunk_size = 800
@@ -196,7 +151,7 @@ class EnhancedRAGSystem:
 
             for paragraph in paragraphs:
                 # Пропускаем технические абзацы
-                if not self._is_content_text(paragraph):
+                if self._is_technical_text(paragraph):
                     continue
 
                 if len(paragraph) <= chunk_size:
@@ -204,18 +159,18 @@ class EnhancedRAGSystem:
                         "text": paragraph,
                         "source": file_path.name,
                         "author": author,
-                        "work": work
+                        "work": file_path.stem
                     })
                 else:
                     # Разбиваем длинные абзацы
                     for i in range(0, len(paragraph), chunk_size - overlap):
                         chunk = paragraph[i:i + chunk_size]
-                        if len(chunk.strip()) > 100 and self._is_content_text(chunk):
+                        if len(chunk.strip()) > 100 and not self._is_technical_text(chunk):
                             chunks.append({
                                 "text": chunk,
                                 "source": file_path.name,
                                 "author": author,
-                                "work": work
+                                "work": file_path.stem
                             })
             return chunks
         except Exception as e:
@@ -223,7 +178,7 @@ class EnhancedRAGSystem:
             return []
 
     async def build_ontology_index(self):
-        """Асинхронное построение индекса с прогресс-баром"""
+        """Асинхронное построение индекса"""
         logger.info("Начало построения индекса онтологии...")
 
         # Проверяем существование пути
@@ -270,8 +225,43 @@ class EnhancedRAGSystem:
 
         logger.info(f"Индекс онтологии построен. Всего документов: {len(documents)}")
 
+    def filter_technical_results(self, results: List[str]) -> List[str]:
+        """Фильтрует техническую информацию из результатов поиска"""
+        filtered_results = []
+
+        for result in results:
+            # Проверяем, является ли результат технической информацией
+            if not self._is_technical_text(result):
+                # Дополнительная очистка от технических фрагментов внутри текста
+                cleaned_result = result
+                for pattern in self.technical_patterns:
+                    cleaned_result = re.sub(pattern, '', cleaned_result, flags=re.IGNORECASE)
+
+                # Удаляем строки с большим количеством цифр и специальных символов
+                lines = cleaned_result.split('\n')
+                cleaned_lines = []
+
+                for line in lines:
+                    digit_ratio = len(re.findall(r'\d', line)) / len(line) if len(line) > 0 else 0
+                    special_char_ratio = len(re.findall(r'[\[\]{}()<>|\\/*+=#^$@%]', line)) / len(line) if len(
+                        line) > 0 else 0
+
+                    if digit_ratio < 0.1 and special_char_ratio < 0.05 and len(line.strip()) > 20:
+                        cleaned_lines.append(line.strip())
+
+                if cleaned_lines:
+                    filtered_result = ' '.join(cleaned_lines)
+                    if len(filtered_result) > 50:  # Минимальная длина содержательного текста
+                        filtered_results.append(filtered_result)
+
+            # Ограничиваем количество результатов
+            if len(filtered_results) >= 5:
+                break
+
+        return filtered_results
+
     def retrieve_relevant_context(self, query: str, k: int = 5, author_filter: Optional[str] = None) -> str:
-        """Улучшенный поиск контекста"""
+        """Улучшенный поиск контекста с фильтрацией технической информации"""
         try:
             # Исправляем фильтр для ChromaDB
             where_filter = None
@@ -280,21 +270,36 @@ class EnhancedRAGSystem:
 
             results = self.collection.query(
                 query_texts=[query],
-                n_results=k,
+                n_results=k * 2,  # Берем больше результатов для фильтрации
                 where=where_filter,
                 include=["documents", "metadatas"]
             )
 
-            # Форматирование результатов
-            context_parts = []
+            # Фильтруем техническую информацию
+            filtered_documents = []
+            filtered_metadatas = []
+
             if results['documents']:
                 for i, doc in enumerate(results['documents'][0]):
-                    metadata = results['metadatas'][0][i]
-                    # Пропускаем технические фрагменты
-                    if self._is_content_text(doc):
-                        context_parts.append(
-                            f"[Из {metadata['author']} - {metadata['work']}]: {doc}"
-                        )
+                    if not self._is_technical_text(doc):
+                        filtered_documents.append(doc)
+                        filtered_metadatas.append(results['metadatas'][0][i])
+
+            # Если после фильтрации осталось мало результатов, берем оригинальные
+            if len(filtered_documents) < k:
+                filtered_documents = results['documents'][0][:k]
+                filtered_metadatas = results['metadatas'][0][:k]
+            else:
+                filtered_documents = filtered_documents[:k]
+                filtered_metadatas = filtered_metadatas[:k]
+
+            # Форматирование результатов
+            context_parts = []
+            for i, doc in enumerate(filtered_documents):
+                metadata = filtered_metadatas[i]
+                context_parts.append(
+                    f"[Из {metadata['author']} - {metadata['work']}]: {doc}"
+                )
 
             return "\n\n".join(context_parts)
         except Exception as e:

@@ -10,10 +10,15 @@ from src.core.processor import NewsProcessor
 from src.core.database.db_core import session_scope
 from sqlalchemy import text
 
+# Настройка логирования SQLAlchemy на уровень ERROR
+logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.ERROR)
+
 setup_logging()
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 
 async def async_main():
     setup_logging()
@@ -26,6 +31,13 @@ async def async_main():
         if torch.cuda.is_available():
             total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
             logger.info(f"Доступно VRAM: {total_vram:.2f} GB")
+
+            # Проверяем поддержку CUDA для трансформеров
+            try:
+                assert torch.cuda.is_available()
+                logger.info("CUDA доступна для трансформеров")
+            except:
+                logger.warning("CUDA недоступна для трансформеров! Проверьте установку CUDA и cuDNN")
         else:
             logger.warning("CUDA недоступна! Работа на CPU будет медленнее")
 
@@ -69,18 +81,21 @@ async def async_main():
 
         # Запуск основного цикла
         logger.info("Запуск основного цикла обработки")
-        await processor.start_periodic_processing()
+        await processor.start_optimized_processing()
 
     except Exception as e:
         logger.exception(f"Критическая ошибка: {str(e)}")
+        if processor:
+            await processor.publisher.send_admin_notification(f"💥 Критическая ошибка системы: {str(e)[:300]}")
         sys.exit(1)
     finally:
         # Гарантированное закрытие ресурсов
         if processor:
             await processor.close()
 
+
 if __name__ == "__main__":
-    # Фикс для Windows
+
     if platform.system() == 'Windows':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
