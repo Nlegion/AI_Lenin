@@ -101,31 +101,39 @@ class NewsClassifier:
 
     def should_analyze(self, title: str, content: str) -> Tuple[bool, str]:
         """Определяет, нужно ли анализировать новость"""
+        text = f"{title} {content}".lower()
+
+        # Жесткий фильтр по ключевым словам - отсеиваем спорт, развлечения и т.д.
+        exclude_keywords = [
+            "теннис", "футбол", "хоккей", "спорт", "матч", "соревнование",
+            "чемпионат", "актер", "певец", "кино", "фильм", "музыка",
+            "концерт", "выставка", "искусство", "развлечения", "культура"
+        ]
+
+        if any(keyword in text for keyword in exclude_keywords):
+            return False, f"Пропуск: тема не подходит для анализа"
+
+        # Проверяем наличие экономических и политических терминов
+        economic_terms = ["экономик", "финанс", "бизнес", "рынок", "компани", "банк"]
+        political_terms = ["политик", "правительств", "президент", "министр", "выбор", "партия"]
+        social_terms = ["общество", "социальн", "труд", "работа", "зарплата", "пенсия"]
+
+        priority_terms = economic_terms + political_terms + social_terms
+
+        # Если есть хотя бы один приоритетный термин, анализируем
+        if any(term in text for term in priority_terms):
+            return True, "Приоритетная тема для анализа"
+
+        # Для остальных новостей используем ML классификатор
         category, confidence = self.classify_news(title, content)
-
-        # Понижаем пороги для приоритетных категорий
-        if category in self.high_priority_categories:
-            if confidence < 0.3:  # Было 0.4
-                return False, f"Пропуск: низкая уверенность в категории '{category}' (уверенность: {confidence:.2f})"
-            return True, f"Категория: '{category}' (уверенность: {confidence:.2f})"
-
-        if category in self.low_priority_categories:
-            if confidence < 0.5:  # Было 0.6
-                return False, f"Пропуск: низкая уверенность в категории '{category}' (уверенность: {confidence:.2f})"
-            return True, f"Категория: '{category}' (уверенность: {confidence:.2f})"
 
         if category in self.skip_categories:
             return False, f"Пропуск: категория '{category}' (уверенность: {confidence:.2f})"
 
-        # Для неизвестных категорий используем эвристический анализ
-        text = f"{title} {content}".lower()
-        political_terms = ["политика", "правительство", "президент", "выборы"]
-        economic_terms = ["экономика", "финансы", "бизнес", "рынок"]
+        if category in self.low_priority_categories and confidence < 0.6:
+            return False, f"Пропуск: низкая уверенность в категории '{category}' (уверенность: {confidence:.2f})"
 
-        political_score = sum(1 for term in political_terms if term in text)
-        economic_score = sum(1 for term in economic_terms if term in text)
+        if confidence < 0.4:
+            return False, f"Пропуск: общая низкая уверенность классификации (уверенность: {confidence:.2f})"
 
-        if political_score >= 2 or economic_score >= 2:
-            return True, f"Эвристический анализ: политика={political_score}, экономика={economic_score}"
-
-        return False, f"Пропуск: неопределенная категория '{category}' (уверенность: {confidence:.2f})"
+        return True, f"Категория: '{category}' (уверенность: {confidence:.2f})"

@@ -16,6 +16,8 @@ class AnalysisValidator:
             r'данная ситуация[^.!?]*[.!?]',
             r'в контексте новости[^.!?]*[.!?]'
         ]
+
+        # Запрещенные темы для анализа
         self.forbidden_topics = [
             "спорт", "теннис", "футбол", "хоккей", "развлечения",
             "знаменитости", "кино", "музыка", "искусство"
@@ -32,6 +34,16 @@ class AnalysisValidator:
         self.min_length = 50
         self.min_sentences = 2
         self.min_marxist_terms = 1
+
+        # Частые грамматические ошибки
+        self.common_errors = [
+            'капиталистическихого', 'буржуази', 'класовые',
+            'класа', 'эксплуатаци', 'расмотрена', 'роси',
+            'санкци', 'подчеркаивает', 'капиталистическ',
+            'пролетариата', 'капиталистичес', 'иноваци',
+            'иноваций', 'Франци', 'Парти', 'регистраци',
+            'авиаци', 'современого', 'касационую'
+        ]
 
     def validate_analysis(self, analysis: str, news_title: str = "") -> Dict:
         """Проверяет качество анализа и возвращает результат валидации"""
@@ -57,32 +69,49 @@ class AnalysisValidator:
                 validation_result["reasons"].append("Обнаружены шаблонные фразы")
                 break
 
-        # Проверка релевантной терминологии
+        # Проверка на запрещенные темы
+        analysis_lower = analysis.lower()
+        for topic in self.forbidden_topics:
+            if topic in analysis_lower:
+                validation_result["reasons"].append(f"Обнаружена запрещенная тема: '{topic}'")
+                break
+
+        # СМЯГЧЕННАЯ проверка релевантной терминологии
         marxist_terms_count = sum(1 for term in self.marxist_terms if term in analysis.lower())
-        if marxist_terms_count < self.min_marxist_terms:
-            validation_result["reasons"].append("Недостаточно марксистско-ленинской терминологии")
+        if marxist_terms_count == 0:
+            # Только предупреждение, но не блокировка
+            validation_result["reasons"].append("Отсутствует марксистско-ленинская терминология")
+        elif marxist_terms_count < self.min_marxist_terms:
+            # Небольшой штраф к оценке, но не блокировка
+            validation_result["score"] -= 0.1
+
+        # Проверка на грамматические ошибки (только предупреждение, не блокировка)
+        found_errors = []
+        for error in self.common_errors:
+            if error in analysis_lower:
+                found_errors.append(error)
+
+        if found_errors:
+            validation_result["reasons"].append(f"Обнаружены грамматические ошибки: {', '.join(found_errors[:3])}")
 
         # Проверка связности с темой новости
         if news_title and not self._check_relevance(analysis, news_title):
             validation_result["reasons"].append("Низкая релевантность теме новости")
 
-        # Расчет общего скора
-        if not validation_result["reasons"]:
+        # Расчет общего скора - теперь менее строгий
+        if len(validation_result["reasons"]) <= 2:  # Разрешаем до 2 предупреждений
             validation_result["is_valid"] = True
             validation_result["score"] = self._calculate_score(analysis, marxist_terms_count)
+
+            # Минимальная оценка даже при наличии предупреждений
+            validation_result["score"] = max(0.3, validation_result["score"])
         else:
             validation_result["score"] = 0
 
         return validation_result
 
+
     def _check_relevance(self, analysis: str, news_title: str) -> bool:
-
-        # Проверка на запрещенные темы
-        analysis_lower = analysis.lower()
-        for topic in self.forbidden_topics:
-            if topic in analysis_lower:
-                return False
-
         """Проверяет релевантность анализа теме новости"""
         # Извлекаем ключевые слова из заголовка
         title_keywords = set(re.findall(r'\w{4,}', news_title.lower()))
@@ -90,7 +119,7 @@ class AnalysisValidator:
 
         # Ищем пересечение
         intersection = title_keywords.intersection(analysis_keywords)
-        return len(intersection) >= 2  # Минимум 2 общих значимых слова
+        return len(intersection) >= 2
 
     def _calculate_score(self, analysis: str, marxist_terms_count: int) -> float:
         """Рассчитывает оценку качества анализа"""

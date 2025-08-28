@@ -19,11 +19,10 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-
 async def async_main():
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("Запуск системы ИИ-Ленин (серверный режим)")
+    logger.info("Запуск системы ИИ-Ленин с раздельными циклами")
 
     processor = None
     try:
@@ -31,13 +30,6 @@ async def async_main():
         if torch.cuda.is_available():
             total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
             logger.info(f"Доступно VRAM: {total_vram:.2f} GB")
-
-            # Проверяем поддержку CUDA для трансформеров
-            try:
-                assert torch.cuda.is_available()
-                logger.info("CUDA доступна для трансформеров")
-            except:
-                logger.warning("CUDA недоступна для трансформеров! Проверьте установку CUDA и cuDNN")
         else:
             logger.warning("CUDA недоступна! Работа на CPU будет медленнее")
 
@@ -79,9 +71,9 @@ async def async_main():
         await asyncio.sleep(15)
         logger.info("Процессор успешно инициализирован")
 
-        # Запуск основного цикла
-        logger.info("Запуск основного цикла обработки")
-        await processor.start_optimized_processing()
+        # Запуск раздельных циклов обработки
+        logger.info("Запуск раздельных циклов обработки")
+        await processor.start_separated_processing()
 
     except Exception as e:
         logger.exception(f"Критическая ошибка: {str(e)}")
@@ -92,7 +84,6 @@ async def async_main():
         # Гарантированное закрытие ресурсов
         if processor:
             await processor.close()
-
 
 if __name__ == "__main__":
 

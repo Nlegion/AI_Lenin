@@ -29,10 +29,10 @@ class EnhancedRAGSystem:
         # Создаем директории, если они не существуют
         os.makedirs(self.vector_db_path, exist_ok=True)
 
-        # Инициализация моделей
+        # Инициализация моделей - ФИКС: используем CPU для избежания ошибок с meta tensor
         self.embedding_function = SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2",
-            device="cuda" if torch.cuda.is_available() else "cpu"
+            device="cpu"  # Принудительно используем CPU вместо автоматического выбора
         )
 
         # Инициализация ChromaDB
@@ -260,30 +260,41 @@ class EnhancedRAGSystem:
 
         return filtered_results
 
-    def retrieve_relevant_context(self, query: str, k: int = 5, author_filter: Optional[str] = None) -> str:
-        """Улучшенный поиск контекста с фильтрацией технической информации"""
+    def retrieve_relevant_context(self, query: str, k: int = 7, author_filter: Optional[str] = None) -> str:
+        """Улучшенный поиск контекста с приоритетом для цитат Ленина"""
         try:
             # Исправляем фильтр для ChromaDB
             where_filter = None
             if author_filter:
                 where_filter = {"author": {"$eq": author_filter}}
 
+            # Увеличиваем количество результатов для лучшего выбора цитат
             results = self.collection.query(
                 query_texts=[query],
-                n_results=k * 2,  # Берем больше результатов для фильтрации
+                n_results=k * 3,  # Берем больше результатов для фильтрации
                 where=where_filter,
-                include=["documents", "metadatas"]
+                include=["documents", "metadatas", "distances"]
             )
 
-            # Фильтруем техническую информацию
+            # Фильтруем техническую информацию и выбираем лучшие цитаты
             filtered_documents = []
             filtered_metadatas = []
+            filtered_distances = []
 
             if results['documents']:
                 for i, doc in enumerate(results['documents'][0]):
                     if not self._is_technical_text(doc):
-                        filtered_documents.append(doc)
-                        filtered_metadatas.append(results['metadatas'][0][i])
+                        # Приоритет для более коротких, содержательных цитат
+                        if len(doc) > 50 and len(doc) < 300:  # Идеальная длина для цитат
+                            filtered_documents.append(doc)
+                            filtered_metadatas.append(results['metadatas'][0][i])
+                            filtered_distances.append(results['distances'][0][i] if results['distances'] else 0)
+
+                # Сортируем по релевантности (меньшее расстояние = лучше)
+                if filtered_distances:
+                    sorted_indices = sorted(range(len(filtered_distances)), key=lambda k: filtered_distances[k])
+                    filtered_documents = [filtered_documents[i] for i in sorted_indices]
+                    filtered_metadatas = [filtered_metadatas[i] for i in sorted_indices]
 
             # Если после фильтрации осталось мало результатов, берем оригинальные
             if len(filtered_documents) < k:
@@ -293,12 +304,18 @@ class EnhancedRAGSystem:
                 filtered_documents = filtered_documents[:k]
                 filtered_metadatas = filtered_metadatas[:k]
 
-            # Форматирование результатов
+            # Форматирование результатов с указанием источников
             context_parts = []
             for i, doc in enumerate(filtered_documents):
                 metadata = filtered_metadatas[i]
+                source_info = f"{metadata.get('work', 'Неизвестная работа')}"
+
+                # Добавляем информацию о томме, если доступно
+                if 'volume' in metadata:
+                    source_info += f", т. {metadata['volume']}"
+
                 context_parts.append(
-                    f"[Из {metadata['author']} - {metadata['work']}]: {doc}"
+                    f"[Из {metadata['author']} - {source_info}]: {doc}"
                 )
 
             return "\n\n".join(context_parts)
