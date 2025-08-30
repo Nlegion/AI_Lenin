@@ -146,12 +146,23 @@ class TextCleaner:
         return ' '.join(corrected_words)
 
     def clean_text(self, text: str) -> str:
-        """Полная очистка текста"""
+        """Полная очистка текста с исправлением опечаток"""
         if not text:
             return text
 
         # Корректируем орфографию
         text = self.correct_spelling(text)
+
+        # Специфические исправления для политических терминов
+        political_corrections = {
+            "Рё": "ФРГ",  # Исправление конкретной опечатки
+            "капиталистическихого": "капиталистического",
+            "буржуази": "буржуазии",
+            # Добавьте другие исправления по необходимости
+        }
+
+        for wrong, correct in political_corrections.items():
+            text = text.replace(wrong, correct)
 
         # Удаляем шаблонные фразы
         patterns = [

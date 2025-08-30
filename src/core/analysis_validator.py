@@ -17,6 +17,8 @@ class AnalysisValidator:
             r'в контексте новости[^.!?]*[.!?]'
         ]
 
+        self.quote_bonus = 0.2
+
         # Запрещенные темы для анализа
         self.forbidden_topics = [
             "спорт", "теннис", "футбол", "хоккей", "развлечения",
@@ -52,6 +54,16 @@ class AnalysisValidator:
             "reasons": [],
             "score": 0
         }
+
+        refusal_phrases = [
+            "не входит в круг моих исследований",
+            "данная тема не подлежит анализу",
+            "отказываюсь от анализа"
+        ]
+
+        if any(phrase in analysis.lower() for phrase in refusal_phrases):
+            validation_result["reasons"].append("Модель отказалась от анализа")
+            return validation_result
 
         # Проверка длины
         if len(analysis.strip()) < self.min_length:
@@ -99,17 +111,19 @@ class AnalysisValidator:
             validation_result["reasons"].append("Низкая релевантность теме новости")
 
         # Расчет общего скора - теперь менее строгий
-        if len(validation_result["reasons"]) <= 2:  # Разрешаем до 2 предупреждений
+        if len(validation_result["reasons"]) <= 2:
             validation_result["is_valid"] = True
             validation_result["score"] = self._calculate_score(analysis, marxist_terms_count)
 
-            # Минимальная оценка даже при наличии предупреждений
-            validation_result["score"] = max(0.3, validation_result["score"])
+            # Добавляем бонус за цитаты (но не сохраняем отдельное поле has_quotes)
+            if 'как я писал' in analysis.lower() or 'в работе "' in analysis.lower():
+                validation_result["score"] += self.quote_bonus
+
+            validation_result["score"] = max(0.3, min(1.0, validation_result["score"]))
         else:
             validation_result["score"] = 0
 
         return validation_result
-
 
     def _check_relevance(self, analysis: str, news_title: str) -> bool:
         """Проверяет релевантность анализа теме новости"""

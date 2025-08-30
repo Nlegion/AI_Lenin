@@ -135,17 +135,18 @@ class NewsProcessor:
 
     @handle_errors
     async def process_news_cycle(self):
-        """Цикл обработки новостей (запускается непрерывно)"""
+        """Обработка ожидающих новостей с улучшенной фильтрацией"""
         if not self.analyzer_ready.is_set():
             logger.info("Ожидание инициализации анализатора...")
             await self.analyzer_ready.wait()
-
         while True:
             try:
                 async with db_lock:
                     async with session_scope() as session:
                         repo = NewsRepository(session)
-                        unprocessed = await repo.get_unprocessed_news(limit=20)  # Увеличили лимит
+                        unprocessed = await repo.get_unprocessed_news(limit=20)
+
+                        logger.info(f"Найдено {len(unprocessed)} необработанных новостей")
 
                         if unprocessed:
                             await self.publisher.send_admin_notification(
@@ -174,6 +175,19 @@ class NewsProcessor:
                                     news.title,
                                     news.content
                                 )
+
+                                # Проверяем, не отказалась ли модель от анализа
+                                refusal_phrases = [
+                                    "не входит в круг моих исследований",
+                                    "данная тема не подлежит анализу",
+                                    "отказываюсь от анализа"
+                                ]
+
+                                if any(phrase in analysis.lower() for phrase in refusal_phrases):
+                                    logger.info(f"Модель отказалась анализировать новость {news.id}")
+                                    await repo.mark_as_processed_without_analysis(news.id)
+                                    self.stats["news_skipped"] += 1
+                                    continue
 
                                 logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
 
@@ -244,8 +258,8 @@ class NewsProcessor:
                                 await repo.mark_as_processed_without_analysis(item.news_id)
                                 self.stats["analyses_rejected"] += 1
 
-                    # Короткая пауза перед следующей проверкой
-                    await asyncio.sleep(15)
+                # Короткая пауза перед следующей проверкой
+                await asyncio.sleep(15)
 
             except Exception as e:
                 logger.error(f"Ошибка в цикле публикации: {str(e)}")

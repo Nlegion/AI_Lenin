@@ -263,38 +263,44 @@ class EnhancedRAGSystem:
     def retrieve_relevant_context(self, query: str, k: int = 7, author_filter: Optional[str] = None) -> str:
         """Улучшенный поиск контекста с приоритетом для цитат Ленина"""
         try:
+            # Добавляем ключевые слова политэкономии к запросу
+            political_economy_keywords = [
+                "империализм", "капитал", "политэкономия", "колониализм",
+                "международная торговля", "санкции", "финансовый капитал"
+            ]
+
+            enhanced_query = f"{query} {' '.join(political_economy_keywords)}"
+
             # Исправляем фильтр для ChromaDB
             where_filter = None
             if author_filter:
                 where_filter = {"author": {"$eq": author_filter}}
 
-            # Увеличиваем количество результатов для лучшего выбора цитат
             results = self.collection.query(
-                query_texts=[query],
+                query_texts=[enhanced_query],  # Используем улучшенный запрос
                 n_results=k * 3,  # Берем больше результатов для фильтрации
                 where=where_filter,
-                include=["documents", "metadatas", "distances"]
+                include=["documents", "metadatas"]
             )
 
-            # Фильтруем техническую информацию и выбираем лучшие цитаты
+            # Фильтруем техническую информацию
             filtered_documents = []
             filtered_metadatas = []
-            filtered_distances = []
 
             if results['documents']:
                 for i, doc in enumerate(results['documents'][0]):
-                    if not self._is_technical_text(doc):
-                        # Приоритет для более коротких, содержательных цитат
-                        if len(doc) > 50 and len(doc) < 300:  # Идеальная длина для цитат
-                            filtered_documents.append(doc)
-                            filtered_metadatas.append(results['metadatas'][0][i])
-                            filtered_distances.append(results['distances'][0][i] if results['distances'] else 0)
+                    # Приоритет для цитат Ленина
+                    metadata = results['metadatas'][0][i]
+                    is_lenin = metadata.get('author') == 'Ленин'
 
-                # Сортируем по релевантности (меньшее расстояние = лучше)
-                if filtered_distances:
-                    sorted_indices = sorted(range(len(filtered_distances)), key=lambda k: filtered_distances[k])
-                    filtered_documents = [filtered_documents[i] for i in sorted_indices]
-                    filtered_metadatas = [filtered_metadatas[i] for i in sorted_indices]
+                    if not self._is_technical_text(doc):
+                        # Добавляем цитаты Ленина в начало списка
+                        if is_lenin:
+                            filtered_documents.insert(0, doc)
+                            filtered_metadatas.insert(0, metadata)
+                        else:
+                            filtered_documents.append(doc)
+                            filtered_metadatas.append(metadata)
 
             # Если после фильтрации осталось мало результатов, берем оригинальные
             if len(filtered_documents) < k:
@@ -304,19 +310,21 @@ class EnhancedRAGSystem:
                 filtered_documents = filtered_documents[:k]
                 filtered_metadatas = filtered_metadatas[:k]
 
-            # Форматирование результатов с указанием источников
+            # Форматирование результатов с акцентом на цитаты
             context_parts = []
             for i, doc in enumerate(filtered_documents):
                 metadata = filtered_metadatas[i]
-                source_info = f"{metadata.get('work', 'Неизвестная работа')}"
+                work_name = metadata['work'].replace('_', ' ').title()
 
-                # Добавляем информацию о томме, если доступно
-                if 'volume' in metadata:
-                    source_info += f", т. {metadata['volume']}"
-
-                context_parts.append(
-                    f"[Из {metadata['author']} - {source_info}]: {doc}"
-                )
+                # Для цитат Ленина добавляем специальное форматирование
+                if metadata['author'] == 'Ленин':
+                    context_parts.append(
+                        f"[ЦИТАТА ЛЕНИНА из '{work_name}']: {doc}"
+                    )
+                else:
+                    context_parts.append(
+                        f"[Из {metadata['author']} - '{work_name}']: {doc}"
+                    )
 
             return "\n\n".join(context_parts)
         except Exception as e:
