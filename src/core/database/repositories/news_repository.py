@@ -120,3 +120,14 @@ class NewsRepository:
             published_at=datetime.utcnow()
         )
         await self.session.execute(stmt)
+
+    @handle_db_errors
+    async def mark_as_unprocessed(self, news_id: str):
+        """Помечает новость как необработанную для повторной попытки"""
+        stmt = update(News).where(
+            News.id == news_id
+        ).values(
+            processed=False,
+            processed_at=None
+        )
+        await self.session.execute(stmt)

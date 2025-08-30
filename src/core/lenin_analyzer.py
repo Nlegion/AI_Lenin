@@ -1,8 +1,6 @@
 import logging
 import re
 import aiohttp
-import torch
-import numpy as np
 from src.core.text_cleaner import TextCleaner
 from src.core.settings.config import Settings
 from src.core.rag_system import get_rag_system
@@ -70,13 +68,13 @@ class LeninAnalyzer:
 
         return list(set(concepts))[:5]
 
-    async def generate_analysis(self, news_title: str, news_content: str) -> str:
+    async def generate_analysis(self, news_title: str, news_content: str, feedback: List[str] = None) -> str:
         try:
             await self.initialize_session()
 
             # Кэширование результатов
             cache_key = f"{news_title}_{hash(news_content[:200])}"
-            if cache_key in self.analysis_cache:
+            if cache_key in self.analysis_cache and not feedback:
                 return self.analysis_cache[cache_key]
 
             # Извлечение ключевых концепций
@@ -89,12 +87,12 @@ class LeninAnalyzer:
                 try:
                     context = self.rag_system.retrieve_relevant_context(
                         enhanced_query,
-                        k=5,
+                        k=7,
                         author_filter="Ленин"
                     )
 
                     # Если контекст от Ленина недостаточен, добавляем других авторов
-                    if len(context.split()) < 100:
+                    if len(context.split()) < 150:
                         additional_context = self.rag_system.retrieve_relevant_context(
                             enhanced_query,
                             k=3,
@@ -107,24 +105,25 @@ class LeninAnalyzer:
                     # Продолжаем без контекста, если RAG система недоступна
                     context = ""
 
-            # Оптимизированный промпт
-            system_prompt = self._create_optimized_prompt(context, news_title, news_content)
+            # Оптимизированный промпт с учетом замечаний
+            system_prompt = self._create_optimized_prompt(context, news_title, news_content, feedback)
             user_content = f"Новость: {news_title}\n{news_content[:400]}"
 
             prompt = self._format_llama3_prompt(system_prompt, user_content)
 
             data = {
                 "prompt": prompt,
-                "temperature": 0.3,
+                "temperature": 0.4,
                 "top_p": 0.8,
                 "top_k": 40,
                 "repeat_penalty": 1.5,
                 "typical_p": 0.9,
-                "stop": ["<|eot_id|>", "\n\n", "###", "Теперь", "Рассмотрим", "Анализируя"],
-                "n_predict": 150,
+                "stop": ["<|eot_id|>", "\n\n", "###"],
+                "n_predict": 300,
                 "mirostat": 2,
                 "mirostat_tau": 3.0,
-                "mirostat_eta": 0.1
+                "mirostat_eta": 0.1,
+                "threads": 4
             }
 
             async with self.session.post(
@@ -137,10 +136,11 @@ class LeninAnalyzer:
                     content = result.get('content', '').strip()
                     cleaned_content = self.clean_analysis(content)
 
-                    # Кэшируем результат
-                    self.analysis_cache[cache_key] = cleaned_content
-                    if len(self.analysis_cache) > 1000:
-                        self.analysis_cache.clear()
+                    # Кэшируем результат только если нет замечаний
+                    if not feedback:
+                        self.analysis_cache[cache_key] = cleaned_content
+                        if len(self.analysis_cache) > 1000:
+                            self.analysis_cache.clear()
 
                     return cleaned_content
                 else:
@@ -152,9 +152,9 @@ class LeninAnalyzer:
             logger.exception(f"Ошибка генерации: {str(e)}")
             return "Ошибка анализа."
 
-    def _create_optimized_prompt(self, context: str, news_title: str, news_content: str) -> str:
-        """Создание оптимизированного промпта с акцентом на завершенность предложений"""
-        return (
+    def _create_optimized_prompt(self, context: str, news_title: str, news_content: str, feedback: List[str] = None) -> str:
+        """Создание оптимизированного промпта с учетом замечаний"""
+        base_prompt = (
             "Ты — Владимир Ильич Ленин в 1923 году. Ты анализируешь современные события с позиции диалектического материализма и политэкономии.\n\n"
             "Релевантные цитаты из моих работ для контекста:\n"
             f"{context}\n\n"
@@ -162,7 +162,7 @@ class LeninAnalyzer:
             "1. Анализируй новости, связанные с экономикой, политикой, классовыми противоречиями, международными отношениями\n"
             "2. Особое внимание удели вопросам империализма, колониализма, классовой борьбы\n"
             "3. Если новость касается только спорта, развлечений или культуры без классового подтекста - откажись от анализа\n"
-            "4. Анализ должен быть кратким (2-3 предложения), конкретным и без общих фраз\n"
+            "4. Анализ должен быть кратким (3-4 предложения), конкретным и без общих фраз\n"
             "5. Избегай шаблонных вступлений\n"
             "6. Сфокусируйся на классовой природе события, экономических противоречиях и империалистической практике\n"
             "7. Если в контексте есть релевантные цитаты - используй их для подкрепления анализа\n"
@@ -170,50 +170,76 @@ class LeninAnalyzer:
             "9. Будь аутентичным - используй характерные для Ленина термины и стиль\n"
             "10. ЗАВЕРШАЙ ВСЕ ПРЕДЛОЖЕНИЯ ПОЛНОСТЬЮ, БЕЗ ОБРЫВОВ\n"
             "11. Следи за грамотностью и избегай опечаток\n"
-            "12. Всегда заканчивай анализ законченной мыслью\n\n"
+            "12. Всегда заканчивай анализ законченной мыслью\n"
+            "13. Анализируй только свежие новости (не старше 24 часов)\n"
+            "14. Особое внимание уделяй международной политэкономии: империализму, колониализму, международным экономическим отношениям\n"
+            "15. ОБЯЗАТЕЛЬНО используй марксистско-ленинскую терминологию: классовая борьба, империализм, капитализм, пролетариат, буржуазия и т.д.\n"
+            "16. Анализ должен содержать не менее 3 предложений и быть законченным по смыслу\n\n"
+        )
+
+        # Добавляем замечания из предыдущих попыток
+        if feedback:
+            feedback_text = "Учти следующие замечания из предыдущей попытки анализа:\n"
+            for i, reason in enumerate(feedback, 1):
+                feedback_text += f"{i}. {reason}\n"
+            base_prompt += feedback_text + "\n"
+
+        base_prompt += (
             "Пример хорошего анализа:\n"
             "'Экономические санкции против суверенных наций являются инструментом империалистического давления, характерным для высшей стадии капитализма. Как я писал в работе \"Империализм, как высшая стадия капитализма\": \"Вывоз капитала за границу, в отличие от вывоза товаров, приобретает совершенно исключительное значение\". Это отражает стремление финансового капитала к установлению гегемонии и контролю над ресурсами других наций.'\n\n"
+            "Пример анализа международной экономики:\n"
+            "'Международные торговые соглашения часто служат прикрытием для экономической экспансии империалистических держав. Финансовый капитал стремится к установлению контроля над рынками развивающихся стран, что ведет к усилению экономического неравенства и зависимости. Как я отмечал в \"Тетрадях по империализму\": \"Банки создают такую общественную связь, при которой подчинение отдельных капиталов становится полным\".'\n\n"
             "Формат ответа:\n"
             "- Если анализ возможен: сразу переходи к сути, начиная с характерного для Ленина резкого утверждения\n"
             "- Если анализ невозможен: 'Данная тема не входит в круг моих исследований.'\n\n"
             f"Новость: {news_title}\n{news_content[:400]}"
         )
 
+        return base_prompt
+
     def clean_analysis(self, text: str) -> str:
-        """Улучшенная очистка текста с обработкой обрывов"""
-        if not text:
+        """Улучшенная очистка текста без агрессивного удаления предложений"""
+        if not text or text == "Анализ временно недоступен." or text == "Ошибка анализа.":
             return "Не удалось сгенерировать анализ."
 
-        # Используем TextCleaner для исправления ошибок
+        # Базовая очистка текста
         text = self.text_cleaner.clean_text(text)
 
-        # Удаляем шаблонные фразы
+        # Удаляем только явно шаблонные фразы, не трогая содержание
         patterns = [
             r'Анализ новости с марксистско-ленинской точки зрения[:]?',
-            r'Теперь[^.!?]*[.!?]', r'Рассмотрим[^.!?]*[.!?]',
-            r'Анализируя[^.!?]*[.!?]', r'можно сделать вывод[^.!?]*[.!?]',
-            r'данная ситуация[^.!?]*[.!?]', r'В контексте[^.!?]*[.!?]'
+            r'Теперь[^.!?]*[.!?]',
+            r'Рассмотрим[^.!?]*[.!?]',
+            r'Анализируя[^.!?]*[.!?]',
+            r'можно сделать вывод[^.!?]*[.!?]',
+            r'данная ситуация[^.!?]*[.!?]',
+            r'В контексте[^.!?]*[.!?]'
         ]
 
         for pattern in patterns:
             text = re.sub(pattern, '', text, flags=re.IGNORECASE)
 
-        # Обработка обрывов предложений
-        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 10]
+        # Разбиваем на предложения
+        sentences = re.split(r'(?<=[.!?])\s+', text)
 
-        if not sentences:
+        # Фильтруем только значимые предложения
+        meaningful_sentences = []
+        for sentence in sentences:
+            # Оставляем предложения длиной более 5 символов
+            if len(sentence.strip()) > 5:
+                # Убедимся, что предложение начинается с заглавной буквы
+                if sentence and sentence[0].islower():
+                    sentence = sentence[0].upper() + sentence[1:]
+                meaningful_sentences.append(sentence.strip())
+
+        if not meaningful_sentences:
             return "Не удалось сгенерировать анализ."
 
-        # Удаляем незаконченные предложения в конце
-        last_sentence = sentences[-1]
-        if len(last_sentence.split()) < 5:  # Короткие предложения считаем обрывом
-            sentences = sentences[:-1]
-
         # Собираем текст обратно
-        result = '. '.join(sentences)
+        result = ' '.join(meaningful_sentences)
 
         # Убедимся, что текст заканчивается точкой
-        if not result.endswith('.'):
+        if not result.endswith(('.', '!', '?')):
             result += '.'
 
         return result

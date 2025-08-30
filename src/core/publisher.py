@@ -1,7 +1,7 @@
 import logging
 from src.core.adapters.telegram.service import TelegramService
 from src.core.settings.config import Settings
-import html
+from src.core.version import version_manager
 import re
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ class TelegramPublisher:
     def __init__(self):
         self.config = Settings()
         self.service = TelegramService()
+        self.version = version_manager.get_full_version()
 
 
 
@@ -27,14 +28,13 @@ class TelegramPublisher:
             logger.info(f"Публикация: {title[:30]}...")
 
             # Экранирование HTML-символов
-
             title = clean_telegram_text(title)
             analysis = clean_telegram_text(analysis)
 
             # Формирование сообщения с проверкой длины
             message = (
                 f"<b>📰 {title}</b>\n\n"
-                f"<i>💬 Анализ Языковой Модели Ай_Ленин:</i>\n"
+                f"<i>💬 Модель Ай_Ленин {self.version}:</i>\n"
                 f"{analysis}\n\n"
                 f"<a href='{url}'>Источник</a>"
             )
@@ -45,7 +45,7 @@ class TelegramPublisher:
                 analysis = analysis[:500] + "..."
                 message = (
                     f"<b>📰 {title}</b>\n\n"
-                    f"<i>💬 Анализ Языковой Модели Ай_Ленин:</i>\n"
+                    f"<i>💬 Модель Ай_Ленин {self.version}:</i>\n"
                     f"{analysis}\n\n"
                     f"<a href='{url}'>Источник</a>"
                 )

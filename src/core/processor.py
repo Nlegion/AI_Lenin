@@ -27,6 +27,7 @@ class NewsProcessor:
         self.classifier = NewsClassifier()
         self.validator = AnalysisValidator()
         self.analyzer_ready = asyncio.Event()
+        self.failed_attempts = {}
 
         # Инициализация RAG системы
         self.rag_system = None
@@ -47,6 +48,9 @@ class NewsProcessor:
             "analyses_rejected": 0,
             "errors": 0
         }
+
+        # Словарь для хранения замечаний к анализам
+        self.analysis_feedback = {}
 
     async def initialize_rag_system(self):
         """Инициализация RAG системы"""
@@ -148,12 +152,11 @@ class NewsProcessor:
 
                         logger.info(f"Найдено {len(unprocessed)} необработанных новостей")
 
-                        if unprocessed:
-                            await self.publisher.send_admin_notification(
-                                f"🔍 Начало обработки {len(unprocessed)} новостей"
-                            )
-
                         for news in unprocessed:
+                            # Сбрасываем счетчик попыток для новой новости
+                            if news.id in self.failed_attempts:
+                                del self.failed_attempts[news.id]
+
                             # Логируем информацию о новости
                             logger.info(f"Обработка новости: {news.title[:50]}...")
 
@@ -168,12 +171,15 @@ class NewsProcessor:
                                 continue
 
                             try:
-                                # Генерируем анализ
-                                logger.info(f"Генерация анализа для новости {news.id}")
+                                # Проверяем, есть ли замечания для этой новости
+                                feedback = self.analysis_feedback.get(news.id, [])
 
+                                # Генерируем анализ с учетом замечаний
+                                logger.info(f"Генерация анализа для новости {news.id}")
                                 analysis = await self.analyzer.generate_analysis(
                                     news.title,
-                                    news.content
+                                    news.content,
+                                    feedback=feedback  # Передаем замечания для улучшения
                                 )
 
                                 # Проверяем, не отказалась ли модель от анализа
@@ -199,9 +205,18 @@ class NewsProcessor:
                                     await repo.save_analysis(news.id, analysis)
                                     self.stats["news_processed"] += 1
                                     logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
+
+                                    # Очищаем замечания для этой новости
+                                    if news.id in self.analysis_feedback:
+                                        del self.analysis_feedback[news.id]
                                 else:
-                                    logger.warning(f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}")
-                                    await repo.mark_as_processed_without_analysis(news.id)
+                                    # Сохраняем замечания для следующей попытки
+                                    self.analysis_feedback[news.id] = validation["reasons"]
+                                    logger.warning(
+                                        f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}. Замечания сохранены для следующей попытки.")
+
+                                    # Помечаем как необработанную для повторной попытки
+                                    await repo.mark_as_unprocessed(news.id)
                                     self.stats["analyses_rejected"] += 1
 
                             except Exception as e:
@@ -214,11 +229,11 @@ class NewsProcessor:
             except Exception as e:
                 logger.error(f"Ошибка в цикле обработки новостей: {str(e)}")
                 await self.publisher.send_admin_notification(f"❌ Ошибка обработки новостей: {str(e)[:200]}")
-                await asyncio.sleep(30)  # Ждем перед повторной попыткой
+                await asyncio.sleep(30)
 
     @handle_errors
     async def publish_cycle(self):
-        """Цикл публикации анализов (запускается непрерывно)"""
+        """Цикл публикации анализов с защитой от бесконечных попыток"""
         while True:
             try:
                 async with db_lock:
@@ -227,36 +242,63 @@ class NewsProcessor:
                         unpublished = await repo.get_unpublished_analysis(limit=10)
 
                         if unpublished:
-                            await self.publisher.send_admin_notification(
-                                f"📤 Найдено {len(unpublished)} анализов для публикации"
-                            )
+                            logger.info(f"Найдено {len(unpublished)} анализов для публикации")
 
                         for item in unpublished:
+                            news_id = item.news_id
+
+                            # Проверяем, не превысили ли лимит попыток для этого анализа
+                            if self.failed_attempts.get(news_id, 0) >= 3:
+                                logger.warning(
+                                    f"Анализ {news_id} превысил лимит попыток публикации, помечаем как отклоненный")
+                                await repo.mark_as_processed_without_analysis(news_id)
+                                # Удаляем из словаря неудачных попыток
+                                if news_id in self.failed_attempts:
+                                    del self.failed_attempts[news_id]
+                                self.stats["analyses_rejected"] += 1
+                                continue
+
                             # Дополнительная проверка перед публикацией
                             validation = self.validator.validate_analysis(item.analysis, item.news.title)
 
-                            if validation["is_valid"] and validation["score"] > 0.5:
-                                for attempt in range(3):  # 3 попытки публикации
-                                    try:
-                                        success = await self.publisher.publish_analysis(
-                                            item.news_id,
-                                            item.news.title,
-                                            item.news.url,
-                                            item.analysis
-                                        )
-                                        if success:
-                                            await repo.mark_as_published(item.news_id)
-                                            self.stats["analyses_published"] += 1
-                                            break
-                                        else:
-                                            await asyncio.sleep(2)
-                                    except Exception as e:
-                                        logger.error(f"Ошибка публикации (попытка {attempt + 1}): {str(e)}")
-                                        await asyncio.sleep(2)
+                            if validation["is_valid"] and validation["score"] > 0.3:
+                                try:
+                                    success = await self.publisher.publish_analysis(
+                                        news_id,
+                                        item.news.title,
+                                        item.news.url,
+                                        item.analysis
+                                    )
+                                    if success:
+                                        await repo.mark_as_published(news_id)
+                                        self.stats["analyses_published"] += 1
+                                        # Удаляем из словаря неудачных попыток при успехе
+                                        if news_id in self.failed_attempts:
+                                            del self.failed_attempts[news_id]
+                                    else:
+                                        # Увеличиваем счетчик неудачных попыток
+                                        self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
+                                        logger.warning(
+                                            f"Неудачная попытка публикации анализа {news_id}. Попытка: {self.failed_attempts[news_id]}")
+                                except Exception as e:
+                                    logger.error(f"Ошибка публикации анализа {news_id}: {str(e)}")
+                                    # Увеличиваем счетчик неудачных попыток
+                                    self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
                             else:
-                                logger.warning(f"Анализ {item.news_id} не прошел финальную проверку")
-                                await repo.mark_as_processed_without_analysis(item.news_id)
-                                self.stats["analyses_rejected"] += 1
+                                reasons = ", ".join(validation["reasons"]) if validation["reasons"] else "низкий балл"
+                                logger.warning(
+                                    f"Анализ {news_id} не прошел финальную проверку: {reasons}. Оценка: {validation['score']:.2f}")
+
+                                # Увеличиваем счетчик неудачных попыток
+                                self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
+
+                                # Если превышен лимит попыток, помечаем как отклоненный
+                                if self.failed_attempts[news_id] >= 3:
+                                    logger.warning(f"Анализ {news_id} превысил лимит попыток, помечаем как отклоненный")
+                                    await repo.mark_as_processed_without_analysis(news_id)
+                                    # Удаляем из словаря неудачных попыток
+                                    del self.failed_attempts[news_id]
+                                    self.stats["analyses_rejected"] += 1
 
                 # Короткая пауза перед следующей проверкой
                 await asyncio.sleep(15)
@@ -264,7 +306,7 @@ class NewsProcessor:
             except Exception as e:
                 logger.error(f"Ошибка в цикле публикации: {str(e)}")
                 await self.publisher.send_admin_notification(f"❌ Ошибка публикации: {str(e)[:200]}")
-                await asyncio.sleep(30)  # Ждем перед повторной попыткой
+                await asyncio.sleep(30)
 
     async def report_cycle(self):
         """Цикл отчетности (запускается каждые 30 минут)"""

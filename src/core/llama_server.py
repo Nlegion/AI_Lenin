@@ -37,10 +37,10 @@ class LeninServer:
             "-m", str(self.model_path),  # Только путь к объединенной модели
             "--host", "127.0.0.1",
             "--port", "8080",
-            "--n-gpu-layers", "30",  # Оптимальное значение из тестов
-            "--ctx-size", "2048",
-            "--threads", "6",
-            "--batch-size", "128",
+            "--n-gpu-layers", "999",  # Оптимальное значение из тестов
+            "--ctx-size", "4096",
+            "--threads", "4",
+            "--batch-size", "512",
             "--mlock"
         ]
 

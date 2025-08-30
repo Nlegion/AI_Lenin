@@ -8,6 +8,7 @@ from src.core.settings.log import setup_logging
 from src.core.database.db_migrations import apply_migrations
 from src.core.processor import NewsProcessor
 from src.core.database.db_core import session_scope
+from src.core.version import version_manager
 from sqlalchemy import text
 
 # Настройка логирования SQLAlchemy на уровень ERROR
@@ -22,7 +23,8 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 async def async_main():
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("Запуск системы ИИ-Ленин с раздельными циклами")
+    version_info = version_manager.get_full_version()
+    logger.info(f"Запуск системы ИИ-Ленин {version_info} с раздельными циклами")
 
     processor = None
     try:
