@@ -8,7 +8,12 @@ from src.core.settings.log import setup_logging
 from src.core.database.db_migrations import apply_migrations
 from src.core.processor import NewsProcessor
 from src.core.database.db_core import session_scope
+from src.core.version import version_manager
 from sqlalchemy import text
+
+# Настройка логирования SQLAlchemy на уровень ERROR
+logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.ERROR)
 
 setup_logging()
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
@@ -18,7 +23,8 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 async def async_main():
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("Запуск системы ИИ-Ленин (серверный режим)")
+    version_info = version_manager.get_full_version()
+    logger.info(f"Запуск системы ИИ-Ленин {version_info} с раздельными циклами")
 
     processor = None
     try:
@@ -67,12 +73,14 @@ async def async_main():
         await asyncio.sleep(15)
         logger.info("Процессор успешно инициализирован")
 
-        # Запуск основного цикла
-        logger.info("Запуск основного цикла обработки")
-        await processor.start_periodic_processing()
+        # Запуск раздельных циклов обработки
+        logger.info("Запуск раздельных циклов обработки")
+        await processor.start_separated_processing()
 
     except Exception as e:
         logger.exception(f"Критическая ошибка: {str(e)}")
+        if processor:
+            await processor.publisher.send_admin_notification(f"💥 Критическая ошибка системы: {str(e)[:300]}")
         sys.exit(1)
     finally:
         # Гарантированное закрытие ресурсов
@@ -80,7 +88,7 @@ async def async_main():
             await processor.close()
 
 if __name__ == "__main__":
-    # Фикс для Windows
+
     if platform.system() == 'Windows':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

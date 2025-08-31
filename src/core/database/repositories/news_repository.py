@@ -3,10 +3,11 @@ from sqlalchemy.orm import selectinload
 from src.core.database.models.models import News, Analysis
 from src.core.utils.decorators import handle_db_errors
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class NewsRepository:
     def __init__(self, session):
@@ -59,8 +60,12 @@ class NewsRepository:
 
     @handle_db_errors
     async def get_unprocessed_news(self, limit: int = 10):
+        # Фильтруем новости не старше 24 часов
+        time_threshold = datetime.utcnow() - timedelta(hours=24)
+
         stmt = select(News).where(
-            News.processed == False
+            News.processed == False,
+            News.date >= time_threshold  # Только свежие новости
         ).order_by(
             News.date.desc()
         ).limit(limit)
@@ -113,5 +118,16 @@ class NewsRepository:
         ).values(
             published=True,
             published_at=datetime.utcnow()
+        )
+        await self.session.execute(stmt)
+
+    @handle_db_errors
+    async def mark_as_unprocessed(self, news_id: str):
+        """Помечает новость как необработанную для повторной попытки"""
+        stmt = update(News).where(
+            News.id == news_id
+        ).values(
+            processed=False,
+            processed_at=None
         )
         await self.session.execute(stmt)

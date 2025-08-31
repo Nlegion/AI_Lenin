@@ -12,16 +12,23 @@ Base = declarative_base()
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 DATABASE_URL = f"sqlite+aiosqlite:///{os.path.join(project_root, 'ai_lenin.db')}"
 
+# Увеличиваем таймауты и настраиваем пул соединений
 engine = create_async_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    echo=True,
-    logging_name="sqlalchemy.engine"
+    connect_args={
+        "check_same_thread": False,
+        "timeout": 30  # Увеличиваем таймаут до 30 секунд
+    },
+    echo=False,  # Отключаем подробное логирование SQL
+    logging_name="sqlalchemy.engine",
+    pool_size=10,  # Увеличиваем размер пула
+    max_overflow=20,  # Разрешаем больше переполнений
+    pool_timeout=30,  # Таймаут ожидания соединения из пула
 )
 
 # Настраиваем логгинг SQLAlchemy
-logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.ERROR)
 
 async_session = sessionmaker(
     engine,
@@ -40,7 +47,7 @@ async def session_scope():
         await session.rollback()
         logger.error("Database session error",
                      error=str(e),
-                     exc_info=True)  # Добавьте exc_info для полного traceback
+                     exc_info=True)
         raise
     finally:
         if session:
@@ -48,5 +55,3 @@ async def session_scope():
                 await session.close()
             except Exception as e:
                 logger.error("Error closing session", error=str(e))
-
-
