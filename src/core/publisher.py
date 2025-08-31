@@ -34,7 +34,7 @@ class TelegramPublisher:
             # Формирование сообщения с проверкой длины
             message = (
                 f"<b>📰 {title}</b>\n\n"
-                f"<i>💬 Модель Ай_Ленин {self.version}:</i>\n"
+                f"<i>Модель Ай_Ленин {self.version} 💬</i>\n"
                 f"{analysis}\n\n"
                 f"<a href='{url}'>Источник</a>"
             )
@@ -45,7 +45,7 @@ class TelegramPublisher:
                 analysis = analysis[:500] + "..."
                 message = (
                     f"<b>📰 {title}</b>\n\n"
-                    f"<i>💬 Модель Ай_Ленин {self.version}:</i>\n"
+                    f"<i>Модель Ай_Ленин {self.version} 💬</i>\n"
                     f"{analysis}\n\n"
                     f"<a href='{url}'>Источник</a>"
                 )

@@ -27,7 +27,6 @@ class NewsProcessor:
         self.classifier = NewsClassifier()
         self.validator = AnalysisValidator()
         self.analyzer_ready = asyncio.Event()
-        self.failed_attempts = {}
 
         # Инициализация RAG системы
         self.rag_system = None
@@ -51,6 +50,7 @@ class NewsProcessor:
 
         # Словарь для хранения замечаний к анализам
         self.analysis_feedback = {}
+        self.failed_attempts = {}
 
     async def initialize_rag_system(self):
         """Инициализация RAG системы"""
@@ -143,85 +143,34 @@ class NewsProcessor:
         if not self.analyzer_ready.is_set():
             logger.info("Ожидание инициализации анализатора...")
             await self.analyzer_ready.wait()
+
+        # Семафор для ограничения параллельных обработок
+        processing_semaphore = asyncio.Semaphore(2)  # Максимум 2 одновременно
+
         while True:
             try:
                 async with db_lock:
                     async with session_scope() as session:
                         repo = NewsRepository(session)
-                        unprocessed = await repo.get_unprocessed_news(limit=20)
+                        unprocessed = await repo.get_unprocessed_news(limit=5)
 
                         logger.info(f"Найдено {len(unprocessed)} необработанных новостей")
 
+                        processing_tasks = []
                         for news in unprocessed:
                             # Сбрасываем счетчик попыток для новой новости
                             if news.id in self.failed_attempts:
                                 del self.failed_attempts[news.id]
 
-                            # Логируем информацию о новости
-                            logger.info(f"Обработка новости: {news.title[:50]}...")
+                            # Создаем задачу с ограничением через семафор
+                            task = asyncio.create_task(
+                                self.process_single_news(news, repo, processing_semaphore)
+                            )
+                            processing_tasks.append(task)
 
-                            # Проверяем, нужно ли анализировать новость
-                            should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
-                            logger.info(f"Решение по новости {news.id}: {reason}")
-
-                            if not should_analyze:
-                                logger.info(f"Пропуск новости {news.id}: {reason}")
-                                await repo.mark_as_processed_without_analysis(news.id)
-                                self.stats["news_skipped"] += 1
-                                continue
-
-                            try:
-                                # Проверяем, есть ли замечания для этой новости
-                                feedback = self.analysis_feedback.get(news.id, [])
-
-                                # Генерируем анализ с учетом замечаний
-                                logger.info(f"Генерация анализа для новости {news.id}")
-                                analysis = await self.analyzer.generate_analysis(
-                                    news.title,
-                                    news.content,
-                                    feedback=feedback  # Передаем замечания для улучшения
-                                )
-
-                                # Проверяем, не отказалась ли модель от анализа
-                                refusal_phrases = [
-                                    "не входит в круг моих исследований",
-                                    "данная тема не подлежит анализу",
-                                    "отказываюсь от анализа"
-                                ]
-
-                                if any(phrase in analysis.lower() for phrase in refusal_phrases):
-                                    logger.info(f"Модель отказалась анализировать новость {news.id}")
-                                    await repo.mark_as_processed_without_analysis(news.id)
-                                    self.stats["news_skipped"] += 1
-                                    continue
-
-                                logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
-
-                                # Валидируем анализ
-                                validation = self.validator.validate_analysis(analysis, news.title)
-                                logger.info(f"Результат валидации: {validation}")
-
-                                if validation["is_valid"]:
-                                    await repo.save_analysis(news.id, analysis)
-                                    self.stats["news_processed"] += 1
-                                    logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
-
-                                    # Очищаем замечания для этой новости
-                                    if news.id in self.analysis_feedback:
-                                        del self.analysis_feedback[news.id]
-                                else:
-                                    # Сохраняем замечания для следующей попытки
-                                    self.analysis_feedback[news.id] = validation["reasons"]
-                                    logger.warning(
-                                        f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}. Замечания сохранены для следующей попытки.")
-
-                                    # Помечаем как необработанную для повторной попытки
-                                    await repo.mark_as_unprocessed(news.id)
-                                    self.stats["analyses_rejected"] += 1
-
-                            except Exception as e:
-                                logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
-                                self.stats["errors"] += 1
+                        # Ждем завершения всех задач
+                        if processing_tasks:
+                            await asyncio.gather(*processing_tasks)
 
                 # Короткая пауза перед следующей проверкой новых новостей
                 await asyncio.sleep(10)
@@ -231,81 +180,176 @@ class NewsProcessor:
                 await self.publisher.send_admin_notification(f"❌ Ошибка обработки новостей: {str(e)[:200]}")
                 await asyncio.sleep(30)
 
+    async def process_single_news(self, news, repo, semaphore):
+        """Обработка одной новости с учетом замечаний из предыдущих попыток"""
+        async with semaphore:
+            # Проверяем, есть ли замечания для этой новости
+            feedback = self.analysis_feedback.get(news.id, [])
+
+            # Логируем информацию о новости
+            logger.info(f"Обработка новости: {news.title[:50]}...")
+
+            # Проверяем, нужно ли анализировать новость
+            should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
+            logger.info(f"Решение по новости {news.id}: {reason}")
+
+            if not should_analyze:
+                logger.info(f"Пропуск новости {news.id}: {reason}")
+                await repo.mark_as_processed_without_analysis(news.id)
+                self.stats["news_skipped"] += 1
+                return
+
+            try:
+                # Генерируем анализ с учетом замечаний
+                logger.info(f"Генерация анализа для новости {news.id}")
+                analysis = await self.analyzer.generate_analysis(
+                    news.title,
+                    news.content,
+                    feedback=feedback
+                )
+
+                # Проверяем, не отказалась ли модель от анализа
+                refusal_phrases = [
+                    "не входит в круг моих исследований",
+                    "данная тема не подлежит анализу",
+                    "отказываюсь от анализа"
+                ]
+
+                if any(phrase in analysis.lower() for phrase in refusal_phrases):
+                    logger.info(f"Модель отказалась анализировать новость {news.id}")
+                    await repo.mark_as_processed_without_analysis(news.id)
+                    self.stats["news_skipped"] += 1
+                    return
+
+                logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
+
+                # Валидируем анализ
+                validation = self.validator.validate_analysis(analysis, news.title)
+                logger.info(f"Результат валидации: {validation}")
+
+                if validation["is_valid"]:
+                    await repo.save_analysis(news.id, analysis)
+                    self.stats["news_processed"] += 1
+                    logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
+
+                    # Очищаем замечания для этой новости
+                    if news.id in self.analysis_feedback:
+                        del self.analysis_feedback[news.id]
+                else:
+                    # Сохраняем замечания для следующей попытки
+                    self.analysis_feedback[news.id] = validation["reasons"]
+                    logger.warning(
+                        f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}. Замечания сохранены для следующей попытки.")
+
+                    # Помечаем как необработанную для повторной попытки
+                    await repo.mark_as_unprocessed(news.id)
+                    self.stats["analyses_rejected"] += 1
+
+            except Exception as e:
+                logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
+                self.stats["errors"] += 1
+
+    async def process_single_news(self, news, repo, semaphore):
+        """Обработка одной новости с ограничением параллелизма"""
+        async with semaphore:
+            # Логируем информацию о новости
+            logger.info(f"Обработка новости: {news.title[:50]}...")
+
+            # Проверяем, нужно ли анализировать новость
+            should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
+            logger.info(f"Решение по новости {news.id}: {reason}")
+
+            if not should_analyze:
+                logger.info(f"Пропуск новости {news.id}: {reason}")
+                await repo.mark_as_processed_without_analysis(news.id)
+                self.stats["news_skipped"] += 1
+                return
+
+            try:
+                # Генерируем анализ
+                logger.info(f"Генерация анализа для новости {news.id}")
+                analysis = await self.analyzer.generate_analysis(news.title, news.content)
+
+                # Проверяем, не отказалась ли модель от анализа
+                refusal_phrases = [
+                    "не входит в круг моих исследований",
+                    "данная тема не подлежит анализу",
+                    "отказываюсь от анализа"
+                ]
+
+                if any(phrase in analysis.lower() for phrase in refusal_phrases):
+                    logger.info(f"Модель отказалась анализировать новость {news.id}")
+                    await repo.mark_as_processed_without_analysis(news.id)
+                    self.stats["news_skipped"] += 1
+                    return
+
+                logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
+
+                # Валидируем анализ
+                validation = self.validator.validate_analysis(analysis, news.title)
+                logger.info(f"Результат валидации: {validation}")
+
+                if validation["is_valid"]:
+                    await repo.save_analysis(news.id, analysis)
+                    self.stats["news_processed"] += 1
+                    logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
+                else:
+                    logger.warning(f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}")
+                    await repo.mark_as_processed_without_analysis(news.id)
+                    self.stats["analyses_rejected"] += 1
+
+            except Exception as e:
+                logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
+                self.stats["errors"] += 1
+
     @handle_errors
     async def publish_cycle(self):
-        """Цикл публикации анализов с защитой от бесконечных попыток"""
+        """Упрощенный цикл публикации анализов с задержкой"""
         while True:
             try:
                 async with db_lock:
                     async with session_scope() as session:
                         repo = NewsRepository(session)
-                        unpublished = await repo.get_unpublished_analysis(limit=10)
+                        unpublished = await repo.get_unpublished_analysis(limit=5)  # Уменьшили лимит
 
                         if unpublished:
                             logger.info(f"Найдено {len(unpublished)} анализов для публикации")
 
                         for item in unpublished:
-                            news_id = item.news_id
-
-                            # Проверяем, не превысили ли лимит попыток для этого анализа
-                            if self.failed_attempts.get(news_id, 0) >= 3:
-                                logger.warning(
-                                    f"Анализ {news_id} превысил лимит попыток публикации, помечаем как отклоненный")
-                                await repo.mark_as_processed_without_analysis(news_id)
-                                # Удаляем из словаря неудачных попыток
-                                if news_id in self.failed_attempts:
-                                    del self.failed_attempts[news_id]
-                                self.stats["analyses_rejected"] += 1
-                                continue
-
-                            # Дополнительная проверка перед публикацией
+                            # Минимальная проверка перед публикацией
                             validation = self.validator.validate_analysis(item.analysis, item.news.title)
 
-                            if validation["is_valid"] and validation["score"] > 0.3:
+                            # Публикуем ВСЕ анализы, которые не были явно отклонены
+                            if validation["is_valid"]:
                                 try:
                                     success = await self.publisher.publish_analysis(
-                                        news_id,
+                                        item.news_id,
                                         item.news.title,
                                         item.news.url,
                                         item.analysis
                                     )
                                     if success:
-                                        await repo.mark_as_published(news_id)
+                                        await repo.mark_as_published(item.news_id)
                                         self.stats["analyses_published"] += 1
-                                        # Удаляем из словаря неудачных попыток при успехе
-                                        if news_id in self.failed_attempts:
-                                            del self.failed_attempts[news_id]
+                                        logger.info(f"Анализ {item.news_id} успешно опубликован")
+
+                                        # Задержка между публикациями (30 секунд)
+                                        await asyncio.sleep(30)
                                     else:
-                                        # Увеличиваем счетчик неудачных попыток
-                                        self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
-                                        logger.warning(
-                                            f"Неудачная попытка публикации анализа {news_id}. Попытка: {self.failed_attempts[news_id]}")
+                                        logger.warning(f"Неудачная попытка публикации анализа {item.news_id}")
                                 except Exception as e:
-                                    logger.error(f"Ошибка публикации анализа {news_id}: {str(e)}")
-                                    # Увеличиваем счетчик неудачных попыток
-                                    self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
+                                    logger.error(f"Ошибка публикации анализа {item.news_id}: {str(e)}")
                             else:
-                                reasons = ", ".join(validation["reasons"]) if validation["reasons"] else "низкий балл"
-                                logger.warning(
-                                    f"Анализ {news_id} не прошел финальную проверку: {reasons}. Оценка: {validation['score']:.2f}")
-
-                                # Увеличиваем счетчик неудачных попыток
-                                self.failed_attempts[news_id] = self.failed_attempts.get(news_id, 0) + 1
-
-                                # Если превышен лимит попыток, помечаем как отклоненный
-                                if self.failed_attempts[news_id] >= 3:
-                                    logger.warning(f"Анализ {news_id} превысил лимит попыток, помечаем как отклоненный")
-                                    await repo.mark_as_processed_without_analysis(news_id)
-                                    # Удаляем из словаря неудачных попыток
-                                    del self.failed_attempts[news_id]
-                                    self.stats["analyses_rejected"] += 1
+                                # Для отклоненных анализов просто помечаем как обработанные
+                                logger.warning(f"Анализ {item.news_id} отклонен: {', '.join(validation['reasons'])}")
+                                await repo.mark_as_processed_without_analysis(item.news_id)
+                                self.stats["analyses_rejected"] += 1
 
                 # Короткая пауза перед следующей проверкой
                 await asyncio.sleep(15)
 
             except Exception as e:
                 logger.error(f"Ошибка в цикле публикации: {str(e)}")
-                await self.publisher.send_admin_notification(f"❌ Ошибка публикации: {str(e)[:200]}")
                 await asyncio.sleep(30)
 
     async def report_cycle(self):
