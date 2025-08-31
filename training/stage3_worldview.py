@@ -712,11 +712,11 @@ def combine_stage_data(ontology_path, specificity_path, output_path):
 if __name__ == "__main__":
     # Конфигурация путей
     LENIN_PSS_PATH = "data/raw"
-    REFERENCES_PATH = "data/books"
-    OUTPUT_DIR = "data/stage3/lenin_worldview"
-    STAGE1_PATH = "data/stage1/foundation_ontology.json"
-    STAGE2_PATH = "data/stage2/lenin_dialectical_specificity_top1000.json"
-    COMBINED_PATH = "data/stage3/combined_worldview_data.json"
+    REFERENCES_PATH = "../data/books"
+    OUTPUT_DIR = "../data/stage3/lenin_worldview"
+    STAGE1_PATH = "../data/stage1/foundation_ontology.json"
+    STAGE2_PATH = "../data/stage2/lenin_dialectical_specificity_top1000.json"
+    COMBINED_PATH = "../data/stage3/combined_worldview_data.json"
 
     # Объединяем данные этапов 1 и 2
     combine_stage_data(

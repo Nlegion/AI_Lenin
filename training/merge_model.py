@@ -12,9 +12,9 @@ from transformers import (
 # ======================
 # КОНФИГУРАЦИЯ
 # ======================
-MODEL_DIR = "models/saiga"
-ADAPTER_DIR = "models/saiga/lora_adapter"  # Новый адаптер
-MERGED_MODEL_DIR = "models/saiga/merged_model"  # Новая папка для объединенной модели
+MODEL_DIR = "../models/saiga"
+ADAPTER_DIR = "../models/saiga/lora_adapter"  # Новый адаптер
+MERGED_MODEL_DIR = "../models/saiga/merged_model"  # Новая папка для объединенной модели
 os.makedirs(MERGED_MODEL_DIR, exist_ok=True)
 
 # ======================

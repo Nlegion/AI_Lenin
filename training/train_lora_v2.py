@@ -17,10 +17,10 @@ from trl import SFTTrainer
 # ======================
 # КОНФИГУРАЦИЯ (АДРЕСА)
 # ======================
-MODEL_DIR = "models/saiga"
-DATASET_PATH = "data/finetune/lenin_lora_final.jsonl"
-OUTPUT_DIR = "models/saiga/lora_adapter"
-MERGED_MODEL_DIR = "models/saiga/merged_model"
+MODEL_DIR = "../models/saiga"
+DATASET_PATH = "../data/finetune/lenin_lora_final.jsonl"
+OUTPUT_DIR = "../models/saiga/lora_adapter"
+MERGED_MODEL_DIR = "../models/saiga/merged_model"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(MERGED_MODEL_DIR, exist_ok=True)
 

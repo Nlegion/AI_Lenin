@@ -229,7 +229,7 @@ if __name__ == "__main__":
     # Обрабатываем философов
     philosophers = ["Гегель", "Маркс", "Фейербах"]
     for philosopher in philosophers:
-        dir_path = os.path.join("data/books/processed_intellectual", philosopher)
+        dir_path = os.path.join("../data/books/processed_intellectual", philosopher)
         if not os.path.exists(dir_path):
             continue
 

@@ -17,9 +17,9 @@ from trl import SFTTrainer
 # ======================
 # КОНФИГУРАЦИЯ
 # ======================
-MODEL_DIR = "models/saiga"
-DATASET_PATH = "data/finetune/lenin_lora_final.jsonl"
-OUTPUT_DIR = "models/saiga/lora_adapter"  # Новая папка для адаптера
+MODEL_DIR = "../models/saiga"
+DATASET_PATH = "../data/finetune/lenin_lora_final.jsonl"
+OUTPUT_DIR = "../models/saiga/lora_adapter"  # Новая папка для адаптера
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ======================

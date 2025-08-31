@@ -21,8 +21,8 @@ logger.addHandler(logging.StreamHandler())  # Добавляем вывод в �
 
 # Конфигурация
 RAW_DATA_DIR = "data/raw"
-TEMPLATE_PATH = "data/stage3/lenin_worldview/lenin_worldview_template.json"
-OUTPUT_PATH = "data/stage4/lenin_worldview_dynamic_model.json"
+TEMPLATE_PATH = "../data/stage3/lenin_worldview/lenin_worldview_template.json"
+OUTPUT_PATH = "../data/stage4/lenin_worldview_dynamic_model.json"
 VOLUME_COUNT = 55
 BATCH_SIZE = 8
 TOP_CONCEPTS_PER_SECTION = 50

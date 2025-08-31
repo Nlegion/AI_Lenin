@@ -11,7 +11,7 @@ async def main():
     logger.info("Перестроение индекса с улучшенной фильтрацией технической информации...")
 
     # Указываем путь к очищенной онтологии
-    ontology_path = r"P:\AI_Lenin\data\books\ultimate_cleaned_ontology"
+    ontology_path = r"/data/books/ultimate_cleaned_ontology"
 
     # Проверяем существование пути
     path = Path(ontology_path)
@@ -20,7 +20,7 @@ async def main():
         return
 
     # Удаляем старую базу данных
-    vector_db_path = Path(r"P:\AI_Lenin\database\rag_db")
+    vector_db_path = Path(r"/database/rag_db")
     if vector_db_path.exists():
         import shutil
         shutil.rmtree(vector_db_path)
