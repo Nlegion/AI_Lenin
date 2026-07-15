@@ -1,0 +1,29 @@
+---
+description: Lint hygiene checklist for Python changes
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Lint Checklist
+
+Before finalizing Python changes, perform a short lint sanity check.
+
+## Must-fix issues
+
+- Commented-out code left in source
+- Exception messages and handlers that hide context
+- Missing type hints in newly added public functions (when practical)
+- Overly long or unreadable lines
+- Broad suppressions (`# noqa`) without reason
+
+## Workflow
+
+1. Run lints/formatters configured for the project when available.
+2. Apply safe auto-fixes first.
+3. Resolve remaining issues manually.
+4. Avoid adding ignores unless no safe refactor exists.
+
+## Project Adaptation Notes
+
+- Derived from `P:\rules\linter.mdc`.
+- Kept strict hygiene intent while avoiding assumptions about a specific external `pyproject.toml` policy.

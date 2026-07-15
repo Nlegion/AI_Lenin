@@ -1,0 +1,25 @@
+---
+description: Centralize reusable constants and defaults
+alwaysApply: true
+---
+
+# Application Constants
+
+Centralize reusable literals and defaults instead of scattering magic values.
+
+## Preferred locations
+
+- Runtime/config defaults: `src/core/settings/config.py` (or dedicated constants module under `src/core/settings/`)
+- DB-related constants: modules under `src/core/database/`
+- Integration timeouts/retries: adapter modules under `src/core/adapters/`
+
+## Rules
+
+- Do not duplicate policy literals across business modules.
+- Keep secrets out of constants files; read them from environment variables.
+- After introducing a constant, use imports instead of copying raw literal values.
+
+## Project Adaptation Notes
+
+- Adapted from `P:\rules\application-constants.mdc`.
+- Replaced foreign project paths with `AI_Lenin` module structure.

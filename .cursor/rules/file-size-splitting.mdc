@@ -1,0 +1,27 @@
+---
+description: Keep files focused and avoid oversized modules
+alwaysApply: true
+---
+
+# File Size And Decomposition
+
+Keep new and heavily modified files focused and maintainable.
+
+## Rule
+
+- Do not create or grow files beyond roughly 200 lines when avoidable.
+- If logic expands, split by responsibility into helper modules/services.
+- Prefer composition over large monolithic files.
+
+## Allowed exceptions
+
+- Generated files
+- Migration snapshots
+- Framework-constrained single-file artifacts
+
+If an exception is used, state the reason in the task result.
+
+## Project Adaptation Notes
+
+- Adapted from `P:\rules\file-size-splitting.mdc`.
+- Threshold and exception policy preserved, phrasing simplified.

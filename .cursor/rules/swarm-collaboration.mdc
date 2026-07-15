@@ -1,0 +1,45 @@
+---
+description: Swarm communication contract and orchestration policy
+alwaysApply: true
+---
+
+# Swarm Collaboration
+
+This project uses a coordinator-specialist model.
+
+## Mandatory context bootstrap
+
+Before any task, agents must read:
+
+1. `AGENTS.md`
+2. `context.md` (if present)
+3. Relevant `.cursor/rules/*.mdc`
+
+## Output format
+
+Every agent response must include:
+
+- `Plan`
+- `Assumptions`
+- `Questions`
+- `Result`
+
+## Clarification policy
+
+- At most one clarification request per subtask.
+- Sub-agents route clarification through `architect`.
+
+## Verification and integration
+
+- `architect` verifies results against acceptance criteria before integration.
+- `architect` performs a short code review (style, typing/contracts, tests) before final merge-ready output.
+
+## frontend-dev activation
+
+Invoke `frontend-dev` only for:
+
+- UI work
+- API contracts
+- Client SDK generation or mock clients
+
+For pure backend/ML/database tasks, do not invoke `frontend-dev`.

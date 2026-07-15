@@ -1,0 +1,25 @@
+---
+description: Optional log triage registry workflow for incident-driven fixes
+alwaysApply: false
+globs: ".cursor/artifacts/**,logs/**"
+---
+
+# Log Incident Registry (Optional)
+
+Use this rule when a task is explicitly about production log triage or incident follow-up.
+
+## Before proposing fixes
+
+1. Check whether a prior artifact exists in `.cursor/artifacts/` for the same symptom.
+2. Reuse existing findings instead of duplicating analysis.
+3. Distinguish code issues from infrastructure/ops-only issues.
+
+## After incident work
+
+- Save a timestamped incident summary to `.cursor/artifacts/`.
+- Include symptom, decision, action, and verification command.
+
+## Project Adaptation Notes
+
+- Adapted from `P:\rules\log-incident-registry.mdc`.
+- Replaced external `docs/ops` registry dependency with local artifact-based tracking.

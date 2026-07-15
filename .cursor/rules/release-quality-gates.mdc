@@ -1,0 +1,24 @@
+---
+description: Release quality gates for lint, tests, and migration safety
+alwaysApply: true
+---
+
+# Release Quality Gates
+
+Before declaring a change release-ready, run applicable checks:
+
+- `alembic upgrade head`
+- `pytest tests -q`
+- `pytest tests -k "<pattern>" -q` for targeted validation when needed
+- Optional static/security checks if installed: `ruff check .`, `ruff format --check .`, `bandit -r src scripts`
+
+## Expectations
+
+- Prefer minimal, compatibility-preserving fixes when tests fail.
+- Do not silently weaken lint/security standards.
+- Record any skipped checks and rationale in the task result.
+
+## Project Adaptation Notes
+
+- Adapted from `P:\rules\release-quality-gates.mdc`.
+- Commands aligned to current repository layout (`src`, `scripts`, `tests`, Alembic migrations).

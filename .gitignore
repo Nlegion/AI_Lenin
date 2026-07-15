@@ -214,6 +214,7 @@ yarn-debug.log*
 yarn-error.log*
 
 *.json
+!.cursor/worktrees.json
 
 /llama.cpp/
 /model_cache/

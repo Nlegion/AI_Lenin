@@ -1,0 +1,33 @@
+---
+description: Testing standards for integration scripts and pytest runs
+globs: "**/test_*.py"
+alwaysApply: true
+---
+
+# Testing Policy
+
+The repository contains integration-style test scripts in `tests/`. Some can run with `pytest`, others are executed directly with `python`.
+
+## Core requirements
+
+- Every test must assert behavior or verify an observable outcome.
+- Do not use bare `except:` in tests.
+- Avoid state leakage between tests; restore global or environment state.
+- Prefer deterministic fixtures and explicit setup/teardown for external dependencies.
+
+## Async tests
+
+- For pytest async tests, use `pytest.mark.asyncio`.
+- For script-style tests, keep `asyncio.run(...)` in `if __name__ == "__main__":` only.
+
+## Recommended execution strategy
+
+- Full run: `pytest tests -q`
+- Single file: `pytest tests/test_<module>.py -q`
+- Targeted run: `pytest tests -k "<pattern>" -q`
+- If a script is not pytest-friendly, run directly: `python tests/test_<name>.py`
+
+## Project Adaptation Notes
+
+- Adapted from `P:\rules\testing.mdc`.
+- Removed framework-specific sections not used in `AI_Lenin` and aligned to existing integration scripts.

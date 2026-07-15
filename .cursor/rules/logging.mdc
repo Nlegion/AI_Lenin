@@ -1,0 +1,28 @@
+---
+description: Structured logging and exception handling requirements
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Logging And Exceptions
+
+Use consistent, structured logs and explicit exception handling.
+
+## Prohibited patterns
+
+- Bare `except:`
+- Silent handlers (`except ...: pass`)
+- `print()` as a substitute for runtime logging
+- Logging raw sensitive user payloads
+
+## Required practices
+
+- Prefer structured logs via configured logging stack (`logging` + `structlog` in this project).
+- Catch specific exception types whenever feasible.
+- Use `logger.exception(...)` for unexpected errors to preserve traceback.
+- Use event-style messages and structured fields instead of f-string log composition.
+
+## Project Adaptation Notes
+
+- Based on `P:\rules\logging.mdc`.
+- Kept strict exception/logging policy, but aligned wording with `AI_Lenin` logging setup.

@@ -1,0 +1,11 @@
+{
+  "setup-worktree-windows": [
+    "echo [backend-feature] Worktree initialized for backend tasks",
+    "if exist \"%ROOT_WORKTREE_PATH%\\.env\" copy \"%ROOT_WORKTREE_PATH%\\.env\" .env",
+    "pip install -r requirements.txt",
+    "alembic upgrade head"
+  ],
+  "setup-worktree": [
+    "echo [frontend-mock] Use this worktree only for UI/API-contract/mock-client tasks when explicitly requested."
+  ]
+}

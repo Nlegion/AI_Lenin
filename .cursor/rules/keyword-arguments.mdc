@@ -1,0 +1,20 @@
+---
+description: Prefer keyword arguments in multi-parameter calls
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Keyword Arguments
+
+Prefer keyword arguments for readability and safer refactoring.
+
+## Rule
+
+- For calls with 3+ parameters, use named arguments unless positional form is clearer and conventional.
+- For optional parameters, prefer named arguments.
+- For obvious 1-2 parameter calls (`len(x)`, `min(a, b)`), positional arguments are acceptable.
+
+## Project Adaptation Notes
+
+- Based on `P:\rules\keyword-arguments.mdc`.
+- Retained policy intent and simplified examples for repository-wide Python usage.
