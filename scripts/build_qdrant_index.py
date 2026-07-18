@@ -30,6 +30,7 @@ def _load_config(path: Path) -> IngestionConfig:
         retries=int(section.get("retries", 2)),
         checkpoint_path=(REPO_ROOT / section["checkpoint_path"]).resolve(),
         qdrant_path=(REPO_ROOT / section["qdrant_path"]).resolve(),
+        sparse_state_path=(REPO_ROOT / section["sparse_state_path"]).resolve(),
         prewarm_core_limit=int(section.get("prewarm_core_limit", 200)),
     )
 

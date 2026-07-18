@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 import math
+import json
+from pathlib import Path
 import re
 
 
@@ -87,3 +89,25 @@ class Bm25SparseEncoder:
             indices.append(self.term_to_index[term])
             values.append(float(self.idf[term] * frequency))
         return SparseVector(indices=indices, values=values)
+
+    def save(self, path: Path) -> None:
+        payload = {
+            "k1": self.k1,
+            "b": self.b,
+            "avg_doc_len": self.avg_doc_len,
+            "term_to_index": self.term_to_index,
+            "idf": self.idf,
+            "fitted": self.fitted,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: Path) -> "Bm25SparseEncoder":
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        encoder = cls(k1=float(payload.get("k1", 1.5)), b=float(payload.get("b", 0.75)))
+        encoder.avg_doc_len = float(payload.get("avg_doc_len", 1.0))
+        encoder.term_to_index = {str(key): int(value) for key, value in payload.get("term_to_index", {}).items()}
+        encoder.idf = {str(key): float(value) for key, value in payload.get("idf", {}).items()}
+        encoder.fitted = bool(payload.get("fitted", True))
+        return encoder

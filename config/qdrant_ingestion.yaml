@@ -6,5 +6,6 @@ qdrant_ingestion:
   batch_size: 64
   retries: 2
   checkpoint_path: ".cursor/artifacts/qdrant/checkpoints/ingestion.offset"
+  sparse_state_path: ".cursor/artifacts/qdrant/sparse_encoder_state.json"
   qdrant_path: "database/qdrant_local"
   prewarm_core_limit: 200

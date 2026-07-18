@@ -25,6 +25,7 @@ class IngestionConfig:
     retries: int
     checkpoint_path: Path
     qdrant_path: Path
+    sparse_state_path: Path
     prewarm_core_limit: int
 
 
@@ -149,6 +150,7 @@ class QdrantIngestionPipeline:
         rows = self._read_rows(chunks_tsv_path=chunks_tsv_path, limit=limit)
         documents = [row["text"] for row in rows]
         self.sparse_encoder.fit(documents=documents)
+        self.sparse_encoder.save(path=self.config.sparse_state_path)
         vector_size = len(self.model.encode(["warmup"], normalize_embeddings=True)[0])
         self._ensure_collection(vector_size=vector_size)
 
