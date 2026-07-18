@@ -109,6 +109,7 @@ class QdrantIngestionPipeline:
             "char_start": int(row["char_start"]),
             "char_end": int(row["char_end"]),
             "boundary_ok": str(row["boundary_ok"]).lower() == "true",
+            "text": row["text"],
         }
 
     def _to_point_id(self, chunk_id: str) -> int:

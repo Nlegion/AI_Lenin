@@ -1,0 +1,24 @@
+retrieval_pipeline:
+  enabled: true
+  collection_name: "philosophy_ontology_v2"
+  qdrant_path: "database/qdrant_local"
+  dense_model: "sentence-transformers/all-MiniLM-L6-v2"
+  sparse_state_path: ".cursor/artifacts/qdrant/sparse_encoder_state.json"
+  ontology_tags_path: ".cursor/artifacts/ontology/ontology_tags.tsv"
+  trust_remote_code: false
+  device: "cpu"
+  top_k: 20
+  rrf_k: 60
+  max_context_chunks: 7
+  hyde_enabled: true
+  query_rewrite_enabled: true
+  query_decomposition_enabled: true
+  retriever_weights:
+    dense: 1.0
+    sparse: 0.8
+    onto: 0.6
+  source_boosts:
+    core_self: 1.5
+    influence_agree: 1.2
+    influence_critical: 1.0
+    contextual: 0.9

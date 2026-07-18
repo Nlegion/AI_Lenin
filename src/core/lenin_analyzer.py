@@ -1,10 +1,17 @@
 import logging
 import re
 import aiohttp
+from pathlib import Path
 from src.core.text_cleaner import TextCleaner
 from src.core.settings.config import Settings
 from src.core.rag_system import get_rag_system
 from typing import List, Dict
+import yaml
+
+from src.core.retrieval.qdrant_retrieval_provider import (
+    QdrantRetrievalProvider,
+    RetrievalProviderConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +25,41 @@ class LeninAnalyzer:
         self.rag_system = get_rag_system()
         self.analysis_cache = {}
         self.text_cleaner = TextCleaner()
+        self.retrieval_provider = self._init_retrieval_provider()
+
+    def _init_retrieval_provider(self):
+        config_path = Path(self.config.BASE_DIR) / "config" / "retrieval_pipeline.yaml"
+        if not config_path.exists():
+            logger.info("Retrieval pipeline config not found. Falling back to legacy RAG.")
+            return None
+
+        try:
+            payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+            section = payload.get("retrieval_pipeline", payload)
+            if not section.get("enabled", True):
+                return None
+            provider_config = RetrievalProviderConfig(
+                collection_name=section["collection_name"],
+                qdrant_path=Path(self.config.BASE_DIR) / section["qdrant_path"],
+                dense_model=section["dense_model"],
+                sparse_state_path=Path(self.config.BASE_DIR) / section["sparse_state_path"],
+                ontology_tags_path=Path(self.config.BASE_DIR) / section["ontology_tags_path"],
+                trust_remote_code=bool(section.get("trust_remote_code", False)),
+                device=section.get("device", "cpu"),
+                top_k=int(section.get("top_k", 20)),
+                rrf_k=int(section.get("rrf_k", 60)),
+                retriever_weights=dict(section.get("retriever_weights", {})),
+                source_boosts=dict(section.get("source_boosts", {})),
+                max_context_chunks=int(section.get("max_context_chunks", 7)),
+                hyde_enabled=bool(section.get("hyde_enabled", False)),
+                query_rewrite_enabled=bool(section.get("query_rewrite_enabled", True)),
+                query_decomposition_enabled=bool(section.get("query_decomposition_enabled", False)),
+            )
+            logger.info("Qdrant retrieval provider enabled.")
+            return QdrantRetrievalProvider(config=provider_config)
+        except Exception as error:  # noqa: BLE001
+            logger.exception("Failed to initialize Qdrant retrieval provider: %s", error)
+            return None
 
     async def initialize_session(self):
         if self.session is None:
@@ -83,7 +125,15 @@ class LeninAnalyzer:
 
             # Многоуровневый поиск контекста (только если RAG система доступна)
             context = ""
-            if self.rag_system is not None:
+            if self.retrieval_provider is not None:
+                try:
+                    candidates = self.retrieval_provider.retrieve(query_text=enhanced_query)
+                    context = self.retrieval_provider.render_context(candidates=candidates)
+                except Exception as error:  # noqa: BLE001
+                    logger.error("Error in retrieval provider: %s", error)
+                    context = ""
+
+            if not context and self.rag_system is not None:
                 try:
                     context = self.rag_system.retrieve_relevant_context(
                         enhanced_query,
