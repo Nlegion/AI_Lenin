@@ -18,3 +18,12 @@ Examples:
 - Artifacts are project-local audit records.
 - Keep content technical and concise.
 - Do not store secrets.
+
+## Subplan Workflow
+
+1. Copy `subplan-report-template.md` into a new timestamped artifact file.
+2. Run mandatory gates from repository root:
+   - `python scripts/run_subplan_gates.py`
+3. Build a reproducibility manifest for relevant files:
+   - `python scripts/build_subplan_manifest.py --subplan <ID> --path <file-or-dir> --out .cursor/artifacts/manifests/<name>.json`
+4. Record commands, outcomes, and manifest path in the artifact report.

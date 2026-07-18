@@ -1,19 +1,22 @@
-import logging
-import asyncio
+from unittest.mock import patch
+
+import pytest
+
 from src.core.processor import NewsProcessor
-from src.core.settings.log import setup_logging
 
 
-async def test_processor():
-    setup_logging()
-    logger = logging.getLogger(__name__)
-    logger.info("Тестирование процессора новостей")
+@pytest.mark.asyncio
+async def test_processor_initialization_defaults():
+    def _close_created_coroutine(coroutine):
+        coroutine.close()
+        return None
 
-    processor = NewsProcessor()
-    logger.info("Запуск одного цикла обработки")
-    await processor.run_full_cycle()
-    logger.info("Цикл обработки завершен")
+    with patch("src.core.processor.asyncio.create_task", side_effect=_close_created_coroutine) as create_task_mock:
+        processor = NewsProcessor()
 
-
-if __name__ == "__main__":
-    asyncio.run(test_processor())
+    assert processor.fetch_interval == 300
+    assert processor.stats["news_processed"] == 0
+    assert "news_fetched" in processor.stats
+    assert processor.analyzer_ready.is_set() is False
+    assert callable(getattr(processor, "start_separated_processing", None))
+    create_task_mock.assert_called_once()
