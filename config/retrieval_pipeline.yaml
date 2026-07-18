@@ -22,3 +22,8 @@ retrieval_pipeline:
     influence_agree: 1.2
     influence_critical: 1.0
     contextual: 0.9
+  migration:
+    mode: "ab_shadow"  # qdrant_only | chroma_only | ab_shadow
+    parity_min_shared_ratio: 0.25
+    audit_log_path: ".cursor/artifacts/retrieval/retrieval_ab_audit.jsonl"
+  chroma_top_k: 7

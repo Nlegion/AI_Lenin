@@ -21,6 +21,7 @@ from src.core.retrieval.query_transform import (
     decompose_query,
     rewrite_query_to_philosophical_register,
 )
+from src.core.retrieval.base_provider import RetrievalResult
 from src.core.vector.bm25_sparse import Bm25SparseEncoder
 
 
@@ -204,3 +205,12 @@ class QdrantRetrievalProvider:
                     f"[source: {source}; stance: {candidate.stance_type}; retriever: {candidate.retriever}]"
                 )
         return "\n\n".join(parts)
+
+    def retrieve_context(self, query_text: str, author_filter: str | None = None) -> RetrievalResult:
+        _ = author_filter  # kept for contract parity with legacy provider
+        candidates = self.retrieve(query_text=query_text)
+        return RetrievalResult(
+            context=self.render_context(candidates=candidates),
+            candidates_count=len(candidates),
+            metadata={"provider": "qdrant"},
+        )
