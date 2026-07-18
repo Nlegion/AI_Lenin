@@ -1,0 +1,22 @@
+chunking:
+  min_tokens: 256
+  max_tokens: 512
+  overlap_ratio: 0.10
+  min_chunk_chars: 240
+  max_bad_boundary_ratio: 0.20
+  thesis_markers:
+    - "во-первых"
+    - "во-вторых"
+    - "следовательно"
+    - "таким образом"
+    - "однако"
+    - "вместе с тем"
+    - "итак"
+    - "поэтому"
+  chapter_markers:
+    - "^ГЛАВА\\s+\\d+"
+    - "^ЧАСТЬ\\s+\\d+"
+    - "^РАЗДЕЛ\\s+\\d+"
+  section_markers:
+    - "^§\\s*\\d+"
+    - "^Статья\\s+\\d+"

@@ -225,3 +225,4 @@ yarn-error.log*
 /zip/
 fetcher_test_results.txt
 .cursor/artifacts/cleaned_corpus/
+.cursor/artifacts/chunks/chunk_dataset_v2.tsv
