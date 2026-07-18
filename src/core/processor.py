@@ -14,6 +14,7 @@ from src.core.rag_system import get_rag_system
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
 from src.core.safety.news_guard import NewsGuard
+from src.core.settings.analysis_defaults import REFUSAL_PHRASES
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
@@ -230,13 +231,7 @@ class NewsProcessor:
                 analysis = await self.analyzer.generate_analysis(news.title, news.content)
 
                 # Проверяем, не отказалась ли модель от анализа
-                refusal_phrases = [
-                    "не входит в круг моих исследований",
-                    "данная тема не подлежит анализу",
-                    "отказываюсь от анализа"
-                ]
-
-                if any(phrase in analysis.lower() for phrase in refusal_phrases):
+                if any(phrase in analysis.lower() for phrase in REFUSAL_PHRASES):
                     logger.info(f"Модель отказалась анализировать новость {news.id}")
                     await repo.mark_as_processed_without_analysis(news.id)
                     self.stats["news_skipped"] += 1

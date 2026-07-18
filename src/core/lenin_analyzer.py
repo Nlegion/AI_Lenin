@@ -3,6 +3,12 @@ import re
 import aiohttp
 from pathlib import Path
 from src.core.text_cleaner import TextCleaner
+from src.core.analysis.context_orchestrator import AnalysisContextOrchestrator
+from src.core.settings.analysis_defaults import (
+    ANALYSIS_CACHE_LIMIT,
+    LLAMA_SERVER_URL,
+    default_generation_params,
+)
 from src.core.settings.config import Settings
 from src.core.rag_system import get_rag_system
 from typing import List
@@ -16,12 +22,16 @@ class LeninAnalyzer:
         logger.info("Инициализация EnhancedLeninAnalyzer")
         _ = vector_db_path  # compatibility with legacy initializer signature
         self.config = Settings()
-        self.server_url = "http://127.0.0.1:8080"
+        self.server_url = LLAMA_SERVER_URL
         self.session = None
         self.rag_system = get_rag_system()
         self.analysis_cache = {}
         self.text_cleaner = TextCleaner()
         self.retrieval_provider = self._init_retrieval_provider()
+        self.context_orchestrator = AnalysisContextOrchestrator(
+            retrieval_provider=self.retrieval_provider,
+            rag_system=self.rag_system,
+        )
 
     def _init_retrieval_provider(self):
         config_path = Path(self.config.BASE_DIR) / "config" / "retrieval_pipeline.yaml"
@@ -103,39 +113,7 @@ class LeninAnalyzer:
             enhanced_query = f"{news_title} {news_content[:200]} {' '.join(key_concepts)}"
 
             # Многоуровневый поиск контекста (только если RAG система доступна)
-            context = ""
-            if self.retrieval_provider is not None:
-                try:
-                    retrieval_result = self.retrieval_provider.retrieve_context(
-                        query_text=enhanced_query,
-                        author_filter="Ленин",
-                    )
-                    context = retrieval_result.context
-                except Exception as error:  # noqa: BLE001
-                    logger.error("Error in retrieval provider: %s", error)
-                    context = ""
-
-            if not context and self.rag_system is not None:
-                try:
-                    context = self.rag_system.retrieve_relevant_context(
-                        enhanced_query,
-                        k=7,
-                        author_filter="Ленин"
-                    )
-
-                    # Если контекст от Ленина недостаточен, добавляем других авторов
-                    if len(context.split()) < 150:
-                        additional_context = self.rag_system.retrieve_relevant_context(
-                            enhanced_query,
-                            k=3,
-                            author_filter="МарксЭнгельс"
-                        )
-                        if additional_context:
-                            context += "\n\n" + additional_context
-                except Exception as e:
-                    logger.error(f"Ошибка RAG поиска: {str(e)}")
-                    # Продолжаем без контекста, если RAG система недоступна
-                    context = ""
+            context = self.context_orchestrator.build_context(enhanced_query=enhanced_query)
 
             # Оптимизированный промпт с учетом замечаний
             system_prompt = self._create_optimized_prompt(context, news_title, news_content, feedback)
@@ -143,20 +121,7 @@ class LeninAnalyzer:
 
             prompt = self._format_llama3_prompt(system_prompt, user_content)
 
-            data = {
-                "prompt": prompt,
-                "temperature": 0.4,
-                "top_p": 0.8,
-                "top_k": 40,
-                "repeat_penalty": 1.5,
-                "typical_p": 0.9,
-                "stop": ["<|eot_id|>", "\n\n", "###"],
-                "n_predict": 300,
-                "mirostat": 2,
-                "mirostat_tau": 3.0,
-                "mirostat_eta": 0.1,
-                "threads": 4
-            }
+            data = {"prompt": prompt, **default_generation_params()}
 
             async with self.session.post(
                     f"{self.server_url}/completion",
@@ -171,7 +136,7 @@ class LeninAnalyzer:
                     # Кэшируем результат только если нет замечаний
                     if not feedback:
                         self.analysis_cache[cache_key] = cleaned_content
-                        if len(self.analysis_cache) > 1000:
+                        if len(self.analysis_cache) > ANALYSIS_CACHE_LIMIT:
                             self.analysis_cache.clear()
 
                     return cleaned_content
