@@ -1,0 +1,26 @@
+source_registry:
+  core_authors:
+    - "Ленин"
+    - "В.И.Ленин"
+    - "Владимир Ленин"
+    - "pss"
+    - "single"
+  influence_agree_authors:
+    - "Маркс"
+    - "Энгельс"
+    - "МарксЭнгельс"
+    - "Karl Marx"
+    - "Friedrich Engels"
+  influence_critical_authors:
+    - "Бернштейн"
+    - "Каутский"
+    - "Меньшевики"
+    - "Ревизионизм"
+  contextual_authors: []
+  path_overrides:
+    "МарксЭнгельс/": "influence_agree"
+    "pss/": "core_self"
+    "single/": "core_self"
+  allowed_extensions:
+    - ".txt"
+    - ".md"
