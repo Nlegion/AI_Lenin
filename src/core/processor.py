@@ -1,6 +1,7 @@
 import asyncio
 import time
 import logging
+from pathlib import Path
 from src.core.database.repositories.news_repository import NewsRepository
 from src.modules.news_system.fetcher import NewsFetcher
 from src.core.lenin_analyzer import LeninAnalyzer
@@ -12,6 +13,7 @@ from src.core.llama_server import LeninServer
 from src.core.rag_system import get_rag_system
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
+from src.core.safety.news_guard import NewsGuard
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
@@ -26,6 +28,7 @@ class NewsProcessor:
         self.server = LeninServer()
         self.classifier = NewsClassifier()
         self.validator = AnalysisValidator()
+        self.news_guard = self._init_news_guard()
         self.analyzer_ready = asyncio.Event()
 
         # Инициализация RAG системы
@@ -51,6 +54,17 @@ class NewsProcessor:
         # Словарь для хранения замечаний к анализам
         self.analysis_feedback = {}
         self.failed_attempts = {}
+
+    def _init_news_guard(self):
+        config_path = Path(self.config.BASE_DIR) / "config" / "news_guard.yaml"
+        if not config_path.exists():
+            logger.warning("NewsGuard config not found: %s", config_path)
+            return None
+        try:
+            return NewsGuard.from_file(path=config_path)
+        except Exception as error:  # noqa: BLE001
+            logger.exception("Failed to initialize NewsGuard: %s", error)
+            return None
 
     async def initialize_rag_system(self):
         """Инициализация RAG системы"""
@@ -181,79 +195,24 @@ class NewsProcessor:
                 await asyncio.sleep(30)
 
     async def process_single_news(self, news, repo, semaphore):
-        """Обработка одной новости с учетом замечаний из предыдущих попыток"""
-        async with semaphore:
-            # Проверяем, есть ли замечания для этой новости
-            feedback = self.analysis_feedback.get(news.id, [])
-
-            # Логируем информацию о новости
-            logger.info(f"Обработка новости: {news.title[:50]}...")
-
-            # Проверяем, нужно ли анализировать новость
-            should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
-            logger.info(f"Решение по новости {news.id}: {reason}")
-
-            if not should_analyze:
-                logger.info(f"Пропуск новости {news.id}: {reason}")
-                await repo.mark_as_processed_without_analysis(news.id)
-                self.stats["news_skipped"] += 1
-                return
-
-            try:
-                # Генерируем анализ с учетом замечаний
-                logger.info(f"Генерация анализа для новости {news.id}")
-                analysis = await self.analyzer.generate_analysis(
-                    news.title,
-                    news.content,
-                    feedback=feedback
-                )
-
-                # Проверяем, не отказалась ли модель от анализа
-                refusal_phrases = [
-                    "не входит в круг моих исследований",
-                    "данная тема не подлежит анализу",
-                    "отказываюсь от анализа"
-                ]
-
-                if any(phrase in analysis.lower() for phrase in refusal_phrases):
-                    logger.info(f"Модель отказалась анализировать новость {news.id}")
-                    await repo.mark_as_processed_without_analysis(news.id)
-                    self.stats["news_skipped"] += 1
-                    return
-
-                logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
-
-                # Валидируем анализ
-                validation = self.validator.validate_analysis(analysis, news.title)
-                logger.info(f"Результат валидации: {validation}")
-
-                if validation["is_valid"]:
-                    await repo.save_analysis(news.id, analysis)
-                    self.stats["news_processed"] += 1
-                    logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
-
-                    # Очищаем замечания для этой новости
-                    if news.id in self.analysis_feedback:
-                        del self.analysis_feedback[news.id]
-                else:
-                    # Сохраняем замечания для следующей попытки
-                    self.analysis_feedback[news.id] = validation["reasons"]
-                    logger.warning(
-                        f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}. Замечания сохранены для следующей попытки.")
-
-                    # Помечаем как необработанную для повторной попытки
-                    await repo.mark_as_unprocessed(news.id)
-                    self.stats["analyses_rejected"] += 1
-
-            except Exception as e:
-                logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
-                self.stats["errors"] += 1
-
-    async def process_single_news(self, news, repo, semaphore):
         """Обработка одной новости с ограничением параллелизма"""
         async with semaphore:
             # Логируем информацию о новости
             logger.info(f"Обработка новости: {news.title[:50]}...")
+
+            if self.news_guard is not None:
+                gate_result = self.news_guard.evaluate_input(news.title, news.content)
+                logger.info(
+                    "NewsGate decision news_id=%s decision=%s reason=%s codes=%s",
+                    news.id,
+                    gate_result.decision,
+                    gate_result.reason,
+                    ",".join(gate_result.reason_codes),
+                )
+                if gate_result.decision in {"deny", "quarantine"}:
+                    await repo.mark_as_processed_without_analysis(news.id)
+                    self.stats["news_skipped"] += 1
+                    return
 
             # Проверяем, нужно ли анализировать новость
             should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
@@ -284,6 +243,16 @@ class NewsProcessor:
                     return
 
                 logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
+
+                if self.news_guard is not None:
+                    guard_result = self.news_guard.guard_output(analysis=analysis)
+                    logger.info(
+                        "NewsGuard output news_id=%s blocked=%s codes=%s",
+                        news.id,
+                        guard_result.blocked,
+                        ",".join(guard_result.reason_codes),
+                    )
+                    analysis = guard_result.moderated_text
 
                 # Валидируем анализ
                 validation = self.validator.validate_analysis(analysis, news.title)
@@ -322,11 +291,15 @@ class NewsProcessor:
                             # Публикуем ВСЕ анализы, которые не были явно отклонены
                             if validation["is_valid"]:
                                 try:
+                                    analysis_to_publish = item.analysis
+                                    if self.news_guard is not None:
+                                        guard_result = self.news_guard.guard_output(analysis=item.analysis)
+                                        analysis_to_publish = guard_result.moderated_text
                                     success = await self.publisher.publish_analysis(
                                         item.news_id,
                                         item.news.title,
                                         item.news.url,
-                                        item.analysis
+                                        analysis_to_publish
                                     )
                                     if success:
                                         await repo.mark_as_published(item.news_id)
