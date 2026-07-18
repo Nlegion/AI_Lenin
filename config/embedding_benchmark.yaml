@@ -1,0 +1,23 @@
+embedding_benchmark:
+  min_recall_at_5: 0.85
+  models:
+    - name: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: true
+    - name: "sentence-transformers/all-MiniLM-L6-v2"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: true
+    - name: "ai-sage/Giga-Embeddings-instruct"
+      trust_remote_code: true
+      device: "cpu"
+      enabled: false
+    - name: "BAAI/bge-m3"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: false
+    - name: "intfloat/multilingual-e5-large"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: false
