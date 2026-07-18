@@ -1,0 +1,10 @@
+qdrant_ingestion:
+  collection_name: "philosophy_ontology_v2"
+  dense_model: "sentence-transformers/all-MiniLM-L6-v2"
+  trust_remote_code: false
+  device: "cpu"
+  batch_size: 64
+  retries: 2
+  checkpoint_path: ".cursor/artifacts/qdrant/checkpoints/ingestion.offset"
+  qdrant_path: "database/qdrant_local"
+  prewarm_core_limit: 200

@@ -226,3 +226,4 @@ yarn-error.log*
 fetcher_test_results.txt
 .cursor/artifacts/cleaned_corpus/
 .cursor/artifacts/chunks/chunk_dataset_v2.tsv
+.cursor/artifacts/qdrant/checkpoints/
