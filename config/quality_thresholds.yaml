@@ -1,0 +1,6 @@
+quality_thresholds:
+  recall_at_5: 0.85
+  core_self_ratio: 0.70
+  ideology_consistency: 0.70
+  citation_hallucination_rate_max: 0.05
+  empty_context_rate_max: 0.10

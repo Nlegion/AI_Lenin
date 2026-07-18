@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.vector.qdrant_ingestion import IngestionConfig, QdrantIngestionPipeline
+from src.core.vector.qdrant_ingestion import IngestionConfig, QdrantIngestionPipeline  # noqa: E402
 
 
 def _load_config(path: Path) -> IngestionConfig:

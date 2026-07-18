@@ -113,7 +113,7 @@ class QdrantIngestionPipeline:
         }
 
     def _to_point_id(self, chunk_id: str) -> int:
-        digest = hashlib.sha1(chunk_id.encode("utf-8")).hexdigest()[:15]
+        digest = hashlib.sha256(chunk_id.encode("utf-8")).hexdigest()[:15]
         return int(digest, 16)
 
     def _prewarm_cache(self) -> int:

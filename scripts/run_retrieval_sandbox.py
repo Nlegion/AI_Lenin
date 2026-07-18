@@ -21,8 +21,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.vector.bm25_sparse import Bm25SparseEncoder
-from src.core.vector.sandbox_metrics import apply_source_boost, recall_at_k, reciprocal_rank_fusion
+from src.core.vector.bm25_sparse import Bm25SparseEncoder  # noqa: E402
+from src.core.vector.sandbox_metrics import apply_source_boost, recall_at_k, reciprocal_rank_fusion  # noqa: E402
 
 
 @dataclass(frozen=True)

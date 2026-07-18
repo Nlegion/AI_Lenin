@@ -5,7 +5,7 @@ from pathlib import Path
 from src.core.text_cleaner import TextCleaner
 from src.core.settings.config import Settings
 from src.core.rag_system import get_rag_system
-from typing import List, Dict
+from typing import List
 import yaml
 
 from src.core.retrieval.qdrant_retrieval_provider import (
