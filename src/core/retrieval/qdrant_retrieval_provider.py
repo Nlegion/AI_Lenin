@@ -8,8 +8,13 @@ from pathlib import Path
 import re
 
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 
+from src.core.settings.device import (
+    GIGA_EMBEDDING_DIM,
+    ensure_exclusive_gpu_for_embeddings,
+    load_sentence_transformer,
+    release_embedding_model,
+)
 from src.core.retrieval.arbiter import (
     RetrievalCandidate,
     apply_stance_boost,
@@ -42,19 +47,40 @@ class RetrievalProviderConfig:
     hyde_enabled: bool
     query_rewrite_enabled: bool
     query_decomposition_enabled: bool
+    judge_enabled: bool = True
+    judge_alpha: float = 0.2
+    fallback_to_cpu: bool = True
+    expected_dim: int | None = GIGA_EMBEDDING_DIM
+    server_url: str = "http://127.0.0.1:8080"
+    interactive: bool = True
 
 
 class QdrantRetrievalProvider:
     def __init__(self, config: RetrievalProviderConfig):
         self.config = config
         self.client = QdrantClient(path=str(config.qdrant_path))
-        self.model = SentenceTransformer(
-            model_name_or_path=config.dense_model,
-            trust_remote_code=config.trust_remote_code,
-            device=config.device,
+        device = ensure_exclusive_gpu_for_embeddings(
+            preferred=config.device,
+            fallback_to_cpu=config.fallback_to_cpu,
+            server_url=config.server_url,
+            interactive=config.interactive,
         )
+        local_only = Path(config.dense_model).exists()
+        self.model = load_sentence_transformer(
+            model_path=config.dense_model,
+            preferred_device=device,
+            trust_remote_code=config.trust_remote_code,
+            fallback_to_cpu=config.fallback_to_cpu,
+            expected_dim=config.expected_dim,
+            local_files_only=local_only,
+        )
+        self.resolved_device = device
         self.sparse_encoder = Bm25SparseEncoder.load(path=config.sparse_state_path)
         self.ontology_rows = self._read_ontology(path=config.ontology_tags_path)
+
+    def close(self) -> None:
+        release_embedding_model(self.model)
+        self.model = None
 
     @staticmethod
     def _read_ontology(path: Path) -> list[dict[str, str]]:
@@ -150,16 +176,48 @@ class QdrantRetrievalProvider:
                 deduped.append(cleaned)
         return deduped
 
-    def retrieve(self, query_text: str) -> list[RetrievalCandidate]:
+    @staticmethod
+    def _judge_scores(query_text: str, candidates: list[RetrievalCandidate]) -> dict[str, float]:
+        terms = {token for token in re.findall(r"[a-zA-Zа-яА-ЯёЁ]+", query_text.lower()) if token}
+        scores: dict[str, float] = {}
+        for candidate in candidates:
+            payload_terms = {token for token in re.findall(r"[a-zA-Zа-яА-ЯёЁ]+", candidate.text.lower()) if token}
+            if not terms:
+                scores[candidate.chunk_id] = 0.0
+                continue
+            overlap = len(terms & payload_terms)
+            scores[candidate.chunk_id] = overlap / max(len(terms), 1)
+        return scores
+
+    def retrieve_with_trace(self, query_text: str, apply_judge: bool | None = None) -> tuple[list[RetrievalCandidate], dict]:
+        effective_apply_judge = self.config.judge_enabled if apply_judge is None else apply_judge
         queries = self._prepare_queries(query_text=query_text)
         candidates: list[RetrievalCandidate] = []
+        dense_trace: list[dict[str, str | float | int]] = []
+        sparse_trace: list[dict[str, str | float | int]] = []
+        onto_trace: list[dict[str, str | float | int]] = []
         for query in queries:
-            candidates.extend(self._dense_search(query_text=query, retriever_name="dense", limit=self.config.top_k))
-            candidates.extend(self._sparse_search(query_text=query, limit=self.config.top_k))
-            candidates.extend(self._ontology_search(query_text=query, limit=self.config.top_k))
+            dense = self._dense_search(query_text=query, retriever_name="dense", limit=self.config.top_k)
+            sparse = self._sparse_search(query_text=query, limit=self.config.top_k)
+            onto = self._ontology_search(query_text=query, limit=self.config.top_k)
+            candidates.extend(dense)
+            candidates.extend(sparse)
+            candidates.extend(onto)
+            dense_trace.extend(self._serialize_candidates(candidates=dense, query=query))
+            sparse_trace.extend(self._serialize_candidates(candidates=sparse, query=query))
+            onto_trace.extend(self._serialize_candidates(candidates=onto, query=query))
 
         if not candidates:
-            return []
+            return [], {
+                "query_variants": queries,
+                "dense": dense_trace,
+                "sparse": sparse_trace,
+                "onto": onto_trace,
+                "merged_scores": {},
+                "boosted_scores": {},
+                "judge_scores": {},
+                "judge_enabled": effective_apply_judge,
+            }
 
         chunk_to_stance = {candidate.chunk_id: candidate.stance_type for candidate in candidates}
         merged_scores = weighted_rrf(
@@ -172,7 +230,16 @@ class QdrantRetrievalProvider:
             chunk_to_stance=chunk_to_stance,
             source_boosts=self.config.source_boosts,
         )
-        ordered_chunk_ids = [chunk_id for chunk_id, _ in sorted(boosted.items(), key=lambda item: item[1], reverse=True)]
+        judge_scores: dict[str, float] = {}
+        final_scores = boosted
+        if effective_apply_judge:
+            judge_scores = self._judge_scores(query_text=query_text, candidates=candidates)
+            final_scores = {
+                chunk_id: (1 - self.config.judge_alpha) * boosted.get(chunk_id, 0.0)
+                + self.config.judge_alpha * judge_scores.get(chunk_id, 0.0)
+                for chunk_id in boosted
+            }
+        ordered_chunk_ids = [chunk_id for chunk_id, _ in sorted(final_scores.items(), key=lambda item: item[1], reverse=True)]
         ordered_chunk_ids = enforce_core_self_presence(
             ordered_chunk_ids=ordered_chunk_ids,
             chunk_to_stance=chunk_to_stance,
@@ -190,6 +257,37 @@ class QdrantRetrievalProvider:
                 final.append(best_by_chunk[chunk_id])
             if len(final) >= self.config.max_context_chunks:
                 break
+        trace = {
+            "query_variants": queries,
+            "dense": dense_trace,
+            "sparse": sparse_trace,
+            "onto": onto_trace,
+            "merged_scores": {key: round(value, 6) for key, value in merged_scores.items()},
+            "boosted_scores": {key: round(value, 6) for key, value in boosted.items()},
+            "judge_scores": {key: round(value, 6) for key, value in judge_scores.items()},
+            "final_scores": {key: round(value, 6) for key, value in final_scores.items()},
+            "judge_enabled": effective_apply_judge,
+        }
+        return final, trace
+
+    @staticmethod
+    def _serialize_candidates(candidates: list[RetrievalCandidate], query: str) -> list[dict[str, str | float | int]]:
+        return [
+            {
+                "query": query,
+                "chunk_id": candidate.chunk_id,
+                "source_id": candidate.source_id,
+                "stance_type": candidate.stance_type,
+                "retriever": candidate.retriever,
+                "rank": candidate.rank,
+                "score": round(candidate.score, 6),
+                "source_path": candidate.source_path,
+            }
+            for candidate in candidates
+        ]
+
+    def retrieve(self, query_text: str) -> list[RetrievalCandidate]:
+        final, _ = self.retrieve_with_trace(query_text=query_text)
         return final
 
     def render_context(self, candidates: list[RetrievalCandidate]) -> str:
@@ -208,9 +306,13 @@ class QdrantRetrievalProvider:
 
     def retrieve_context(self, query_text: str, author_filter: str | None = None) -> RetrievalResult:
         _ = author_filter  # kept for contract parity with legacy provider
-        candidates = self.retrieve(query_text=query_text)
+        candidates, trace = self.retrieve_with_trace(query_text=query_text)
         return RetrievalResult(
             context=self.render_context(candidates=candidates),
             candidates_count=len(candidates),
-            metadata={"provider": "qdrant"},
+            metadata={
+                "provider": "qdrant",
+                "query_variants": " || ".join(trace.get("query_variants", [])),
+                "judge_enabled": str(trace.get("judge_enabled", False)).lower(),
+            },
         )

@@ -1,11 +1,15 @@
 qdrant_ingestion:
-  collection_name: "philosophy_ontology_v2"
-  dense_model: "sentence-transformers/all-MiniLM-L6-v2"
-  trust_remote_code: false
-  device: "cpu"
-  batch_size: 64
+  collection_name: "philosophy_ontology_giga_v1"
+  dense_model: "models/Giga-Embeddings-instruct"
+  trust_remote_code: true
+  device: "auto"
+  fallback_to_cpu: true
+  batch_size: 16
+  adaptive_batch: true
+  min_batch_size: 4
+  expected_dim: 2048
   retries: 2
-  checkpoint_path: ".cursor/artifacts/qdrant/checkpoints/ingestion.offset"
-  sparse_state_path: ".cursor/artifacts/qdrant/sparse_encoder_state.json"
+  checkpoint_path: ".cursor/artifacts/qdrant/checkpoints/ingestion_giga_v1.offset"
+  sparse_state_path: ".cursor/artifacts/qdrant/sparse_encoder_state_giga_v1.json"
   qdrant_path: "database/qdrant_local"
   prewarm_core_limit: 200

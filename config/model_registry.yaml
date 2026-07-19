@@ -1,0 +1,37 @@
+model_registry:
+  version: "1.0.0"
+  generation:
+    base_strong:
+      role: primary
+      provider: llama_cpp
+      model_name: "ai-sage/GigaChat3-10B-A1.8B"
+      model_path: "models/gigachat3/GigaChat3-10B-A1.8B-q6_k.gguf"
+      source_path_hint: "P:/hometest_GigaChat3/data/model/GigaChat3-10B-A1.8B-q6_k.gguf"
+      api_style: chat_completions
+      notes: "Default runtime generator with RAG context."
+    fine_tuned:
+      role: optional_reserve
+      provider: llama_cpp
+      model_name: "saiga-lenin-q4"
+      model_path: "models/saiga/lenin_model.q4_k.gguf"
+      api_style: completion
+      notes: "Optional persona-tuned backend; kept for fallback and A/B."
+  embedding:
+    production:
+      local_path: "models/Giga-Embeddings-instruct"
+      hf_id: "ai-sage/Giga-Embeddings-instruct"
+      trust_remote_code: true
+      role: production_target
+      notes: "Load from local_path offline; hf_id is provenance only."
+    interim_baseline:
+      name: "sentence-transformers/all-MiniLM-L6-v2"
+      trust_remote_code: false
+      role: previous_runtime_baseline
+    candidates:
+      - name: "BAAI/bge-m3"
+        trust_remote_code: false
+        role: evaluated_candidate
+        notes: "OOM risk on local hardware."
+      - name: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        trust_remote_code: false
+        role: evaluated_candidate

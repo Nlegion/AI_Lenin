@@ -9,10 +9,10 @@ embedding_benchmark:
       trust_remote_code: false
       device: "cpu"
       enabled: true
-    - name: "ai-sage/Giga-Embeddings-instruct"
+    - name: "models/Giga-Embeddings-instruct"
       trust_remote_code: true
-      device: "cpu"
-      enabled: false
+      device: "auto"
+      enabled: true
     - name: "BAAI/bge-m3"
       trust_remote_code: false
       device: "cpu"

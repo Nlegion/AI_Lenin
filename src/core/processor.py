@@ -95,7 +95,7 @@ class NewsProcessor:
 
             await self.publisher.send_admin_notification("✅ Сервер llama.cpp запущен")
 
-            # Инициализация анализатора (RAG система инициализируется внутри LeninAnalyzer)
+            # Default persona_model=base_strong from config/generation.yaml (fine_tuned optional).
             await self.publisher.send_admin_notification("🧠 Инициализация анализатора...")
             self.analyzer = LeninAnalyzer()
             await self.analyzer.initialize_session()
@@ -202,7 +202,7 @@ class NewsProcessor:
             logger.info(f"Обработка новости: {news.title[:50]}...")
 
             if self.news_guard is not None:
-                gate_result = self.news_guard.evaluate_input(news.title, news.content)
+                gate_result = self.news_guard.evaluate_input(news.title, news.content, source=news.source)
                 logger.info(
                     "NewsGate decision news_id=%s decision=%s reason=%s codes=%s",
                     news.id,

@@ -14,7 +14,6 @@ import sys
 import time
 
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -45,12 +44,16 @@ class SandboxConfig:
 def _load_config(path: Path) -> SandboxConfig:
     payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     section = payload.get("retrieval_sandbox", payload)
+    dense_model = section["dense_model"]
+    local_dense = REPO_ROOT / dense_model
+    if local_dense.exists():
+        dense_model = str(local_dense.resolve())
     return SandboxConfig(
         collection_name=section["collection_name"],
         qdrant_path=(REPO_ROOT / section["qdrant_path"]).resolve(),
-        dense_model=section["dense_model"],
+        dense_model=dense_model,
         trust_remote_code=bool(section.get("trust_remote_code", False)),
-        device=section.get("device", "cpu"),
+        device=section.get("device", "auto"),
         eval_dataset_path=(REPO_ROOT / section["eval_dataset_path"]).resolve(),
         ontology_tags_path=(REPO_ROOT / section["ontology_tags_path"]).resolve(),
         sparse_state_path=(REPO_ROOT / section["sparse_state_path"]).resolve(),
@@ -162,10 +165,25 @@ def main() -> int:
     eval_rows = _read_eval(path=config.eval_dataset_path)[: args.max_queries]
     ontology_rows = _read_ontology(path=config.ontology_tags_path)
 
-    dense_model = SentenceTransformer(
-        model_name_or_path=config.dense_model,
+    from src.core.settings.device import (  # noqa: E402
+        GIGA_EMBEDDING_DIM,
+        ensure_exclusive_gpu_for_embeddings,
+        load_sentence_transformer,
+        release_embedding_model,
+    )
+
+    resolved = ensure_exclusive_gpu_for_embeddings(
+        preferred=config.device,
+        fallback_to_cpu=True,
+        interactive=True,
+    )
+    dense_model = load_sentence_transformer(
+        model_path=config.dense_model,
+        preferred_device=resolved,
         trust_remote_code=config.trust_remote_code,
-        device=config.device,
+        fallback_to_cpu=True,
+        expected_dim=GIGA_EMBEDDING_DIM,
+        local_files_only=Path(config.dense_model).exists(),
     )
     sparse_encoder = Bm25SparseEncoder.load(path=config.sparse_state_path)
     client = QdrantClient(path=str(config.qdrant_path))
@@ -274,6 +292,7 @@ def main() -> int:
             f"mean latency=`{metrics['latency_ms_mean']:.2f} ms`"
         )
     out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    release_embedding_model(dense_model)
     print(f"Best mode: {best_mode}")
     return 0
 

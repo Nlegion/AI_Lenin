@@ -1,0 +1,39 @@
+generation:
+  persona_model: "base_strong"
+  server_url: "http://127.0.0.1:8080"
+  comparison_seed: 42
+  safety:
+    post_filter: true
+    fallback:
+      enabled: false
+      incident_threshold: 5
+      window_events: 50
+      audit_log_path: ".cursor/artifacts/safety/dryrun_audit.jsonl"
+      target_persona_model: "fine_tuned"
+  backends:
+    base_strong:
+      model_name: "ai-sage/GigaChat3-10B-A1.8B"
+      model_path: "models/gigachat3/GigaChat3-10B-A1.8B-q6_k.gguf"
+      api_style: "chat_completions"
+      ctx_size: 4096
+      n_gpu_layers: 28
+      threads: 4
+      temperature: 0.4
+      top_p: 0.9
+      repetition_penalty: 1.15
+      max_tokens: 300
+      seed: 42
+      max_context_chars: 5500
+    fine_tuned:
+      model_name: "saiga-lenin-q4"
+      model_path: "models/saiga/lenin_model.q4_k.gguf"
+      api_style: "completion"
+      ctx_size: 4096
+      n_gpu_layers: 999
+      threads: 4
+      temperature: 0.4
+      top_p: 0.8
+      repetition_penalty: 1.5
+      max_tokens: 300
+      seed: 42
+      max_context_chars: 5500

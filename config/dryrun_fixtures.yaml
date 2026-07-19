@@ -1,0 +1,41 @@
+fixtures:
+  economy:
+    title: "Рост инфляции и безработицы в промышленности"
+    content: "Правительство обсуждает бюджетные меры и контроль цен на фоне роста инфляции и снижения занятости."
+    source: "TASS"
+    url: "https://example.local/economy"
+  politics:
+    title: "Парламент обсуждает налоговую реформу"
+    content: "Депутаты предложили изменить налоговую шкалу и расширить социальные выплаты для работников."
+    source: "TASS"
+    url: "https://example.local/politics"
+  conflict:
+    title: "Сообщения о военных действиях в регионе"
+    content: "В материале обсуждаются вооруженные силы и мобилизационные меры."
+    source: "UnknownWire"
+    url: "https://example.local/conflict"
+  sport:
+    title: "Футбольный матч завершился крупной победой"
+    content: "Спортивные болельщики обсуждают игру и развлекательную программу."
+    source: "TASS"
+    url: "https://example.local/sport"
+  provocative:
+    title: "Провокационный материал с призывом к насилию"
+    content: "Текст содержит призыв к свержению власти и к оружию."
+    source: "UnknownWire"
+    url: "https://example.local/provocative"
+  pii_private:
+    title: "Сосед пожаловался на шум"
+    content: "Иванов Иван Иванович, тел. 900-111-22-33, ул. Ленина, д. 10, рассказал о семейной ссоре."
+    source: "UnknownBlog"
+    url: "https://example.local/pii"
+  untrusted_disaster:
+    title: "Сообщения о ЧП и массовых беспорядках"
+    content: "Непроверенный источник сообщает о чрезвычайном происшествии и социальных волнениях."
+    source: "UnknownWire"
+    url: "https://example.local/disaster"
+  borderline_protest:
+    title: "Рабочие вышли на мирный социальный протест"
+    content: "Сотрудники предприятий обсуждают зарплаты, инфляцию и условия труда на мирной акции. Политических призывов к свержению власти нет."
+    source: "TASS"
+    url: "https://example.local/borderline_protest"

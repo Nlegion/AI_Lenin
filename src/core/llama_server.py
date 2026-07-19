@@ -1,103 +1,114 @@
 import asyncio
 import logging
 import subprocess
-import psutil
 from pathlib import Path
+
+import psutil
+
 from src.core.settings.config import Settings
+from src.core.settings.generation_config import (
+    GenerationConfig,
+    PersonaModel,
+    default_generation_config_path,
+    load_generation_config,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class LeninServer:
-    def __init__(self):
+    def __init__(self, persona_model: PersonaModel | None = None, generation_config: GenerationConfig | None = None):
         self.config = Settings()
         self.process = None
-        self.server_url = "http://127.0.0.1:8080"
-
-        # Пути к исполняемым файлам
-        BASE_DIR = Path(__file__).parent.parent.parent
-        self.llama_dir = BASE_DIR / "llama.cpp"
+        base_dir = Path(self.config.BASE_DIR)
+        self.generation_config = generation_config or load_generation_config(
+            path=default_generation_config_path(base_dir=base_dir)
+        )
+        if persona_model is not None:
+            self.generation_config = self.generation_config.with_persona_model(persona_model)
+        backend = self.generation_config.active_backend()
+        self.server_url = self.generation_config.server_url
+        self.llama_dir = base_dir / "llama.cpp"
         self.server_path = self.llama_dir / "llama-server.exe"
-        # Используем объединенную модель (базовая модель + адаптер)
-        self.model_path = BASE_DIR / "models" / "saiga" / "lenin_model.q4_k.gguf"
+        self.model_path = (base_dir / backend.model_path).resolve()
+        self.n_gpu_layers = backend.n_gpu_layers
+        self.ctx_size = backend.ctx_size
+        self.threads = backend.threads
+        self.persona_model = self.generation_config.persona_model
 
     async def start_server(self):
-        """Запуск сервера llama.cpp"""
+        """Запуск сервера llama.cpp for the configured persona backend."""
         if not self.server_path.exists():
-            logger.error(f"Не найден llama-server: {self.server_path}")
+            logger.error("Не найден llama-server: %s", self.server_path)
             return False
 
         if not self.model_path.exists():
-            logger.error(f"Не найдена модель: {self.model_path}")
+            logger.error(
+                "Не найдена модель для persona_model=%s: %s",
+                self.persona_model,
+                self.model_path,
+            )
             return False
 
-        # Команда запуска сервера с оптимальными параметрами
         cmd = [
             str(self.server_path),
-            "-m", str(self.model_path),  # Только путь к объединенной модели
-            "--host", "127.0.0.1",
-            "--port", "8080",
-            "--n-gpu-layers", "999",  # Оптимальное значение из тестов
-            "--ctx-size", "4096",
-            "--threads", "4",
-            "--batch-size", "512",
-            "--mlock"
+            "-m",
+            str(self.model_path),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8080",
+            "--n-gpu-layers",
+            str(self.n_gpu_layers),
+            "--ctx-size",
+            str(self.ctx_size),
+            "--threads",
+            str(self.threads),
+            "--batch-size",
+            "512",
+            "--mlock",
         ]
 
         try:
-            logger.info("Запуск сервера llama.cpp...")
+            logger.info(
+                "Запуск llama.cpp persona_model=%s model=%s",
+                self.persona_model,
+                self.model_path,
+            )
             self.process = subprocess.Popen(
                 cmd,
                 cwd=str(self.llama_dir),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
-
-            # Ждем инициализации сервера
             await asyncio.sleep(10)
-
-            # Проверяем, что процесс запущен
             if self.process.poll() is not None:
                 stderr = self.process.stderr.read() if self.process.stderr else "Unknown error"
-                logger.error(f"Сервер не запустился: {stderr}")
+                logger.error("Сервер не запустился: %s", stderr)
                 return False
-
             logger.info("Сервер успешно запущен")
             return True
-
-        except Exception as e:
-            logger.error(f"Ошибка запуска сервера: {str(e)}")
+        except Exception as error:  # noqa: BLE001
+            logger.error("Ошибка запуска сервера: %s", error)
             return False
 
     async def stop_server(self):
         """Остановка сервера"""
         if self.process:
             try:
-                # Получаем дерево процессов
                 parent = psutil.Process(self.process.pid)
                 children = parent.children(recursive=True)
-
-                # Завершаем все дочерние процессы
                 for child in children:
                     child.terminate()
-
-                # Завершаем родительский процесс
                 parent.terminate()
-
-                # Ждем завершения
-                gone, still_alive = psutil.wait_procs(
-                    [parent] + children,
-                    timeout=5
-                )
-
-                # Принудительно завершаем оставшиеся процессы
+                gone, still_alive = psutil.wait_procs([parent] + children, timeout=5)
+                _ = gone
                 for proc in still_alive:
                     proc.kill()
-
                 logger.info("Сервер остановлен")
-            except Exception as e:
-                logger.error(f"Ошибка остановки сервера: {str(e)}")
+            except Exception as error:  # noqa: BLE001
+                logger.error("Ошибка остановки сервера: %s", error)
             finally:
                 self.process = None
 

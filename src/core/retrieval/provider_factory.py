@@ -26,13 +26,17 @@ class RetrievalPipelineConfig(BaseModel):
     sparse_state_path: str
     ontology_tags_path: str
     trust_remote_code: bool = False
-    device: str = "cpu"
+    device: str = "auto"
+    fallback_to_cpu: bool = True
+    expected_dim: int | None = 2048
     top_k: int = 20
     rrf_k: int = 60
     max_context_chunks: int = 7
     hyde_enabled: bool = False
     query_rewrite_enabled: bool = True
     query_decomposition_enabled: bool = False
+    judge_enabled: bool = True
+    judge_alpha: float = 0.2
     retriever_weights: dict[str, float] = Field(default_factory=dict)
     source_boosts: dict[str, float] = Field(default_factory=dict)
     migration: MigrationSection = Field(default_factory=MigrationSection)
@@ -56,15 +60,22 @@ def build_provider(
     if not config.enabled:
         return None
 
+    dense_model = config.dense_model
+    local_dense = base_dir / dense_model
+    if local_dense.exists():
+        dense_model = str(local_dense.resolve())
+
     qdrant_provider = QdrantRetrievalProvider(
         config=RetrievalProviderConfig(
             collection_name=config.collection_name,
             qdrant_path=base_dir / config.qdrant_path,
-            dense_model=config.dense_model,
+            dense_model=dense_model,
             sparse_state_path=base_dir / config.sparse_state_path,
             ontology_tags_path=base_dir / config.ontology_tags_path,
             trust_remote_code=config.trust_remote_code,
             device=config.device,
+            fallback_to_cpu=config.fallback_to_cpu,
+            expected_dim=config.expected_dim,
             top_k=config.top_k,
             rrf_k=config.rrf_k,
             retriever_weights=config.retriever_weights,
@@ -73,6 +84,8 @@ def build_provider(
             hyde_enabled=config.hyde_enabled,
             query_rewrite_enabled=config.query_rewrite_enabled,
             query_decomposition_enabled=config.query_decomposition_enabled,
+            judge_enabled=config.judge_enabled,
+            judge_alpha=config.judge_alpha,
         )
     )
     migration_mode = config.migration.mode

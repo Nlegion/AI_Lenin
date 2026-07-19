@@ -24,6 +24,7 @@ def main() -> int:
     python = sys.executable
 
     _run([python, "scripts/run_subplan_gates.py", "--run-optional"], cwd=repo)
+    _run([python, "-m", "pytest", "tests/test_local_rag_dryrun.py", "-q"], cwd=repo)
     if not args.skip_security_m:
         _run(
             [

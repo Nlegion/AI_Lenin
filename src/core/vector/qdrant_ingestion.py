@@ -6,13 +6,25 @@ import csv
 from dataclasses import dataclass
 import hashlib
 from pathlib import Path
-import time
 import sys
+import time
 
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
+import torch
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+from src.core.settings.device import (
+    GIGA_EMBEDDING_DIM,
+    load_sentence_transformer,
+    log_gpu_memory,
+    release_embedding_model,
+    resolve_torch_device,
+)
 from src.core.vector.bm25_sparse import Bm25SparseEncoder
+from src.core.vector.ingest_fingerprint import validate_fingerprint_or_raise
 
 
 @dataclass
@@ -27,6 +39,12 @@ class IngestionConfig:
     qdrant_path: Path
     sparse_state_path: Path
     prewarm_core_limit: int
+    fallback_to_cpu: bool = True
+    adaptive_batch: bool = True
+    min_batch_size: int = 4
+    expected_dim: int = GIGA_EMBEDDING_DIM
+    model_dir: Path | None = None
+    reset_checkpoint: bool = False
 
 
 class CheckpointStore:
@@ -50,19 +68,40 @@ class QdrantIngestionPipeline:
     def __init__(self, config: IngestionConfig):
         self.config = config
         self.client = QdrantClient(path=str(config.qdrant_path))
-        self.model = SentenceTransformer(
-            model_name_or_path=config.dense_model,
+        model_dir = config.model_dir or Path(config.dense_model)
+        validate_fingerprint_or_raise(
+            checkpoint_path=config.checkpoint_path,
+            model_dir=model_dir,
+            dense_model=config.dense_model,
+            collection_name=config.collection_name,
+            expected_dim=config.expected_dim,
+            reset_checkpoint=config.reset_checkpoint,
+        )
+        preferred = resolve_torch_device(
+            preferred=config.device,
+            fallback_to_cpu=config.fallback_to_cpu,
+        )
+        local_only = bool(model_dir and model_dir.exists())
+        self.model = load_sentence_transformer(
+            model_path=config.dense_model,
+            preferred_device=preferred,
             trust_remote_code=config.trust_remote_code,
-            device=config.device,
+            fallback_to_cpu=config.fallback_to_cpu,
+            expected_dim=config.expected_dim,
+            local_files_only=local_only,
         )
         self.sparse_encoder = Bm25SparseEncoder()
         self.checkpoint = CheckpointStore(path=config.checkpoint_path)
+        self.batch_size = max(config.min_batch_size, config.batch_size)
+
+    def close(self) -> None:
+        release_embedding_model(self.model)
+        self.model = None
 
     def _read_rows(self, chunks_tsv_path: Path, limit: int | None = None) -> list[dict[str, str]]:
         csv.field_size_limit(min(sys.maxsize, 2_147_483_647))
         with chunks_tsv_path.open("r", encoding="utf-8", newline="") as file_handle:
-            reader = csv.DictReader(file_handle, delimiter="\t")
-            rows = list(reader)
+            rows = list(csv.DictReader(file_handle, delimiter="\t"))
         return rows[:limit] if limit else rows
 
     def _ensure_collection(self, vector_size: int) -> None:
@@ -116,6 +155,32 @@ class QdrantIngestionPipeline:
         digest = hashlib.sha256(chunk_id.encode("utf-8")).hexdigest()[:15]
         return int(digest, 16)
 
+    def _encode_batch(self, texts: list[str]) -> list[list[float]]:
+        while True:
+            try:
+                log_gpu_memory(tag=f"encode_batch_size_{len(texts)}")
+                return self.model.encode(texts, normalize_embeddings=True).tolist()
+            except (RuntimeError, torch.cuda.OutOfMemoryError) as error:
+                if not self.config.adaptive_batch or self.batch_size <= self.config.min_batch_size:
+                    if self.config.fallback_to_cpu and str(getattr(self.model, "device", "")) != "cpu":
+                        self.model = load_sentence_transformer(
+                            model_path=self.config.dense_model,
+                            preferred_device="cpu",
+                            trust_remote_code=self.config.trust_remote_code,
+                            fallback_to_cpu=False,
+                            expected_dim=self.config.expected_dim,
+                            local_files_only=True,
+                        )
+                        continue
+                    raise
+                self.batch_size = max(self.config.min_batch_size, self.batch_size // 2)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                if len(texts) > self.batch_size:
+                    raise RuntimeError(
+                        f"OOM at batch; retry with smaller batch_size={self.batch_size}"
+                    ) from error
+
     def _prewarm_cache(self) -> int:
         points, _ = self.client.scroll(
             collection_name=self.config.collection_name,
@@ -156,34 +221,89 @@ class QdrantIngestionPipeline:
         self._ensure_collection(vector_size=vector_size)
 
         start_offset = min(self.checkpoint.load(), len(rows))
+        total = len(rows)
         processed = 0
-        for offset in range(start_offset, len(rows), self.config.batch_size):
-            batch = rows[offset : offset + self.config.batch_size]
+        offset = start_offset
+        started = time.perf_counter()
+        self._print_progress(
+            offset=offset,
+            total=total,
+            batch_size=self.batch_size,
+            elapsed_sec=0.0,
+            prefix="ingest_start",
+        )
+        while offset < total:
+            batch = rows[offset : offset + self.batch_size]
             texts = [row["text"] for row in batch]
-            dense_vectors = self.model.encode(texts, normalize_embeddings=True).tolist()
+            try:
+                dense_vectors = self._encode_batch(texts=texts)
+            except RuntimeError as error:
+                if "retry with smaller batch_size" in str(error):
+                    continue
+                raise
             points: list[models.PointStruct] = []
             for row, dense_vector in zip(batch, dense_vectors):
                 sparse_vector = self.sparse_encoder.encode_document(text=row["text"])
-                point = models.PointStruct(
-                    id=self._to_point_id(row["chunk_id"]),
-                    vector={
-                        "dense": dense_vector,
-                        "sparse": models.SparseVector(
-                            indices=sparse_vector.indices,
-                            values=sparse_vector.values,
-                        ),
-                    },
-                    payload=self._build_payload(row=row),
+                points.append(
+                    models.PointStruct(
+                        id=self._to_point_id(row["chunk_id"]),
+                        vector={
+                            "dense": dense_vector,
+                            "sparse": models.SparseVector(
+                                indices=sparse_vector.indices,
+                                values=sparse_vector.values,
+                            ),
+                        },
+                        payload=self._build_payload(row=row),
+                    )
                 )
-                points.append(point)
             self._upsert_with_retries(points=points)
             processed += len(batch)
-            self.checkpoint.save(offset + len(batch))
+            offset += len(batch)
+            self.checkpoint.save(offset)
+            self._print_progress(
+                offset=offset,
+                total=total,
+                batch_size=self.batch_size,
+                elapsed_sec=time.perf_counter() - started,
+                prefix="ingest",
+            )
 
         warmed = self._prewarm_cache()
+        mem = log_gpu_memory(tag="ingest_complete") or {}
+        self._print_progress(
+            offset=offset,
+            total=total,
+            batch_size=self.batch_size,
+            elapsed_sec=time.perf_counter() - started,
+            prefix="ingest_done",
+        )
         return {
-            "rows_total": len(rows),
+            "rows_total": total,
             "rows_processed": processed,
             "checkpoint_offset": self.checkpoint.load(),
             "prewarmed_points": warmed,
+            "final_batch_size": self.batch_size,
+            **{f"gpu_{key}": value for key, value in mem.items()},
         }
+
+    @staticmethod
+    def _print_progress(
+        *,
+        offset: int,
+        total: int,
+        batch_size: int,
+        elapsed_sec: float,
+        prefix: str,
+    ) -> None:
+        pct = (100.0 * offset / total) if total else 100.0
+        rate = (offset / elapsed_sec) if elapsed_sec > 0 else 0.0
+        remaining = max(total - offset, 0)
+        eta_sec = (remaining / rate) if rate > 0 else 0.0
+        line = (
+            f"[{prefix}] {offset}/{total} ({pct:5.1f}%) "
+            f"batch={batch_size} rate={rate:5.2f} rows/s "
+            f"elapsed={elapsed_sec/60:5.1f}m eta={eta_sec/60:5.1f}m"
+        )
+        print(line, flush=True)
+        logger.info(line)

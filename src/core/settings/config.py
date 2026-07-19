@@ -31,11 +31,12 @@ class Settings:
 
     NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # settings/config.py -> settings -> core -> src -> repo root
+    BASE_DIR = str(Path(__file__).resolve().parents[3])
     MODEL_DIR = os.path.join(BASE_DIR, "models", "saiga")
     VECTOR_DB_PATH = os.path.join(BASE_DIR, "database", "vector_db")
 
-    ontology_path: str = str(Path(__file__).parent.parent.parent / "data" / "books" / "intellectual")
+    ontology_path: str = str(Path(BASE_DIR) / "data" / "books" / "intellectual")
 
     class Config:
         env_file = ".env"

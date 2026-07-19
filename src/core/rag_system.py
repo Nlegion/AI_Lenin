@@ -1,7 +1,5 @@
 import os
 import logging
-import chromadb
-import torch
 import re
 import aiofiles
 from pathlib import Path
@@ -29,10 +27,17 @@ class EnhancedRAGSystem:
         # Создаем директории, если они не существуют
         os.makedirs(self.vector_db_path, exist_ok=True)
 
-        # Инициализация моделей - ФИКС: используем CPU для избежания ошибок с meta tensor
+        from src.core.settings.device import ensure_exclusive_gpu_for_embeddings
+
+        # Legacy Chroma MiniLM path: prefer CUDA but yield to active llama-server.
+        chroma_device = ensure_exclusive_gpu_for_embeddings(
+            preferred="auto",
+            fallback_to_cpu=True,
+            interactive=True,
+        )
         self.embedding_function = SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2",
-            device="cpu"  # Принудительно используем CPU вместо автоматического выбора
+            device=chroma_device,
         )
 
         # Инициализация ChromaDB
