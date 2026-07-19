@@ -58,8 +58,8 @@ def main() -> int:
             __import__("ruff")
             commands.extend(
                 [
-                    [python_executable, "-m", "ruff", "check", "."],
-                    [python_executable, "-m", "ruff", "format", "--check", "."],
+                    [python_executable, "-m", "ruff", "check", "src", "scripts", "tests"],
+                    [python_executable, "-m", "ruff", "format", "--check", "src", "scripts", "tests"],
                 ]
             )
         except ModuleNotFoundError:
@@ -67,6 +67,22 @@ def main() -> int:
         try:
             __import__("bandit")
             commands.append([python_executable, "-m", "bandit", "-r", "src", "scripts"])
+        except ModuleNotFoundError:
+            pass
+        try:
+            __import__("vulture")
+            commands.append(
+                [
+                    python_executable,
+                    "-m",
+                    "vulture",
+                    "src",
+                    "scripts",
+                    "tests",
+                    "--min-confidence",
+                    "100",
+                ]
+            )
         except ModuleNotFoundError:
             pass
 

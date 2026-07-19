@@ -1,0 +1,1 @@
+"""AI Lenin CLI package."""
