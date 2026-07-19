@@ -1,0 +1,26 @@
+retrieval_sandbox:
+  collection_name: "philosophy_ontology_v2"
+  qdrant_path: "database/qdrant_local"
+  dense_model: "sentence-transformers/all-MiniLM-L6-v2"
+  trust_remote_code: false
+  device: "cpu"
+  eval_dataset_path: ".cursor/artifacts/eval/embedding_eval.tsv"
+  ontology_tags_path: ".cursor/artifacts/ontology/ontology_tags.tsv"
+  sparse_state_path: ".cursor/artifacts/qdrant/sparse_encoder_state.json"
+  top_k: 60
+  rrf_k: 30
+  retriever_weights:
+    dense: 0.8
+    sparse: 1.0
+    onto: 1.8
+    dense_hyde: 1.3
+  source_boosts:
+    core_self: 1.2
+    influence_agree: 1.1
+    influence_critical: 1.0
+    contextual: 1.0
+  modes:
+    - dense
+    - hybrid
+    - hybrid_onto
+    - hyde_hybrid

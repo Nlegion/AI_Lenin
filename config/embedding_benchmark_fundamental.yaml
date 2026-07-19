@@ -1,0 +1,11 @@
+embedding_benchmark:
+  min_recall_at_5: 0.85
+  models:
+    - name: "sentence-transformers/all-MiniLM-L6-v2"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: true
+    - name: "BAAI/bge-m3"
+      trust_remote_code: false
+      device: "cpu"
+      enabled: true
