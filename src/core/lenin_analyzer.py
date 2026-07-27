@@ -12,6 +12,7 @@ from src.core.retrieval.provider_factory import build_provider
 from src.core.safety.news_guard import NewsGuard
 from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT, LLAMA_SERVER_URL
 from src.core.settings.config import Settings
+from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
 from src.core.settings.generation_config import PersonaModel, default_generation_config_path, load_generation_config
 from src.core.text_cleaner import TextCleaner
 
@@ -35,9 +36,12 @@ class LeninAnalyzer:
             self.generation_config = self.generation_config.with_persona_model(persona_model)
         self.server_url = self.generation_config.server_url
         self.retrieval_provider = self._init_retrieval_provider()
+        retrieval_config_path = self.base_dir / "config" / "retrieval_pipeline.yaml"
         self.context_orchestrator = AnalysisContextOrchestrator(
             retrieval_provider=self.retrieval_provider,
             rag_system=self.rag_system,
+            config_path=retrieval_config_path,
+            taxonomy_path=self.base_dir / "config" / "ontology_taxonomy.yaml",
         )
         self.news_guard = self._init_news_guard()
         self._pipeline: AnalysisGenerationPipeline | None = None
@@ -84,9 +88,12 @@ class LeninAnalyzer:
 
     def _get_pipeline(self) -> AnalysisGenerationPipeline:
         if self._pipeline is None:
+            dialectical_enabled = bool(self.context_orchestrator.dialectical_config.enabled)
             self._pipeline = AnalysisGenerationPipeline(
                 base_dir=self.base_dir,
                 context_builder=self.context_orchestrator.build_context,
+                evidence_builder=self.context_orchestrator.build_evidence_brief,
+                dialectical_enabled=dialectical_enabled,
                 news_guard=self.news_guard,
                 text_cleaner=self.text_cleaner,
                 generation_config=self.generation_config,
@@ -168,11 +175,13 @@ class LeninAnalyzer:
                 news_title=news_title,
                 news_content=news_content,
                 enhanced_query=enhanced_query,
+                key_concepts=key_concepts,
                 feedback=feedback,
                 warn_only_guard=False,
             )
             cleaned_content = self.clean_analysis(result.analysis)
-            if not feedback:
+            # Caller-level cache skip: never store orchestration_mode=error responses.
+            if not feedback and result.metadata.get("orchestration_mode") != "error":
                 self.analysis_cache[cache_key] = cleaned_content
                 if len(self.analysis_cache) > ANALYSIS_CACHE_LIMIT:
                     self.analysis_cache.clear()
@@ -182,8 +191,12 @@ class LeninAnalyzer:
             return "Ошибка анализа."
 
     def clean_analysis(self, text: str) -> str:
-        if not text or text in {"Анализ временно недоступен.", "Ошибка анализа."}:
-            return "Не удалось сгенерировать анализ."
+        if not text or text in {
+            "Анализ временно недоступен.",
+            "Ошибка анализа.",
+            CONTEXT_UNAVAILABLE_MESSAGE,
+        }:
+            return text if text == CONTEXT_UNAVAILABLE_MESSAGE else "Не удалось сгенерировать анализ."
         text = self.text_cleaner.clean_text(text)
         patterns = [
             r"Анализ новости с марксистско-ленинской точки зрения[:]?",

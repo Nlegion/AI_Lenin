@@ -155,6 +155,8 @@ Project rules in `.cursor/rules/*.mdc` are adapted from an external baseline (`P
 | `log-incident-registry.mdc` | Optional incident triage workflow |
 | `swarm-collaboration.mdc` | Swarm output contract and handoff rules |
 
+Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).
+
 ## Agent Collaboration Rules
 
 ### Roles

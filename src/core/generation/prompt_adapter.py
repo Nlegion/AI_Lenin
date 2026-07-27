@@ -84,3 +84,41 @@ def build_completion_request(
         user_content=prompt,
         messages=[{"role": "user", "content": prompt}],
     )
+
+
+DIALECTICAL_SYSTEM_EXTRA = """
+Доказательная база разбита на секции R1/R2/R3. Используй только цитаты и факты из этих блоков.
+Не выдумывай цитаты Ленина или других авторов вне блоков.
+Если R1 непуст — центральный тезис обязан опираться на R1. R2 = опора/согласие, R3 = полемика/критика.
+Если слот помечен «(пусто)» — не заполняй его из знаний модели.
+Маркер [multi-stance] означает, что фрагмент попал в несколько ролей; не дублируй один тезис как будто это независимые источники.
+
+Пример корректно: опереться на цитату из R1 и связать с новостью.
+Пример некорректно: приписать Ленину фразу, которой нет в R1–R3.
+"""
+
+
+def build_dialectical_chat_request(
+    *,
+    news_title: str,
+    news_content: str,
+    context: str,
+    max_context_chars: int,
+    feedback: list[str] | None = None,
+) -> GenerationRequest:
+    context_block = _truncate_context(context=context, max_chars=max_context_chars)
+    system_prompt = GIGACHAT_SYSTEM_PROMPT + "\n" + DIALECTICAL_SYSTEM_EXTRA
+    if feedback:
+        system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
+    user_content = (
+        f"Новость: {news_title}\n{news_content[:400]}\n\n"
+        f"Доказательная база (не выдумывай вне этих блоков):\n{context_block}\n\n"
+        "Задача: краткий анализ в стиле Ленина, связывающий новость с R1 "
+        "и при необходимости с опорой/критикой из R2/R3."
+    )
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_content},
+    ]
+    return GenerationRequest(system_prompt=system_prompt, user_content=user_content, messages=messages)
+

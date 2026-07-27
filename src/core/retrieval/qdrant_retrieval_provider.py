@@ -27,6 +27,7 @@ from src.core.retrieval.query_transform import (
     rewrite_query_to_philosophical_register,
 )
 from src.core.retrieval.base_provider import RetrievalResult
+from src.core.retrieval.stance_retrieve import merge_slot_candidates, stance_filter
 from src.core.vector.bm25_sparse import Bm25SparseEncoder
 
 
@@ -87,14 +88,22 @@ class QdrantRetrievalProvider:
         with path.open("r", encoding="utf-8", newline="") as file_handle:
             return list(csv.DictReader(file_handle, delimiter="\t"))
 
-    def _dense_search(self, query_text: str, retriever_name: str, limit: int) -> list[RetrievalCandidate]:
-        vector = self.model.encode([query_text], normalize_embeddings=True)[0].tolist()
+    def _dense_search(
+        self,
+        query_text: str,
+        retriever_name: str,
+        limit: int,
+        query_filter: models.Filter | None = None,
+        dense_vector: list[float] | None = None,
+    ) -> list[RetrievalCandidate]:
+        vector = dense_vector or self.model.encode([query_text], normalize_embeddings=True)[0].tolist()
         points = self.client.query_points(
             collection_name=self.config.collection_name,
             query=vector,
             using="dense",
             limit=limit,
             with_payload=True,
+            query_filter=query_filter,
         ).points
         return [
             RetrievalCandidate(
@@ -110,7 +119,12 @@ class QdrantRetrievalProvider:
             for index, point in enumerate(points, start=1)
         ]
 
-    def _sparse_search(self, query_text: str, limit: int) -> list[RetrievalCandidate]:
+    def _sparse_search(
+        self,
+        query_text: str,
+        limit: int,
+        query_filter: models.Filter | None = None,
+    ) -> list[RetrievalCandidate]:
         sparse = self.sparse_encoder.encode_query(text=query_text)
         points = self.client.query_points(
             collection_name=self.config.collection_name,
@@ -118,6 +132,7 @@ class QdrantRetrievalProvider:
             using="sparse",
             limit=limit,
             with_payload=True,
+            query_filter=query_filter,
         ).points
         return [
             RetrievalCandidate(
@@ -132,6 +147,55 @@ class QdrantRetrievalProvider:
             )
             for index, point in enumerate(points, start=1)
         ]
+
+    def retrieve_by_stance(
+        self,
+        query_text: str,
+        *,
+        stance_types: list[str],
+        limit: int,
+        apply_internal_multi_query: bool = True,
+        dense_vector: list[float] | None = None,
+    ) -> list[RetrievalCandidate]:
+        """Return a complete list of RetrievalCandidate on success, or raise.
+
+        Never returns partial results; on any client/search failure the attempt
+        is discarded and retried/escalated by the caller. Stance boost is not
+        applied — stance is hard-filtered via payload query_filter.
+        """
+        query_filter = stance_filter(stance_types=stance_types)
+        queries = (
+            self._prepare_queries(query_text=query_text)
+            if apply_internal_multi_query
+            else [query_text]
+        )
+        candidates: list[RetrievalCandidate] = []
+        shared_vector = dense_vector
+        if shared_vector is None and queries:
+            shared_vector = self.model.encode([queries[0]], normalize_embeddings=True)[0].tolist()
+        for query in queries:
+            candidates.extend(
+                self._dense_search(
+                    query_text=query,
+                    retriever_name="dense",
+                    limit=max(limit, self.config.top_k),
+                    query_filter=query_filter,
+                    dense_vector=shared_vector if query == queries[0] else None,
+                )
+            )
+            candidates.extend(
+                self._sparse_search(
+                    query_text=query,
+                    limit=max(limit, self.config.top_k),
+                    query_filter=query_filter,
+                )
+            )
+        return merge_slot_candidates(
+            candidates=candidates,
+            retriever_weights=self.config.retriever_weights,
+            rrf_k=self.config.rrf_k,
+            limit=limit,
+        )
 
     def _ontology_search(self, query_text: str, limit: int) -> list[RetrievalCandidate]:
         terms = set(re.findall(r"[a-zA-Zа-яА-ЯёЁ]+", query_text.lower()))

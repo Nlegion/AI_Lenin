@@ -31,3 +31,24 @@ retrieval_pipeline:
     parity_min_shared_ratio: 0.25
     audit_log_path: ".cursor/artifacts/retrieval/retrieval_ab_audit.jsonl"
   chroma_top_k: 7
+
+dialectical_orchestration:
+  enabled: false
+  r1_limit: 4
+  r2_limit: 3
+  r3_limit: 3
+  require_r1: true
+  fail_on_empty_r1: false
+  include_axes_in_query: true
+  include_modality_suffix: true
+  axes_lemma_enabled: true
+  fallback_to_legacy_context: true
+  # Calibrate after Phase 0 latency probe (wall >= ~3 * p95_slot + margin).
+  slot_timeout_sec: 3.0
+  retrieve_wall_timeout_sec: 4.0
+  widen_factor: 3
+  max_retries: 2
+  r1_modality_suffix: ""  # usually unused for R1
+  r2_modality_suffix: "поддержка"
+  r3_modality_suffix: "критика"
+  short_lead_chars: 200
