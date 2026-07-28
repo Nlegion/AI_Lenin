@@ -11,3 +11,5 @@ CLICHE_CODE_LEXICON_DENSE = "cliche_lexicon_dense"
 CLICHE_CODE_SKIPPED_NO_BRIEF = "cliche_skipped_no_brief"
 
 ANACHRONISM_CODE_FIRST_PERSON_TECH = "anachronism_first_person_tech"
+
+LACUNA_HEDGE_CODE = "lacuna_hedge"

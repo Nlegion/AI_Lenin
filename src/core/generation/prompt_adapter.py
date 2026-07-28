@@ -28,12 +28,47 @@ ANACHRONISM_PROMPT_RULE = (
     "не утверждай личный опыт с современными гаджетами, приложениями или соцсетями."
 )
 
+HINT_ONLY_EXTRA = """
+Рамка анализа задана абстрактными принципами без опоры на дословные цитаты по современной поверхности темы.
+Дай анализ через логическое применение этих принципов к фактам новости.
+Не выдумывай цитаты. Не отказывайся отвечать из-за отсутствия дословных совпадений.
+Не пиши обороты вроде «Ленин не писал / не упоминал / не касался», «в текстах Ленина нет прямого ответа»,
+«классик не обращался», «в корпусе нет цитат», «не оставил высказываний», «в наследии отсутствует» —
+строй убедительный анализ на логике принципов без оговорок о лакунах.
+"""
+
+SYNTHESIS_HINT_TEMPLATE = "Абстрактная рамка анализа: {hints}."
+
+DIALECTICAL_SYSTEM_EXTRA = """
+Доказательная база разбита на секции R1/R2/R3. Используй только цитаты и факты из этих блоков.
+Не выдумывай цитаты Ленина или других авторов вне блоков.
+Если R1 непуст — центральный тезис обязан опираться на R1. R2 = опора/согласие, R3 = полемика/критика.
+Если слот помечен «(пусто)» — не заполняй его из знаний модели.
+Маркер [multi-stance] означает, что фрагмент попал в несколько ролей; не дублируй один тезис как будто это независимые источники.
+Применяй теорию к сообщённым фактам новости; не выдавай себя за очевидца современных гаджетов, приложений или соцсетей.
+
+Пример корректно: опереться на цитату из R1 и связать с новостью.
+Пример некорректно: приписать Ленину фразу, которой нет в R1–R3.
+"""
+
 
 def _truncate_context(context: str, max_chars: int) -> str:
     cleaned = context.strip()
     if len(cleaned) <= max_chars:
         return cleaned
     return cleaned[: max_chars - 20].rstrip() + "\n...[truncated]"
+
+
+def _hint_block(*, synthesis_hints: list[str] | None, hint_only: bool) -> str:
+    if not synthesis_hints:
+        return ""
+    joined = "; ".join(item for item in synthesis_hints if item)
+    if not joined:
+        return ""
+    block = SYNTHESIS_HINT_TEMPLATE.format(hints=joined)
+    if hint_only:
+        block = f"{block}\n{HINT_ONLY_EXTRA}"
+    return block
 
 
 def build_chat_request(
@@ -43,12 +78,17 @@ def build_chat_request(
     context: str,
     max_context_chars: int,
     feedback: list[str] | None = None,
+    synthesis_hints: list[str] | None = None,
+    hint_only: bool = False,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     system_prompt = GIGACHAT_SYSTEM_PROMPT
     if feedback:
         system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
     system_prompt += "\n" + ANACHRONISM_PROMPT_RULE
+    hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
+    if hint:
+        system_prompt += "\n" + hint
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
         f"Контекст RAG (цитаты и provenance):\n{context_block}"
@@ -93,19 +133,6 @@ def build_completion_request(
     )
 
 
-DIALECTICAL_SYSTEM_EXTRA = """
-Доказательная база разбита на секции R1/R2/R3. Используй только цитаты и факты из этих блоков.
-Не выдумывай цитаты Ленина или других авторов вне блоков.
-Если R1 непуст — центральный тезис обязан опираться на R1. R2 = опора/согласие, R3 = полемика/критика.
-Если слот помечен «(пусто)» — не заполняй его из знаний модели.
-Маркер [multi-stance] означает, что фрагмент попал в несколько ролей; не дублируй один тезис как будто это независимые источники.
-Применяй теорию к сообщённым фактам новости; не выдавай себя за очевидца современных гаджетов, приложений или соцсетей.
-
-Пример корректно: опереться на цитату из R1 и связать с новостью.
-Пример некорректно: приписать Ленину фразу, которой нет в R1–R3.
-"""
-
-
 def build_dialectical_chat_request(
     *,
     news_title: str,
@@ -113,11 +140,16 @@ def build_dialectical_chat_request(
     context: str,
     max_context_chars: int,
     feedback: list[str] | None = None,
+    synthesis_hints: list[str] | None = None,
+    hint_only: bool = False,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     system_prompt = GIGACHAT_SYSTEM_PROMPT + "\n" + DIALECTICAL_SYSTEM_EXTRA
     if feedback:
         system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
+    hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
+    if hint:
+        system_prompt += "\n" + hint
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
         f"Доказательная база (не выдумывай вне этих блоков):\n{context_block}\n\n"
@@ -129,4 +161,3 @@ def build_dialectical_chat_request(
         {"role": "user", "content": user_content},
     ]
     return GenerationRequest(system_prompt=system_prompt, user_content=user_content, messages=messages)
-

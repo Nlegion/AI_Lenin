@@ -48,3 +48,47 @@ Until then keep `anti_cliche.mode: warn_only` and `block` experimental.
 ## Disagreement process
 
 Log both scores. Resolve via short discussion **or** a third pass on that item. Do not silently majority-vote without a record in the human_eval artifact.
+
+## Quality QA batch (no Telegram)
+
+Generate ~50 hot-path answers with GigaChat3 (`persona_model=base_strong`) into a text Q/A dump plus JSONL. Does **not** call Telegram.
+
+### Preflight
+
+```powershell
+.venv\Scripts\Activate.ps1
+# Model file should exist:
+#   Test-Path models\gigachat3\GigaChat3-10B-A1.8B-q6_k.gguf
+# Telegram env vars are NOT required.
+
+python scripts/run_quality_qa_batch.py --guard-check-only
+```
+
+- Input: `data/eval/quality_qa_batch.jsonl` — required non-empty `id`, `title`, `content`, `question`; unique `id`; `topic`/`source` optional (written as `""` if absent).
+- `question` is **display/label only** in the `.txt` artifact. The LLM receives title+content (+ RAG) via `prompt_adapter` (same as production). System text lives in `prompt_adapter.py`, not `generation.yaml`.
+- `api_style` = HTTP backend type; `prompt_builder` = `chat` | `dialectical_chat` | `completion`.
+- RAG probe uses the first item’s **content** lead (~500 chars). Skipped when `--allow-legacy-fallback` is set. Do not combine `--require-rag-nonempty` with legacy fallback.
+
+### Full run
+
+```powershell
+# Install/update newest llama.cpp Windows CUDA build for GigaChat3:
+python scripts/update_llama_cpp_release.py
+
+python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback
+```
+
+Useful flags: `--checkpoint PATH`, `--output-dir .cursor/artifacts/quality`, `--force`, `--retries 2`, `--llm-timeout 300`, `--start-wait 120`, `--save-full-prompts` (large JSONL — audit only), `--txt-max-chars N` (optional txt trim).
+
+### Checkpoint / resume
+
+- Checkpoint is append-only. Resume uses **last row per `id`**; skip when `input_hash` matches and `status` is `done` or `blocked`.
+- Hash mismatch → regenerate (old rows remain). Clear with `--force` or delete the checkpoint file.
+- `--limit` applies to the loaded input list (`items[:limit]`), not to the whole checkpoint history.
+- Sibling artifacts: `*.checkpoint.jsonl` → `*.jsonl` + `*.txt`; otherwise `{checkpoint}.results.jsonl` + `{checkpoint}.txt`.
+- `latency_ms` = last generate attempt; `attempts` counts tries. Transient HTTP/timeouts retry; `empty_response` / `invalid_response` do not.
+- Without EvidenceBrief / legacy path: `r1/r2/r3/rag_chunk_count=0`, `rag_score_mean=null`.
+
+- Prefer newest `llama.cpp/release_b*` (or `llama.cpp/current`) with GigaChat3 26-layer lite support. Legacy root `llama-server.exe` (e.g. b6248) fails with `q_lora_rank` / missing MLA tensors.
+- Server start uses `--no-jinja --chat-template chatml` (GigaChat jinja template parse issues on new builds).
+- If port 8080 already has a server, the script reuses it and warns that the loaded GGUF must match `--persona-model`.

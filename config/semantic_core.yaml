@@ -1,0 +1,194 @@
+semantic_core:
+  enabled: false
+  apply_to_dialectical: true
+  apply_to_legacy: false
+  include_axes_in_semantic_query: false
+  include_title_anchor: false
+  empty_r1_fallback_to_legacy_slot_query: true
+  max_topics_logged: 3
+  max_terms_per_topic: 3
+  max_term_tokens: 5
+  max_term_tokens_enforcement: warn
+  max_query_chars: 512
+  max_title_anchor_chars: 120
+  baseline_query_content_tokens: 5
+  phase0_score_floor_ratio: 0.8
+  author_known_rate_min: 0.6
+  cliche_warn_rate_max_ratio: 1.5
+  cliche_warn_rate_min_delta_pp: 5
+  normalize_yo_for_routing: true
+  allow_duplicate_triggers: false
+  multi_topic_file_audit: false
+  embedder_model_path: "models/Giga-Embeddings-instruct"
+  embedder_model_max_tokens: null
+  embedder_token_margin: 32
+  lacuna_hedge_gate: warn_only
+  lenin_author_aliases:
+    - "ленин"
+    - "в.и. ленин"
+    - "ленин в.и."
+    - "владимир ильич ленин"
+    - "ленин ви"
+    - "ленин в и"
+  author_reject_substrings:
+    - "ленинизм"
+    - "антиленин"
+    - "анти-ленин"
+  retrieval_term_stopwords:
+    - "и"
+    - "в"
+    - "во"
+    - "не"
+    - "на"
+    - "с"
+    - "со"
+    - "к"
+    - "по"
+    - "о"
+    - "об"
+    - "а"
+    - "но"
+    - "же"
+    - "ли"
+    - "или"
+    - "да"
+
+abstract_topics:
+  technological_progress:
+    label: "Технический прогресс"
+    hint_only: false
+    synthesis_hint: "технический прогресс и производительные силы"
+    triggers:
+      - text: "искусственный интеллект"
+        weight: 2
+      - text: "интеллект"
+        weight: 2
+        match: stem
+      - text: "нейросет"
+        weight: 2
+        match: stem
+      - text: "машинное обучение"
+        weight: 2
+      - text: "языковая модель"
+        weight: 2
+      - text: "ии"
+        weight: 1
+        match: charset_boundary
+      - text: "ai"
+        weight: 1
+        match: charset_boundary
+    retrieval_terms:
+      - "производительные силы"
+      - "техника"
+      - "крупная промышленность"
+
+  platform_capital:
+    label: "Платформенный капитал"
+    hint_only: false
+    synthesis_hint: "монополия и средства производства в цифровой форме"
+    triggers:
+      - text: "цифровая платформа"
+        weight: 2
+      - text: "социальная сеть"
+        weight: 2
+    retrieval_terms:
+      - "монополия"
+      - "финансовый капитал"
+      - "средства производства"
+
+  information_control:
+    label: "Контроль информации"
+    hint_only: false
+    synthesis_hint: "печать, агитация и идеология"
+    triggers:
+      - text: "дезинформац"
+        weight: 2
+        match: stem
+      - text: "deepfake"
+        weight: 2
+      - text: "цифровая цензура"
+        weight: 2
+    retrieval_terms:
+      - "печать"
+      - "агитация"
+      - "идеология"
+
+  finance_speculation:
+    label: "Финансовая спекуляция"
+    hint_only: false
+    synthesis_hint: "фиктивный капитал и кредит"
+    triggers:
+      - text: "криптовалют"
+        weight: 2
+        match: stem
+      - text: "биткоин"
+        weight: 2
+        match: stem
+      - text: "fintech"
+        weight: 2
+    retrieval_terms:
+      - "фиктивный капитал"
+      - "биржа"
+      - "кредит"
+
+  labor_automation:
+    label: "Автоматизация труда"
+    hint_only: false
+    synthesis_hint: "организация труда и рабочий класс"
+    triggers:
+      - text: "гиг-экономика"
+        weight: 2
+      - text: "удалённая работа"
+        weight: 2
+      - text: "удаленная работа"
+        weight: 2
+      - text: "фриланс"
+        weight: 2
+        match: stem
+    retrieval_terms:
+      - "организация труда"
+      - "рабочий класс"
+
+  geopolitics_tech:
+    label: "Технологический империализм"
+    hint_only: false
+    synthesis_hint: "империализм и монополия"
+    triggers:
+      - text: "экспортный контроль"
+        weight: 2
+      - text: "полупроводник"
+        weight: 2
+        match: stem
+    retrieval_terms:
+      - "империализм"
+      - "монополия"
+
+  national_question:
+    label: "Национальный вопрос"
+    hint_only: false
+    synthesis_hint: "национальный вопрос и право наций на самоопределение"
+    triggers:
+      - text: "национальный вопрос"
+        weight: 3
+      - text: "право наций на самоопределение"
+        weight: 3
+      - text: "право наций"
+        weight: 2
+    retrieval_terms:
+      - "национальный вопрос"
+      - "право наций на самоопределение"
+
+  womens_question:
+    label: "Женский вопрос"
+    hint_only: false
+    synthesis_hint: "женский вопрос и равноправие"
+    triggers:
+      - text: "женский вопрос"
+        weight: 3
+      - text: "права женщин"
+        weight: 2
+      - text: "равноправие женщин"
+        weight: 2
+    retrieval_terms:
+      - "женский вопрос"
+      - "равноправие"

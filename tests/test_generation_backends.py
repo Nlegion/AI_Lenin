@@ -67,7 +67,7 @@ def test_fallback_disabled_keeps_active_model(tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_chat_backend_request_shape_uses_tool_choice_none():
+async def test_chat_backend_request_shape_omits_tool_choice():
     backend = ChatCompletionsBackend(
         server_url="http://127.0.0.1:8080",
         backend_config=load_generation_config(Path("config/generation.yaml")).active_backend(),
@@ -94,7 +94,7 @@ async def test_chat_backend_request_shape_uses_tool_choice_none():
     kwargs = session.post.call_args.kwargs
     payload = kwargs["json"]
     assert session.post.call_args.args[0].endswith("/v1/chat/completions")
-    assert payload["tool_choice"] == "none"
+    assert "tool_choice" not in payload
     assert payload["messages"][0]["role"] == "system"
     await backend.close()
 

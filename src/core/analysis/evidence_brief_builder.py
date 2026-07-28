@@ -13,6 +13,15 @@ from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedR
 from src.core.analysis.axes_extractor import extract_complementary_axes
 from src.core.analysis.dialectical_config import DialecticalOrchestrationConfig
 from src.core.analysis.evidence_brief import EvidenceBrief, truncate_query_for_trace
+from src.core.analysis.semantic_core_config import SemanticCoreConfig, load_semantic_core_config
+from src.core.analysis.semantic_integration import (
+    apply_abstract_slot_queries,
+    dialectical_uses_abstract,
+    mark_fallback,
+    maybe_route,
+    timed_ms,
+    trace_from_route,
+)
 from src.core.analysis.slot_retrieve import retrieve_slot_with_fallback
 
 logger = logging.getLogger(__name__)
@@ -107,10 +116,31 @@ def build_evidence_brief(
     retrieval_provider: Any | None,
     build_context_fn,
     taxonomy_path: Path | None = None,
+    semantic_config: SemanticCoreConfig | None = None,
+    run_id: str | None = None,
+    dialectical_enabled: bool = True,
 ) -> EvidenceBrief:
     warnings: list[str] = []
+    semantic = semantic_config or load_semantic_core_config()
+    route = maybe_route(
+        news_title=news_title,
+        news_content=news_content,
+        config=semantic,
+        run_id=run_id,
+    )
+    if route is not None:
+        warnings.extend(route.warnings)
+
+    use_axes = config.include_axes_in_query
+    if dialectical_uses_abstract(
+        semantic=semantic,
+        dialectical_enabled=dialectical_enabled,
+        route=route,
+    ) and not semantic.include_axes_in_semantic_query:
+        use_axes = False
+
     axes: list[str] = []
-    if config.include_axes_in_query:
+    if use_axes:
         axes, axis_warnings = extract_complementary_axes(
             news_title=news_title,
             news_content=news_content,
@@ -119,39 +149,60 @@ def build_evidence_brief(
             taxonomy_path=taxonomy_path,
         )
         warnings.extend(axis_warnings)
-    else:
-        axes = []
 
-    q_r1 = build_slot_query(
-        news_title=news_title,
-        news_content=news_content,
-        key_concepts=key_concepts,
-        axes=axes,
-        modality_suffix=config.r1_modality_suffix,
-        include_modality_suffix=config.include_modality_suffix,
-        short_lead_chars=config.short_lead_chars,
-        warnings=warnings,
+    legacy_queries = {
+        "r1": build_slot_query(
+            news_title=news_title,
+            news_content=news_content,
+            key_concepts=key_concepts,
+            axes=axes,
+            modality_suffix=config.r1_modality_suffix,
+            include_modality_suffix=config.include_modality_suffix,
+            short_lead_chars=config.short_lead_chars,
+            warnings=warnings,
+        ),
+        "r2": build_slot_query(
+            news_title=news_title,
+            news_content=news_content,
+            key_concepts=key_concepts,
+            axes=axes,
+            modality_suffix=config.r2_modality_suffix,
+            include_modality_suffix=config.include_modality_suffix,
+            short_lead_chars=config.short_lead_chars,
+            warnings=warnings,
+        ),
+        "r3": build_slot_query(
+            news_title=news_title,
+            news_content=news_content,
+            key_concepts=key_concepts,
+            axes=axes,
+            modality_suffix=config.r3_modality_suffix,
+            include_modality_suffix=config.include_modality_suffix,
+            short_lead_chars=config.short_lead_chars,
+            warnings=warnings,
+        ),
+    }
+
+    used_abstract = dialectical_uses_abstract(
+        semantic=semantic,
+        dialectical_enabled=dialectical_enabled,
+        route=route,
     )
-    q_r2 = build_slot_query(
-        news_title=news_title,
-        news_content=news_content,
-        key_concepts=key_concepts,
-        axes=axes,
-        modality_suffix=config.r2_modality_suffix,
-        include_modality_suffix=config.include_modality_suffix,
-        short_lead_chars=config.short_lead_chars,
-        warnings=warnings,
-    )
-    q_r3 = build_slot_query(
-        news_title=news_title,
-        news_content=news_content,
-        key_concepts=key_concepts,
-        axes=axes,
-        modality_suffix=config.r3_modality_suffix,
-        include_modality_suffix=config.include_modality_suffix,
-        short_lead_chars=config.short_lead_chars,
-        warnings=warnings,
-    )
+    if used_abstract and route is not None:
+        queries = apply_abstract_slot_queries(
+            route=route,
+            semantic=semantic,
+            news_title=news_title,
+            axes=axes,
+            modality={
+                "r1": config.r1_modality_suffix,
+                "r2": config.r2_modality_suffix,
+                "r3": config.r3_modality_suffix,
+            },
+            include_modality_suffix=config.include_modality_suffix,
+        )
+    else:
+        queries = legacy_queries
 
     brief = EvidenceBrief(
         news_title=news_title,
@@ -161,15 +212,22 @@ def build_evidence_brief(
         warnings=warnings,
         trace={
             "slot_queries": {
-                "r1": truncate_query_for_trace(q_r1),
-                "r2": truncate_query_for_trace(q_r2),
-                "r3": truncate_query_for_trace(q_r3),
+                "r1": truncate_query_for_trace(queries["r1"]),
+                "r2": truncate_query_for_trace(queries["r2"]),
+                "r3": truncate_query_for_trace(queries["r3"]),
             },
             "slot_latency_ms": {},
             "fallback_steps": {},
             "orchestration_mode": "dialectical_v1",
+            "run_id": run_id,
+            "semantic_fallback": False,
+            "semantic_fallback_exhausted": False,
         },
     )
+    if route is not None:
+        brief.trace.update(trace_from_route(route))
+        if route.synthesis_hints:
+            brief.trace["synthesis_hints"] = list(route.synthesis_hints)
 
     if retrieval_provider is None:
         return _finalize_empty(
@@ -180,14 +238,56 @@ def build_evidence_brief(
             reason="provider_unavailable",
         )
 
-    return _parallel_slots(
+    brief = _parallel_slots(
         brief=brief,
         config=config,
         provider=retrieval_provider,
-        queries={"r1": q_r1, "r2": q_r2, "r3": q_r3},
+        queries=queries,
         build_context_fn=build_context_fn,
         enhanced_query=enhanced_query,
     )
+
+    if (
+        used_abstract
+        and semantic.empty_r1_fallback_to_legacy_slot_query
+        and not brief.r1_core_self
+    ):
+        started = time.perf_counter()
+        brief.warnings.append("semantic_core_empty_r1_fallback")
+        brief.r1_core_self = []
+        brief.r2_influence_agree = []
+        brief.r3_influence_critical = []
+        brief.legacy_context = None
+        brief.trace["orchestration_mode"] = "dialectical_v1"
+        brief.trace.pop("error", None)
+        brief.trace["slot_queries"] = {
+            "r1": truncate_query_for_trace(legacy_queries["r1"]),
+            "r2": truncate_query_for_trace(legacy_queries["r2"]),
+            "r3": truncate_query_for_trace(legacy_queries["r3"]),
+        }
+        brief = _parallel_slots(
+            brief=brief,
+            config=config,
+            provider=retrieval_provider,
+            queries=legacy_queries,
+            build_context_fn=build_context_fn,
+            enhanced_query=enhanced_query,
+        )
+        elapsed = timed_ms(started)
+        exhausted = (
+            not brief.r1_core_self
+            and not brief.r2_influence_agree
+            and not brief.r3_influence_critical
+            and not brief.legacy_context
+        ) or brief.trace.get("orchestration_mode") == "error"
+        mark_fallback(trace=brief.trace, elapsed_ms=elapsed, exhausted=bool(exhausted))
+        if exhausted:
+            brief.trace["orchestration_mode"] = "error"
+            brief.trace["error"] = "semantic_fallback_exhausted"
+            if "semantic_fallback_exhausted" not in brief.warnings:
+                brief.warnings.append("semantic_fallback_exhausted")
+
+    return brief
 
 
 def _finalize_empty(

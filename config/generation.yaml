@@ -16,7 +16,7 @@ generation:
       model_path: "models/gigachat3/GigaChat3-10B-A1.8B-q6_k.gguf"
       api_style: "chat_completions"
       ctx_size: 4096
-      n_gpu_layers: 28
+      n_gpu_layers: 99
       threads: 4
       temperature: 0.4
       top_p: 0.9

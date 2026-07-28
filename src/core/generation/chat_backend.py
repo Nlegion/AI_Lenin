@@ -42,7 +42,6 @@ class ChatCompletionsBackend:
         session = await self._ensure_session()
         payload = {
             "model": self.backend_config.model_name,
-            "tool_choice": "none",
             "messages": request.messages,
             "temperature": self.backend_config.temperature,
             "top_p": self.backend_config.top_p,

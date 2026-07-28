@@ -12,6 +12,7 @@ from src.core.analysis.dialectical_config import (
 )
 from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.analysis.evidence_brief_builder import build_evidence_brief
+from src.core.analysis.semantic_core_config import SemanticCoreConfig, load_semantic_core_config
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ class AnalysisContextOrchestrator:
         dialectical_config: DialecticalOrchestrationConfig | None = None,
         config_path: Path | None = None,
         taxonomy_path: Path | None = None,
+        semantic_config: SemanticCoreConfig | None = None,
+        semantic_config_path: Path | None = None,
     ):
         self.retrieval_provider = retrieval_provider
         self.rag_system = rag_system
@@ -35,6 +38,10 @@ class AnalysisContextOrchestrator:
         else:
             self.dialectical_config = DialecticalOrchestrationConfig()
         self.taxonomy_path = taxonomy_path
+        if semantic_config is not None:
+            self.semantic_config = semantic_config
+        else:
+            self.semantic_config = load_semantic_core_config(path=semantic_config_path)
 
     def build_context(self, enhanced_query: str) -> str:
         context = self._from_provider(enhanced_query=enhanced_query)
@@ -49,6 +56,7 @@ class AnalysisContextOrchestrator:
         news_content: str,
         key_concepts: list[str],
         enhanced_query: str | None = None,
+        run_id: str | None = None,
     ) -> EvidenceBrief:
         return build_evidence_brief(
             news_title=news_title,
@@ -59,6 +67,9 @@ class AnalysisContextOrchestrator:
             retrieval_provider=self.retrieval_provider,
             build_context_fn=self.build_context,
             taxonomy_path=self.taxonomy_path,
+            semantic_config=self.semantic_config,
+            run_id=run_id,
+            dialectical_enabled=self.dialectical_config.enabled,
         )
 
     def _from_provider(self, enhanced_query: str) -> str:
