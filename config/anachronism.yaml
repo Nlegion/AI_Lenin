@@ -1,0 +1,32 @@
+# Anti-anachronism gate (M2). Warn only on first-person × modern-tech
+# outside quotes / attribution. Does not modify analysis text.
+
+mode: warn_only
+
+modern_tech_terms:
+  - smartphone
+  - смартфон
+  - tiktok
+  - тикток
+  - iphone
+  - android
+  - instagram
+  - chatgpt
+  - гаджет
+
+first_person_cues:
+  - я видел
+  - я пользовался
+  - у меня в телефоне
+  - как пользователь
+  - я открыл приложение
+  - в моём смартфоне
+
+attribution_cues:
+  - по словам
+  - сообщает
+  - цитирует
+  - заявил
+  - сказал
+  - according to
+  - said

@@ -1,0 +1,7 @@
+{"id": "bad_cliche_dense_no_r1", "query": "bad_cliche_dense_no_r1", "answer": "революция эксплуатация пролетариат буржуазия классовая диктатура империализм", "machine_expect_codes": ["cliche_no_r1"], "human_label": null, "notes": ""}
+{"id": "good_short_no_cliche", "query": "good_short_no_cliche", "answer": "Нужен анализ конкретных фактов новости о ценах.", "machine_expect_codes": [], "human_label": null, "notes": ""}
+{"id": "no_brief_skip", "query": "no_brief_skip", "answer": "революция эксплуатация пролетариат буржуазия", "machine_expect_codes": ["cliche_skipped_no_brief"], "human_label": null, "notes": ""}
+{"id": "brief_r1_empty_clean", "query": "brief_r1_empty_clean", "answer": "Тема требует осторожного разбора цифр из новости.", "machine_expect_codes": [], "human_label": null, "notes": ""}
+{"id": "low_overlap_dense", "query": "low_overlap_dense", "answer": "революция эксплуатация пролетариат буржуазия классовая диктатура", "machine_expect_codes": ["cliche_low_r1_overlap", "cliche_lexicon_dense"], "human_label": null, "notes": ""}
+{"id": "quote_anchor_exempt", "query": "quote_anchor_exempt", "answer": "Как писал Ленин, революция эксплуатация пролетариат буржуазия классовая диктатура", "machine_expect_codes": [], "human_label": null, "notes": ""}
+{"id": "quote_anchor_no_effect_on_no_r1", "query": "quote_anchor_no_effect_on_no_r1", "answer": "Как писал Ленин, революция эксплуатация пролетариат буржуазия классовая диктатура", "machine_expect_codes": ["cliche_no_r1"], "human_label": null, "notes": ""}

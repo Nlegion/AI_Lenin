@@ -1,0 +1,22 @@
+# Unified release / quality gates (SoT). Bump version on material threshold edits.
+version: "1.0"
+
+rag_quality:
+  enabled: true
+  tolerance_relative: 0.03
+  metrics:
+    recall_at_5: { threshold: 0.85, direction: higher }
+    core_self_ratio: { threshold: 0.70, direction: higher }
+    ideology_consistency: { threshold: 0.70, direction: higher }
+    citation_hallucination_rate_max: { threshold: 0.05, direction: lower }
+    empty_context_rate_max: { threshold: 0.10, direction: lower }
+
+news_guard:
+  enabled: true
+
+anti_cliche:
+  enabled: false
+
+news_guard_delta_check:
+  enabled: false
+  baseline_json: .cursor/artifacts/evaluation/news_guard_eval_baseline.json

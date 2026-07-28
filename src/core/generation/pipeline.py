@@ -16,6 +16,7 @@ from src.core.generation.prompt_adapter import (
     build_dialectical_chat_request,
 )
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
+from src.core.safety.post_generate_gates import apply_post_generate_gates
 from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
 from src.core.settings.generation_config import GenerationConfig, PersonaModel
 
@@ -190,22 +191,25 @@ class AnalysisGenerationPipeline:
                 analysis=text,
                 retrieval_context=context,
             )
-            if self.config.safety.post_filter:
-                guard_result = self.news_guard.guard_output(
-                    analysis=text,
-                    source_text=f"{news_title}\n{news_content}",
-                    warn_only=warn_only_guard,
-                )
-            else:
-                guard_result = OutputGuardResult(blocked=False, moderated_text=text, reason_codes=[])
-        else:
-            guard_result = OutputGuardResult(blocked=False, moderated_text=text, reason_codes=[])
+
+        guard_result, gate_metadata = apply_post_generate_gates(
+            text=text,
+            brief=brief,
+            news_title=news_title,
+            news_content=news_content,
+            news_guard=self.news_guard,
+            post_filter=bool(self.config.safety.post_filter),
+            warn_only_guard=warn_only_guard,
+            base_dir=self.base_dir,
+        )
 
         metadata: dict[str, Any] = {
             "persona_model": self.config.persona_model,
             "api_style": backend_cfg.api_style,
             "fallback_enabled": self.config.safety.fallback.enabled,
             "orchestration_mode": orchestration_mode,
+            "unverified_codes": list(hallucination_codes),
+            **gate_metadata,
         }
         if brief is not None:
             metadata.update(

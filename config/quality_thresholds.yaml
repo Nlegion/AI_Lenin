@@ -1,3 +1,6 @@
+# Deprecated: metrics moved to config/release_gates.yaml → rag_quality.metrics.
+# Kept as a thin pointer for older scripts; prefer release_gates.yaml.
+# Shim: evaluate_rag_quality still accepts this path and falls back via loader.
 quality_thresholds:
   recall_at_5: 0.85
   core_self_ratio: 0.70

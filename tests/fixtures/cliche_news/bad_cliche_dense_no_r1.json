@@ -1,0 +1,11 @@
+{
+  "id": "bad_cliche_dense_no_r1",
+  "label": "bad_cliche",
+  "news_title": "Рост цен на хлеб",
+  "news_content": "В ряде регионов отмечен рост розничных цен на хлеб.",
+  "analysis": "революция эксплуатация пролетариат буржуазия классовая диктатура империализм",
+  "brief_present": true,
+  "r1_count": 0,
+  "r1_text": "",
+  "expect_codes": ["cliche_no_r1"]
+}

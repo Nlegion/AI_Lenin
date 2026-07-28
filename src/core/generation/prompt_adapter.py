@@ -23,6 +23,12 @@ GIGACHAT_SYSTEM_PROMPT = """Ты — Владимир Ильич Ленин, в�
 """
 
 
+ANACHRONISM_PROMPT_RULE = (
+    "Анализируй новость как применение теории к сообщённым фактам; "
+    "не утверждай личный опыт с современными гаджетами, приложениями или соцсетями."
+)
+
+
 def _truncate_context(context: str, max_chars: int) -> str:
     cleaned = context.strip()
     if len(cleaned) <= max_chars:
@@ -42,6 +48,7 @@ def build_chat_request(
     system_prompt = GIGACHAT_SYSTEM_PROMPT
     if feedback:
         system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
+    system_prompt += "\n" + ANACHRONISM_PROMPT_RULE
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
         f"Контекст RAG (цитаты и provenance):\n{context_block}"
@@ -92,6 +99,7 @@ DIALECTICAL_SYSTEM_EXTRA = """
 Если R1 непуст — центральный тезис обязан опираться на R1. R2 = опора/согласие, R3 = полемика/критика.
 Если слот помечен «(пусто)» — не заполняй его из знаний модели.
 Маркер [multi-stance] означает, что фрагмент попал в несколько ролей; не дублируй один тезис как будто это независимые источники.
+Применяй теорию к сообщённым фактам новости; не выдавай себя за очевидца современных гаджетов, приложений или соцсетей.
 
 Пример корректно: опереться на цитату из R1 и связать с новостью.
 Пример некорректно: приписать Ленину фразу, которой нет в R1–R3.

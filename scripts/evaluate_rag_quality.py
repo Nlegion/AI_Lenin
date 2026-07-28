@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from src.core.evaluation.rag_quality_metrics import build_quality_report  # noqa: E402
 from src.core.retrieval.qdrant_retrieval_provider import QdrantRetrievalProvider, RetrievalProviderConfig  # noqa: E402
+from src.core.settings.release_gates import load_release_gates, metric_passes  # noqa: E402
 
 
 def _read_eval(path: Path) -> list[dict[str, str]]:
@@ -57,22 +58,14 @@ def _extract_query(raw_query: str) -> str:
     return raw_query.strip()
 
 
-def _load_thresholds(config_path: Path) -> dict[str, float]:
-    payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    section = payload.get("quality_thresholds", payload)
-    return {
-        "recall_at_5": float(section.get("recall_at_5", 0.85)),
-        "core_self_ratio": float(section.get("core_self_ratio", 0.70)),
-        "citation_hallucination_rate_max": float(section.get("citation_hallucination_rate_max", 0.05)),
-        "ideology_consistency": float(section.get("ideology_consistency", 0.70)),
-        "empty_context_rate_max": float(section.get("empty_context_rate_max", 0.10)),
-    }
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate RAG quality metrics.")
     parser.add_argument("--retrieval-config", default="config/retrieval_pipeline.yaml")
-    parser.add_argument("--thresholds-config", default="config/quality_thresholds.yaml")
+    parser.add_argument(
+        "--thresholds-config",
+        default="config/release_gates.yaml",
+        help="Unified release_gates.yaml (or legacy quality_thresholds.yaml via shim).",
+    )
     parser.add_argument("--eval-dataset", default=".cursor/artifacts/eval/embedding_eval.tsv")
     parser.add_argument("--output-json", default=".cursor/artifacts/evaluation/rag_quality_metrics.json")
     parser.add_argument("--output-md", default=".cursor/artifacts/evaluation/rag_quality_summary.md")
@@ -81,7 +74,9 @@ def main() -> int:
 
     provider = _load_retrieval_provider(config_path=(REPO_ROOT / args.retrieval_config).resolve())
     eval_rows = _read_eval(path=(REPO_ROOT / args.eval_dataset).resolve())[: args.max_queries]
-    thresholds = _load_thresholds(config_path=(REPO_ROOT / args.thresholds_config).resolve())
+    gates = load_release_gates(path=str((REPO_ROOT / args.thresholds_config).resolve()))
+    rag = gates.rag_quality
+    tolerance = rag.tolerance_relative
 
     predictions: list[list[str]] = []
     positives: list[str] = []
@@ -118,18 +113,34 @@ def main() -> int:
         latencies_ms=latencies_ms,
     )
 
-    checks = {
-        "recall_at_5_passed": report.recall_at_5 >= thresholds["recall_at_5"],
-        "core_self_ratio_passed": report.core_self_ratio >= thresholds["core_self_ratio"],
-        "ideology_consistency_passed": report.ideology_consistency >= thresholds["ideology_consistency"],
-        "citation_hallucination_passed": report.citation_hallucination_rate <= thresholds["citation_hallucination_rate_max"],
-        "empty_context_rate_passed": report.empty_context_rate <= thresholds["empty_context_rate_max"],
+    metric_values = {
+        "recall_at_5": report.recall_at_5,
+        "core_self_ratio": report.core_self_ratio,
+        "ideology_consistency": report.ideology_consistency,
+        "citation_hallucination_rate_max": report.citation_hallucination_rate,
+        "empty_context_rate_max": report.empty_context_rate,
     }
+    checks: dict[str, bool] = {}
+    thresholds_flat: dict[str, float] = {}
+    for name, value in metric_values.items():
+        metric = rag.metrics.get(name)
+        if metric is None:
+            continue
+        thresholds_flat[name] = metric.threshold
+        checks[f"{name}_passed"] = metric_passes(
+            value=value,
+            threshold=metric.threshold,
+            direction=metric.direction,
+            tolerance_relative=tolerance,
+        )
+
     payload = {
         "generated_at_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "queries_evaluated": len(eval_rows),
         "metrics": asdict(report),
-        "thresholds": thresholds,
+        "thresholds": thresholds_flat,
+        "tolerance_relative": tolerance,
+        "config_version": gates.version,
         "checks": checks,
     }
 
@@ -143,22 +154,19 @@ def main() -> int:
         "",
         f"- Generated at (UTC): {payload['generated_at_utc']}",
         f"- Queries evaluated: `{payload['queries_evaluated']}`",
-        f"- Recall@5: `{report.recall_at_5:.4f}` (target `{thresholds['recall_at_5']:.2f}`)",
-        f"- MRR@10: `{report.mrr_at_10:.4f}`",
-        f"- nDCG@10: `{report.ndcg_at_10:.4f}`",
-        f"- Attribution coverage: `{report.attribution_coverage:.4f}`",
-        f"- Core self ratio: `{report.core_self_ratio:.4f}` (target `{thresholds['core_self_ratio']:.2f}`)",
+        f"- Recall@5: `{report.recall_at_5:.4f}`",
+        f"- Core self ratio: `{report.core_self_ratio:.4f}`",
         f"- Empty context rate: `{report.empty_context_rate:.4f}`",
         f"- Ideology consistency: `{report.ideology_consistency:.4f}`",
         f"- Citation hallucination rate: `{report.citation_hallucination_rate:.4f}`",
-        f"- Latency p50 (ms): `{report.latency_p50_ms:.2f}`",
-        f"- Latency p95 (ms): `{report.latency_p95_ms:.2f}`",
     ]
     for name, value in checks.items():
         lines.append(f"- `{name}`: `{'yes' if value else 'no'}`")
     output_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Evaluated queries: {len(eval_rows)}")
     print(f"Recall@5: {report.recall_at_5:.4f}")
+    if checks and not all(checks.values()):
+        return 1
     return 0
 
 

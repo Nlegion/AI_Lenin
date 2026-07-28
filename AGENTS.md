@@ -85,6 +85,14 @@ pytest tests -q
 pytest tests/test_news_fetcher.py -q
 pytest tests -k "fetcher" -q
 
+# Quality / dry-run / release
+python scripts/run_local_rag_dryrun.py --fixture economy --verbose
+python scripts/evaluate_rag_quality.py
+python scripts/evaluate_news_guard.py
+python scripts/evaluate_anti_cliche.py
+python scripts/release_pass.py --help
+python scripts/collect_anti_cliche_label_batch.py
+
 # Version bump
 python scripts/version_update.py patch   # or major / minor
 
@@ -155,7 +163,8 @@ Project rules in `.cursor/rules/*.mdc` are adapted from an external baseline (`P
 | `log-incident-registry.mdc` | Optional incident triage workflow |
 | `swarm-collaboration.mdc` | Swarm output contract and handoff rules |
 
-Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).
+Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).  
+Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
 
 ## Agent Collaboration Rules
 
