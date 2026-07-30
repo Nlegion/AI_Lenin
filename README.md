@@ -64,8 +64,8 @@ Requires **qdrant-client >= 1.7.0**. Once per environment DB:
 
 | Flag / config | Default | Meaning |
 |---------------|---------|---------|
-| `dialectical_orchestration` in `config/retrieval_pipeline.yaml` | `enabled: false` | R1–R3 EvidenceBrief hot path |
-| `semantic_core` in `config/semantic_core.yaml` | `enabled: false` | Modern→Lenin abstract topic bridge; see [`docs/semantic_core.md`](docs/semantic_core.md) |
+| `dialectical_orchestration` in `config/retrieval_pipeline.yaml` | `enabled: true` | R1–R3 EvidenceBrief hot path |
+| `semantic_core` in `config/semantic_core.yaml` | `enabled: true` | Modern→Lenin abstract topic bridge; see [`docs/semantic_core.md`](docs/semantic_core.md) |
 | `mode` in `config/anti_cliche.yaml` | `warn_only` | Cliché gate; `block` only after H1-d bar |
 | `config/release_gates.yaml` | versioned SoT | RAG thresholds + which release gates run |
 
@@ -81,6 +81,9 @@ python scripts/run_quality_qa_batch.py --guard-check-only
 
 # Full run (GigaChat3)
 python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality
+
+# Live TASS RSS: 50 successful answers; safety rejects → *.rejected.* (not counted)
+python scripts/run_live_news_qa_batch.py --target-done 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality
 ```
 
 - Input: `data/eval/quality_qa_batch.jsonl` (under gitignored `/data/`; regenerate via `python scripts/_gen_quality_qa_dataset.py` when missing).
@@ -102,7 +105,9 @@ python scripts/release_pass.py --help
 python scripts/collect_anti_cliche_label_batch.py
 python scripts/calibrate_semantic_core_query.py
 python scripts/evaluate_semantic_core.py
-python scripts/run_quality_qa_batch.py --guard-check-only
+python scripts/run_quality_qa_batch.py --guard-check-only --input tests/fixtures/quality/must_answer_12.jsonl
+python scripts/run_quality_qa_batch.py --pre-gate-only --input tests/fixtures/quality/must_refuse.jsonl --force
+python scripts/evaluate_quality_qa_metrics.py --help
 ```
 
 `release_pass` CLI flags **override/supplement** `config/release_gates.yaml`:

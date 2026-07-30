@@ -26,6 +26,7 @@ from scripts._quality_qa_io import (  # noqa: E402
     should_skip_checkpoint_row,
 )
 from scripts._quality_qa_runtime import (  # noqa: E402
+    apply_pre_llm_gate,
     base_row,
     generate_one,
     rag_probe,
@@ -78,6 +79,50 @@ async def async_main(args: argparse.Namespace) -> int:
     if args.guard_check_only:
         return run_guard_check(items=items, guard=guard, max_blocked_ratio=args.max_blocked_ratio)
 
+    checkpoint_arg = Path(args.checkpoint) if args.checkpoint else None
+    if checkpoint_arg is not None and not checkpoint_arg.is_absolute():
+        checkpoint_arg = (REPO_ROOT / checkpoint_arg).resolve()
+    artifacts = resolve_artifact_paths(
+        input_path=input_path,
+        output_dir=(REPO_ROOT / args.output_dir).resolve(),
+        checkpoint=checkpoint_arg,
+    )
+    if args.force:
+        for path in (artifacts.checkpoint, artifacts.results, artifacts.txt):
+            if path.exists():
+                path.unlink()
+
+    if args.pre_gate_only:
+        persona = str(args.persona_model or "base_strong")
+        artifacts.txt.parent.mkdir(parents=True, exist_ok=True)
+        if not artifacts.txt.exists():
+            artifacts.txt.write_text(format_txt_header(), encoding="utf-8")
+        total = len(items)
+        for index, item in enumerate(items, start=1):
+            input_hash = item.input_hash()
+            row = base_row(item, persona_model=persona, input_hash=input_hash)
+            blocked = apply_pre_llm_gate(guard=guard, item=item, row=row)
+            if blocked is None:
+                row["status"] = "error"
+                row["error"] = "expected pre-gate block but allow"
+                row["error_type"] = "pre_gate_miss"
+            else:
+                row = blocked
+            append_jsonl(path=artifacts.checkpoint, row=row)
+            append_jsonl(path=artifacts.results, row=row)
+            with artifacts.txt.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    format_txt_block(
+                        index=index,
+                        item=item,
+                        answer=str(row.get("answer") or ""),
+                        txt_max_chars=int(args.txt_max_chars),
+                    )
+                )
+            logger.info("[%s/%s] %s status=%s skipped_llm=%s", index, total, item.id, row["status"], row.get("skipped_llm"))
+        logger.info("wrote checkpoint=%s results=%s txt=%s", artifacts.checkpoint, artifacts.results, artifacts.txt)
+        return 0
+
     generation_config = load_generation_config(path=REPO_ROOT / args.generation_config)
     try:
         if args.persona_model:
@@ -115,19 +160,6 @@ async def async_main(args: argparse.Namespace) -> int:
     else:
         logger.error("LLM not reachable at %s; pass --start-server or start llama-server", server_url)
         return 3
-
-    checkpoint_arg = Path(args.checkpoint) if args.checkpoint else None
-    if checkpoint_arg is not None and not checkpoint_arg.is_absolute():
-        checkpoint_arg = (REPO_ROOT / checkpoint_arg).resolve()
-    artifacts = resolve_artifact_paths(
-        input_path=input_path,
-        output_dir=(REPO_ROOT / args.output_dir).resolve(),
-        checkpoint=checkpoint_arg,
-    )
-    if args.force:
-        for path in (artifacts.checkpoint, artifacts.results, artifacts.txt):
-            if path.exists():
-                path.unlink()
 
     prior = {} if args.force else load_checkpoint_last_wins(path=artifacts.checkpoint)
     analyzer = LeninAnalyzer(persona_model=generation_config.persona_model)
@@ -167,13 +199,13 @@ async def async_main(args: argparse.Namespace) -> int:
             if previous is not None and str(previous.get("input_hash", "")) != input_hash:
                 logger.warning("input_hash mismatch for %s — regenerating", item.id)
 
-            gate = guard.evaluate_input(title=item.title, content=item.content, source=item.source or "unknown")
-            if gate.decision in {"deny", "quarantine"}:
-                row = base_row(item, persona_model=generation_config.persona_model, input_hash=input_hash)
-                row["status"] = "blocked"
-                row["blocked"] = True
-                row["reason_codes"] = list(gate.reason_codes)
-                row["answer"] = f"[BLOCKED: {gate.decision}] {gate.message}"
+            gate_row = apply_pre_llm_gate(
+                guard=guard,
+                item=item,
+                row=base_row(item, persona_model=generation_config.persona_model, input_hash=input_hash),
+            )
+            if gate_row is not None:
+                row = gate_row
             else:
                 row = await generate_one(
                     analyzer=analyzer,
@@ -181,6 +213,7 @@ async def async_main(args: argparse.Namespace) -> int:
                     item=item,
                     retries=int(args.retries),
                     save_full_prompts=bool(args.save_full_prompts),
+                    news_guard=guard,
                 )
 
             append_jsonl(path=artifacts.checkpoint, row=row)

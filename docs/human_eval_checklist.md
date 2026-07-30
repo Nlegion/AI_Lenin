@@ -53,6 +53,25 @@ Log both scores. Resolve via short discussion **or** a third pass on that item. 
 
 Generate ~50 hot-path answers with GigaChat3 (`persona_model=base_strong`) into a text Q/A dump plus JSONL. Does **not** call Telegram.
 
+Gate pattern freeze: [`docs/news_guard_patterns.md`](news_guard_patterns.md).  
+Eval with `dialectical_orchestration` / `semantic_core` **OFF** is **not** a feature check for those modules.
+
+### Smoke gates (after each P0 fix)
+
+```powershell
+python scripts/run_quality_qa_batch.py --input tests/fixtures/quality/must_refuse.jsonl --persona-model base_strong --output-dir .cursor/artifacts/quality --force
+python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_refuse
+
+python scripts/run_quality_qa_batch.py --input tests/fixtures/quality/must_answer_12.jsonl --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality --force
+python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_answer
+```
+
+### Human score bar (exit criteria)
+
+- Axes 1–5: relevance to news, factual/citation accuracy, coherence.
+- Exit: mean ≥ **4.0** on ≥10 stratified items; **2 independent raters**.
+- If any axis |Δ| > 1 → third rater; final score = **median of three**. Record in `.cursor/artifacts/human_eval/`.
+
 ### Preflight
 
 ```powershell
@@ -61,12 +80,13 @@ Generate ~50 hot-path answers with GigaChat3 (`persona_model=base_strong`) into 
 #   Test-Path models\gigachat3\GigaChat3-10B-A1.8B-q6_k.gguf
 # Telegram env vars are NOT required.
 
-python scripts/run_quality_qa_batch.py --guard-check-only
+python scripts/run_quality_qa_batch.py --guard-check-only --input tests/fixtures/quality/must_answer_12.jsonl
 ```
 
-- Input: `data/eval/quality_qa_batch.jsonl` — required non-empty `id`, `title`, `content`, `question`; unique `id`; `topic`/`source` optional (written as `""` if absent).
+- Input: `data/eval/quality_qa_batch.jsonl` or fixtures under `tests/fixtures/quality/` — required non-empty `id`, `title`, `content`, `question`; unique `id`; `topic`/`source` optional.
 - `question` is **display/label only** in the `.txt` artifact. The LLM receives title+content (+ RAG) via `prompt_adapter` (same as production). System text lives in `prompt_adapter.py`, not `generation.yaml`.
-- `api_style` = HTTP backend type; `prompt_builder` = `chat` | `dialectical_chat` | `completion`.
+- Pre-LLM: `deny`/`quarantine` → `blocked=true`, `skipped_llm=true`, `skipped_llm_reason=pre_deny|pre_quarantine` (no LLM call).
+- `api_style` = HTTP backend type; `prompt_builder` = `chat` | `dialectical_chat` | `completion` | `pre_llm_gate`.
 - RAG probe uses the first item’s **content** lead (~500 chars). Skipped when `--allow-legacy-fallback` is set. Do not combine `--require-rag-nonempty` with legacy fallback.
 
 ### Full run
@@ -76,6 +96,7 @@ python scripts/run_quality_qa_batch.py --guard-check-only
 python scripts/update_llama_cpp_release.py
 
 python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback
+python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite full
 ```
 
 Useful flags: `--checkpoint PATH`, `--output-dir .cursor/artifacts/quality`, `--force`, `--retries 2`, `--llm-timeout 300`, `--start-wait 120`, `--save-full-prompts` (large JSONL — audit only), `--txt-max-chars N` (optional txt trim).

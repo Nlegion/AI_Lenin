@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-file", default=None)
     parser.add_argument("--save-full-prompts", action="store_true")
     parser.add_argument("--require-rag-nonempty", action="store_true")
+    parser.add_argument("--pre-gate-only", action="store_true", help="Apply NewsGuard pre-LLM only; no llama-server.")
     parser.add_argument("--generation-config", default="config/generation.yaml")
     parser.add_argument("--news-guard-config", default="config/news_guard.yaml")
     return parser

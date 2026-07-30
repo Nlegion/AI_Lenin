@@ -21,7 +21,7 @@ generation:
       temperature: 0.4
       top_p: 0.9
       repetition_penalty: 1.15
-      max_tokens: 300
+      max_tokens: 512
       seed: 42
       max_context_chars: 5500
     fine_tuned:
@@ -34,6 +34,6 @@ generation:
       temperature: 0.4
       top_p: 0.8
       repetition_penalty: 1.5
-      max_tokens: 300
+      max_tokens: 512
       seed: 42
       max_context_chars: 5500

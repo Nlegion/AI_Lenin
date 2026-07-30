@@ -16,6 +16,8 @@ from src.core.safety.news_guard import NewsGuard
 
 logger = logging.getLogger("quality_qa_batch")
 
+REFUSAL_FALLBACK = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+
 
 def is_transient(error: Exception) -> bool:
     if isinstance(error, (asyncio.TimeoutError, TimeoutError, aiohttp.ClientConnectorError)):
@@ -112,6 +114,8 @@ def base_row(item: QaItem, *, persona_model: str, input_hash: str) -> dict[str, 
         "answer": "",
         "status": "error",
         "blocked": False,
+        "skipped_llm": False,
+        "skipped_llm_reason": None,
         "reason_codes": [],
         "error": None,
         "error_type": None,
@@ -127,9 +131,38 @@ def base_row(item: QaItem, *, persona_model: str, input_hash: str) -> dict[str, 
         "r3_count": 0,
         "rag_chunk_count": 0,
         "rag_score_mean": None,
+        "orchestration_mode": None,
         "latency_ms": 0,
         "attempts": 0,
     }
+
+
+def apply_pre_llm_gate(*, guard: NewsGuard, item: QaItem, row: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a finished blocked row when deny/quarantine; else None (continue to LLM)."""
+    gate = guard.evaluate_input(
+        title=item.title,
+        content=item.content,
+        source=item.source or "unknown",
+    )
+    if gate.decision not in {"deny", "quarantine"}:
+        return None
+    reason = "pre_deny" if gate.decision == "deny" else "pre_quarantine"
+    message = (gate.message or "").strip() or REFUSAL_FALLBACK
+    row["status"] = "blocked"
+    row["blocked"] = True
+    row["skipped_llm"] = True
+    row["skipped_llm_reason"] = reason
+    row["answer"] = message
+    row["reason_codes"] = list(gate.reason_codes)
+    row["prompt_builder"] = "pre_llm_gate"
+    logger.info(
+        "pre_llm_gate id=%s decision=%s reason=%s codes=%s",
+        item.id,
+        gate.decision,
+        reason,
+        ",".join(gate.reason_codes),
+    )
+    return row
 
 
 async def generate_one(
@@ -139,9 +172,18 @@ async def generate_one(
     item: QaItem,
     retries: int,
     save_full_prompts: bool,
+    news_guard: NewsGuard | None = None,
+    skip_input_gate: bool = False,
 ) -> dict[str, Any]:
     input_hash = item.input_hash()
     row = base_row(item, persona_model=analyzer.generation_config.persona_model, input_hash=input_hash)
+    if not skip_input_gate:
+        guard = news_guard or getattr(analyzer, "news_guard", None)
+        if guard is not None:
+            blocked_row = apply_pre_llm_gate(guard=guard, item=item, row=row)
+            if blocked_row is not None:
+                return blocked_row
+
     key_concepts = analyzer.extract_key_concepts(item.content)
     enhanced_query = f"{item.title} {item.content[:200]} {' '.join(key_concepts)}"
     attempts = 0
@@ -162,6 +204,7 @@ async def generate_one(
             row["latency_ms"] = int(result.latency_ms)
             row["api_style"] = result.metadata.get("api_style")
             row["prompt_builder"] = result.prompt_builder
+            row["orchestration_mode"] = result.metadata.get("orchestration_mode")
             row["system_prompt_hash"] = sha256_text(result.system_prompt)
             row["user_prompt_hash"] = sha256_text(result.user_prompt)
             if save_full_prompts:
@@ -169,6 +212,16 @@ async def generate_one(
                 row["user_prompt"] = result.user_prompt
             for key in ("r1_count", "r2_count", "r3_count", "rag_chunk_count", "rag_score_mean"):
                 row[key] = result.metadata.get(key, 0 if key != "rag_score_mean" else None)
+            for key in (
+                "semantic_core_dominant",
+                "semantic_core_hint_only",
+                "news_groundedness",
+                "cliche_gate",
+                "consecutive_repeat_removed",
+            ):
+                if key in result.metadata:
+                    row[key] = result.metadata.get(key)
+            row["skipped_llm"] = False
             if not answer:
                 row["status"] = "error"
                 row["error"] = "empty model content"

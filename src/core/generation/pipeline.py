@@ -13,12 +13,20 @@ from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.analysis.semantic_core_config import load_semantic_core_config
 from src.core.analysis.semantic_integration import maybe_route
 from src.core.analysis.semantic_query import compose_legacy_enriched_query
+from src.core.generation.context_budget import (
+    BudgetState,
+    budget_over_limit,
+    clip_context_by_chunks,
+    log_budget,
+    shrink_budget,
+)
 from src.core.generation.factory import build_generation_backend
 from src.core.generation.prompt_adapter import (
     build_chat_request,
     build_completion_request,
     build_dialectical_chat_request,
 )
+from src.core.generation.text_postprocess import finalize_generated_text
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 from src.core.safety.post_generate_gates import apply_post_generate_gates
 from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
@@ -247,49 +255,76 @@ class AnalysisGenerationPipeline:
         pipeline_id: str | None = None,
     ) -> PipelineResult:
         backend_cfg = self.config.active_backend()
-        if backend_cfg.api_style == "chat_completions":
-            if dialectical_prompt:
-                prompt_builder = "dialectical_chat"
-                request = build_dialectical_chat_request(
-                    news_title=news_title,
-                    news_content=news_content,
-                    context=context,
-                    max_context_chars=backend_cfg.max_context_chars,
-                    feedback=feedback,
-                    synthesis_hints=synthesis_hints,
-                    hint_only=hint_only,
-                )
-            else:
-                prompt_builder = "chat"
-                request = build_chat_request(
-                    news_title=news_title,
-                    news_content=news_content,
-                    context=context,
-                    max_context_chars=backend_cfg.max_context_chars,
-                    feedback=feedback,
-                    synthesis_hints=synthesis_hints,
-                    hint_only=hint_only,
-                )
-        else:
-            prompt_builder = "completion"
-            request = build_completion_request(
-                news_title=news_title,
-                news_content=news_content,
-                context=context,
-                max_context_chars=backend_cfg.max_context_chars,
-                feedback=feedback,
+        budget = BudgetState(
+            max_context_chars=int(backend_cfg.max_context_chars),
+            max_context_chunks=7,
+            ctx_size=int(backend_cfg.ctx_size),
+            max_tokens=int(backend_cfg.max_tokens),
+        )
+        working_context = context
+        legacy_fallback = orchestration_mode == "legacy_fallback"
+        request = None
+        prompt_builder = "completion"
+        for _ in range(6):
+            clipped = clip_context_by_chunks(
+                working_context,
+                max_chunks=budget.max_context_chunks,
             )
+            if backend_cfg.api_style == "chat_completions":
+                if dialectical_prompt:
+                    prompt_builder = "dialectical_chat"
+                    request = build_dialectical_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=clipped,
+                        max_context_chars=budget.max_context_chars,
+                        feedback=feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                    )
+                else:
+                    prompt_builder = "chat"
+                    request = build_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=clipped,
+                        max_context_chars=budget.max_context_chars,
+                        feedback=feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                        legacy_fallback=legacy_fallback,
+                    )
+            else:
+                prompt_builder = "completion"
+                request = build_completion_request(
+                    news_title=news_title,
+                    news_content=news_content,
+                    context=clipped,
+                    max_context_chars=budget.max_context_chars,
+                    feedback=feedback,
+                )
+            prompt_text = f"{request.system_prompt}\n{request.user_content}"
+            prompt_tokens = log_budget(prompt_text=prompt_text, state=budget)
+            if not budget_over_limit(prompt_text=prompt_text, state=budget):
+                working_context = clipped
+                break
+            if not shrink_budget(budget):
+                working_context = clipped
+                break
+            working_context = clipped
 
+        assert request is not None
         response = await self.backend.generate(request=request)
         text = response.text
         if self.text_cleaner is not None and hasattr(self.text_cleaner, "clean_text"):
             text = self.text_cleaner.clean_text(text)
+        text, dedupe_meta = finalize_generated_text(text)
 
         hallucination_codes: list[str] = []
         if self.news_guard is not None:
             text, hallucination_codes = self.news_guard.mark_unverified_facts(
                 analysis=text,
-                retrieval_context=context,
+                retrieval_context=working_context,
             )
 
         guard_result, gate_metadata = apply_post_generate_gates(
@@ -312,6 +347,9 @@ class AnalysisGenerationPipeline:
             "orchestration_mode": orchestration_mode,
             "pipeline_id": pipeline_id,
             "unverified_codes": list(hallucination_codes),
+            "context_shrink_steps": list(budget.shrink_steps),
+            "approx_prompt_tokens": prompt_tokens,
+            **dedupe_meta,
             **rag_stats,
             **gate_metadata,
         }
@@ -332,7 +370,7 @@ class AnalysisGenerationPipeline:
 
         return PipelineResult(
             analysis=guard_result.moderated_text,
-            context=context,
+            context=working_context,
             backend=response.backend,
             model_name=response.model_name,
             latency_ms=response.latency_ms,

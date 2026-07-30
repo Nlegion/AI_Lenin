@@ -20,9 +20,10 @@ def test_default_persona_is_base_strong():
 
 
 def test_gigachat_system_prompt_contains_hard_bans():
-    assert "вооружённых сил" in GIGACHAT_SYSTEM_PROMPT
     assert "насилию" in GIGACHAT_SYSTEM_PROMPT
     assert "образовательн" in GIGACHAT_SYSTEM_PROMPT
+    assert "политика безопасности" in GIGACHAT_SYSTEM_PROMPT  # instruct NOT to use template
+    assert "Анализ данной темы невозможен" not in GIGACHAT_SYSTEM_PROMPT
     request = build_chat_request(
         news_title="Инфляция",
         news_content="Рост цен и безработица",

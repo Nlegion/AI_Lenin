@@ -6,5 +6,6 @@
 | [priority_crisis_recovery_and_hardening.md](priority_crisis_recovery_and_hardening.md) | Crisis recovery priorities H1–H3 + M1–M3 |
 | [human_eval_checklist.md](human_eval_checklist.md) | Human eval / weekly label loop / H1-d bar |
 | [semantic_core.md](semantic_core.md) | Modern→Lenin abstract topic bridge (semantic core) |
+| [news_guard_patterns.md](news_guard_patterns.md) | Input-gate pattern freeze / expansion policy |
 
-Also see root [`README.md`](../README.md) and [`AGENTS.md`](../AGENTS.md).
+Also see root [`README.md`](../README.md), [`AGENTS.md`](../AGENTS.md), and [`CHANGELOG.md`](../CHANGELOG.md).

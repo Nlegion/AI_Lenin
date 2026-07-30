@@ -33,7 +33,7 @@ retrieval_pipeline:
   chroma_top_k: 7
 
 dialectical_orchestration:
-  enabled: false
+  enabled: true
   r1_limit: 4
   r2_limit: 3
   r3_limit: 3

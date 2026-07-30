@@ -138,16 +138,15 @@ class TextCleaner:
         # Корректируем орфографию
         text = self.correct_spelling(text)
 
-        # Специфические исправления для политических терминов
+        # Long typo fixes only (word-boundary). Never map short tokens like "Рё"→"ФРГ"
+        # (SymSpell can turn possessive "её" into "Рё", which previously became "ФРГ").
         political_corrections = {
-            "Рё": "ФРГ",  # Исправление конкретной опечатки
             "капиталистическихого": "капиталистического",
             "буржуази": "буржуазии",
-            # Добавьте другие исправления по необходимости
         }
 
         for wrong, correct in political_corrections.items():
-            text = text.replace(wrong, correct)
+            text = re.sub(rf"\b{re.escape(wrong)}\b", correct, text)
 
         # Удаляем шаблонные фразы
         patterns = [

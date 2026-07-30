@@ -1,5 +1,5 @@
 semantic_core:
-  enabled: false
+  enabled: true
   apply_to_dialectical: true
   apply_to_legacy: false
   include_axes_in_semantic_query: false

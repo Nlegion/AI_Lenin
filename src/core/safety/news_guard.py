@@ -86,9 +86,13 @@ def _contains_any(text: str, patterns: list[str]) -> list[str]:
 
 
 def _extract_pii_hits(text: str, patterns: list[str]) -> list[str]:
+    """Match PII patterns. Do not use IGNORECASE for Cyrillic FIO (would match any 3 words)."""
     hits: list[str] = []
     for pattern in patterns:
-        if re.search(pattern, text, flags=re.IGNORECASE):
+        flags = 0
+        if "@" in pattern or r"\d" in pattern or "ул" in pattern.lower():
+            flags = re.IGNORECASE
+        if re.search(pattern, text, flags=flags):
             hits.append(pattern)
     return hits
 
@@ -105,7 +109,8 @@ class NewsGuard:
         if not self.config.input_gate.enabled:
             return InputGateResult(decision="allow", reason="input gate disabled", reason_codes=[], message="")
 
-        text = f"{title}\n{content}".lower()
+        original = f"{title}\n{content}"
+        text = original.lower()
         military_hits = _contains_any(text=text, patterns=self._military_topics())
         if self._military_context_hit(text=text):
             military_hits.append("context:military_rf_forces")
@@ -129,7 +134,8 @@ class NewsGuard:
                     message="Источник новости не входит в перечень доверенных изданий.",
                 )
 
-        pii_hits = _extract_pii_hits(text=text, patterns=self._pii_patterns())
+        # FIO pattern is case-sensitive; must run on original casing (not lowercased text).
+        pii_hits = _extract_pii_hits(text=original, patterns=self._pii_patterns())
         public_interest_hits = _contains_any(text=text, patterns=self.config.input_gate.public_interest_topics)
         if pii_hits and self.config.input_gate.block_private_pii and not public_interest_hits:
             return InputGateResult(

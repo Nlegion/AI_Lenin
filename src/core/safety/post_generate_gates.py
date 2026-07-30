@@ -9,6 +9,7 @@ from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.safety.anachronism_gate import anachronism_gate
 from src.core.safety.cliche_gate import cliche_gate
 from src.core.safety.gate_warn_audit import append_gate_warn
+from src.core.safety.groundedness_warn import news_groundedness
 from src.core.safety.lacuna_hedge_gate import lacuna_hedge_gate
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 
@@ -25,7 +26,7 @@ def apply_post_generate_gates(
     base_dir: Path,
     pipeline_id: str | None = None,
 ) -> tuple[OutputGuardResult, dict[str, Any]]:
-    """Run cliche → lacuna → anachronism → NewsGuard. Gates do not modify ``text``."""
+    """Run cliche → lacuna → anachronism → groundedness → NewsGuard. Gates do not modify ``text``."""
     r1_items = list(brief.r1_core_self) if brief is not None else []
     r1_text = "\n".join(item.text for item in r1_items)
     cliche_result = cliche_gate(
@@ -66,6 +67,20 @@ def apply_post_generate_gates(
             pipeline_id=pipeline_id,
         )
 
+    grounded = news_groundedness(
+        analysis=text,
+        news_title=news_title,
+        news_content=news_content,
+    )
+    if not grounded.grounded:
+        append_gate_warn(
+            gate="groundedness",
+            codes=["ungrounded_news_warn"],
+            analysis=text,
+            base_dir=base_dir,
+            pipeline_id=pipeline_id,
+        )
+
     if news_guard is not None and post_filter:
         guard_result = news_guard.guard_output(
             analysis=text,
@@ -79,6 +94,7 @@ def apply_post_generate_gates(
         "cliche_gate": cliche_result.to_metadata(),
         "lacuna_hedge_gate": lacuna_result.to_metadata(),
         "anachronism_gate": anachronism_result.to_metadata(),
+        "news_groundedness": grounded.to_metadata(),
         "guard_codes": list(guard_result.reason_codes),
     }
     return guard_result, gate_metadata
