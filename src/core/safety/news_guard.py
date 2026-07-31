@@ -10,14 +10,26 @@ from typing import Literal
 from pydantic import BaseModel, Field
 import yaml
 
+from src.core.safety.combat_detect import combat_cooccurrence_hit, military_rf_context_hit
+from src.core.safety.fio_guards import fio_spans, should_block_fio
+from src.core.safety.pattern_match import pattern_hits
+from src.core.safety.topic_routing import route_topic
 
-Decision = Literal["allow", "deny", "quarantine"]
+Decision = Literal["allow", "deny", "quarantine", "skip"]
+
+SKIP_MESSAGE = "Тема вне сферы марксистско-ленинского анализа новостей."
 
 
 class DisclaimerConfig(BaseModel):
     enabled: bool = True
     placement: Literal["header", "footer"] = "footer"
     text: str
+
+
+class CombatConfig(BaseModel):
+    window_tokens: int = 10
+    combat_stems: list[str] = Field(default_factory=list)
+    military_co_tokens: list[str] = Field(default_factory=list)
 
 
 class InputGateConfig(BaseModel):
@@ -33,7 +45,9 @@ class InputGateConfig(BaseModel):
     block_private_pii: bool = True
     public_interest_topics: list[str] = Field(default_factory=list)
     refusal_message: str = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    skip_message: str = SKIP_MESSAGE
     classify_on_unknown_as: Decision = "quarantine"
+    combat: CombatConfig = Field(default_factory=CombatConfig)
 
 
 class OutputGuardConfig(BaseModel):
@@ -76,17 +90,8 @@ def load_news_guard_config(path: Path) -> NewsGuardConfig:
     return NewsGuardConfig.model_validate(section)
 
 
-def _contains_any(text: str, patterns: list[str]) -> list[str]:
-    lowered = text.lower()
-    hits: list[str] = []
-    for pattern in patterns:
-        if pattern.lower() in lowered:
-            hits.append(pattern)
-    return hits
-
-
 def _extract_pii_hits(text: str, patterns: list[str]) -> list[str]:
-    """Match PII patterns. Do not use IGNORECASE for Cyrillic FIO (would match any 3 words)."""
+    """Match PII patterns. FIO stays case-sensitive."""
     hits: list[str] = []
     for pattern in patterns:
         flags = 0
@@ -95,6 +100,10 @@ def _extract_pii_hits(text: str, patterns: list[str]) -> list[str]:
         if re.search(pattern, text, flags=flags):
             hits.append(pattern)
     return hits
+
+
+def _is_fio_pattern(pattern: str) -> bool:
+    return "[А-ЯЁ]" in pattern or "[А-Яа-я]" in pattern
 
 
 class NewsGuard:
@@ -111,69 +120,106 @@ class NewsGuard:
 
         original = f"{title}\n{content}"
         text = original.lower()
-        military_hits = _contains_any(text=text, patterns=self._military_topics())
-        if self._military_context_hit(text=text):
-            military_hits.append("context:military_rf_forces")
-        if military_hits:
+        gate = self.config.input_gate
+        refuse = gate.refusal_message
+
+        combat_hits = combat_cooccurrence_hit(
+            original,
+            combat_stems=gate.combat.combat_stems or None,
+            co_tokens=gate.combat.military_co_tokens or None,
+            window=gate.combat.window_tokens,
+        )
+        military_hits = pattern_hits(text=text, patterns=self._military_topics())
+        if military_rf_context_hit(text):
+            military_hits = [*military_hits, "context:military_rf_forces"]
+        if combat_hits or military_hits:
             return InputGateResult(
                 decision="deny",
-                reason="military topic hard deny matched",
-                reason_codes=military_hits,
-                message=self.config.input_gate.refusal_message,
+                reason="military/combat topic hard deny matched",
+                reason_codes=combat_hits + military_hits,
+                message=refuse,
             )
 
-        if self.config.input_gate.trusted_sources and source:
+        if gate.trusted_sources and source:
             normalized_source = source.strip().lower()
-            normalized_trusted = {item.strip().lower() for item in self.config.input_gate.trusted_sources}
-            high_risk_hits = _contains_any(text=text, patterns=self.config.input_gate.high_risk_topics)
-            if normalized_source not in normalized_trusted and high_risk_hits:
+            trusted = {item.strip().lower() for item in gate.trusted_sources}
+            high_risk = pattern_hits(text=text, patterns=gate.high_risk_topics)
+            if normalized_source not in trusted and high_risk:
                 return InputGateResult(
                     decision="deny",
                     reason="source not in trusted list for high-risk topic",
-                    reason_codes=high_risk_hits + [f"source:{source}"],
+                    reason_codes=high_risk + [f"source:{source}"],
                     message="Источник новости не входит в перечень доверенных изданий.",
                 )
 
-        # FIO pattern is case-sensitive; must run on original casing (not lowercased text).
-        pii_hits = _extract_pii_hits(text=original, patterns=self._pii_patterns())
-        public_interest_hits = _contains_any(text=text, patterns=self.config.input_gate.public_interest_topics)
-        if pii_hits and self.config.input_gate.block_private_pii and not public_interest_hits:
+        fio_codes = should_block_fio(text=original, matches=fio_spans(original))
+        public_interest = pattern_hits(text=text, patterns=gate.public_interest_topics)
+        other_pii = [
+            p
+            for p in _extract_pii_hits(text=original, patterns=self._pii_patterns())
+            if not _is_fio_pattern(p)
+        ]
+        if gate.block_private_pii and not public_interest and (fio_codes or other_pii):
             return InputGateResult(
                 decision="deny",
                 reason="private pii detected without public-interest context",
-                reason_codes=pii_hits,
-                message=self.config.input_gate.refusal_message,
+                reason_codes=fio_codes + other_pii,
+                message=refuse,
             )
 
-        hard_deny_topic_hits = _contains_any(text=text, patterns=self.config.input_gate.hard_deny_topics)
-        hard_deny_keyword_hits = _contains_any(text=text, patterns=self.config.input_gate.hard_deny_keywords)
-        if hard_deny_topic_hits or hard_deny_keyword_hits:
+        hard_kw = pattern_hits(text=text, patterns=gate.hard_deny_keywords)
+        if hard_kw:
             return InputGateResult(
                 decision="deny",
-                reason="hard deny topic/keyword matched",
-                reason_codes=hard_deny_topic_hits + hard_deny_keyword_hits,
-                message=self.config.input_gate.refusal_message,
+                reason="hard deny keyword matched",
+                reason_codes=hard_kw,
+                message=refuse,
             )
 
-        quarantine_topic_hits = _contains_any(text=text, patterns=self.config.input_gate.quarantine_topics)
-        quarantine_keyword_hits = _contains_any(text=text, patterns=self.config.input_gate.quarantine_keywords)
-        if quarantine_topic_hits or quarantine_keyword_hits:
+        routed = route_topic(title=title, content=content)
+        if routed.route == "skip":
+            return InputGateResult(
+                decision="skip",
+                reason="out-of-scope primary topic",
+                reason_codes=routed.reason_codes,
+                message=gate.skip_message,
+            )
+        if routed.route == "full":
+            return InputGateResult(
+                decision="allow",
+                reason="topic route full path",
+                reason_codes=routed.reason_codes,
+                message="",
+            )
+
+        # Remaining hard_deny content-types (non-sport handled by router when possible)
+        hard_topics = pattern_hits(text=text, patterns=gate.hard_deny_topics)
+        if hard_topics:
+            return InputGateResult(
+                decision="skip",
+                reason="content-type out of scope",
+                reason_codes=hard_topics,
+                message=gate.skip_message,
+            )
+
+        quarantine = pattern_hits(text=text, patterns=gate.quarantine_topics + gate.quarantine_keywords)
+        if quarantine:
             return InputGateResult(
                 decision="quarantine",
                 reason="quarantine topic/keyword matched",
-                reason_codes=quarantine_topic_hits + quarantine_keyword_hits,
-                message=self.config.input_gate.refusal_message,
+                reason_codes=quarantine,
+                message=refuse,
             )
 
-        allow_hits = _contains_any(text=text, patterns=self.config.input_gate.allow_topics)
+        allow_hits = pattern_hits(text=text, patterns=gate.allow_topics)
         if allow_hits:
             return InputGateResult(decision="allow", reason="allow topic matched", reason_codes=allow_hits, message="")
 
         return InputGateResult(
-            decision=self.config.input_gate.classify_on_unknown_as,
+            decision=gate.classify_on_unknown_as,
             reason="no explicit allow topic matched",
             reason_codes=["unknown_topic"],
-            message=self.config.input_gate.refusal_message,
+            message=refuse,
         )
 
     def guard_output(self, analysis: str, source_text: str | None = None, warn_only: bool = False) -> OutputGuardResult:
@@ -199,14 +245,19 @@ class NewsGuard:
                 if self.config.output_guard.safe_mode == "moderate":
                     text = re.sub(pattern, "[отредактировано]", text, flags=re.IGNORECASE)
 
+        # Redact FIO without IGNORECASE (case-sensitive sub); other PII may use IGNORECASE.
         pii_hits = _extract_pii_hits(text=text, patterns=self._pii_patterns(output=True))
         if pii_hits and source_text:
-            source_pii_hits = set(_extract_pii_hits(text=source_text, patterns=self._pii_patterns(output=True)))
+            source_pii = set(_extract_pii_hits(text=source_text, patterns=self._pii_patterns(output=True)))
             for pattern in pii_hits:
-                if pattern in source_pii_hits:
+                if pattern in source_pii:
                     continue
-                text = re.sub(pattern, "[обезличено]", text, flags=re.IGNORECASE)
+                flags = 0 if _is_fio_pattern(pattern) else re.IGNORECASE
+                text = re.sub(pattern, "[обезличено]", text, flags=flags)
                 reason_codes.append(f"pii_redact:{pattern}")
+
+        if "[обезличено]" in text:
+            reason_codes.append("redact_artifact_present")
 
         return OutputGuardResult(
             blocked=False,
@@ -233,27 +284,20 @@ class NewsGuard:
         return merged or analysis, reason_codes
 
     def _military_topics(self) -> list[str]:
+        # Bare «сво» handled via phrase/token rules in pattern_hits; keep phrase forms here.
         defaults = [
             "вс рф",
             "вооруженные силы",
             "вооружённые силы",
             "росгварди",
-            "сво",
             "специальной военной операции",
             "мобилизац",
             "министерство обороны",
             "боевые действия",
             "армия россии",
+            "сво",
         ]
         return list(dict.fromkeys([*defaults, *self.config.input_gate.military_topics]))
-
-    @staticmethod
-    def _military_context_hit(text: str) -> bool:
-        patterns = [
-            r"(военн\w+|арм\w+|силов\w+).{0,40}(рф|росси\w+)",
-            r"(рф|росси\w+).{0,40}(военн\w+|арм\w+|силов\w+)",
-        ]
-        return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in patterns)
 
     def _pii_patterns(self, output: bool = False) -> list[str]:
         defaults = [

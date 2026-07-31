@@ -192,3 +192,24 @@ abstract_topics:
     retrieval_terms:
       - "женский вопрос"
       - "равноправие"
+
+  public_health_social:
+    label: "Общественное здравоохранение"
+    hint_only: false
+    synthesis_hint: "организация здравоохранения и роль государства"
+    triggers:
+      - text: "эпидем"
+        weight: 2
+        match: stem
+      - text: "грипп"
+        weight: 2
+      - text: "здравоохран"
+        weight: 2
+        match: stem
+      - text: "вакцин"
+        weight: 2
+        match: stem
+    retrieval_terms:
+      - "здравоохранение"
+      - "государство"
+      - "организация труда"

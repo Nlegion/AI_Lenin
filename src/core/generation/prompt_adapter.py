@@ -39,6 +39,27 @@ ANACHRONISM_PROMPT_RULE = (
     "не утверждай личный опыт с современными гаджетами, приложениями или соцсетями."
 )
 
+QUOTE_REQUIRE_EXTRA = """
+В контексте есть релевантные цитаты. Требуется ≥1 цитата из контекста, наиболее связанная с фактами новости.
+Укажи один конкретный факт новости. Не выдумывай том/стр, если их нет в meta чанка.
+"""
+
+PRINCIPLES_NO_QUOTE_EXTRA = """
+В релевантном контексте нет подходящих цитат. Запрещено выдумывать цитаты и кавычки.
+Дай анализ через принципы, опираясь на факты новости. Не пиши «Ленин сказал/писал» без дословной опоры в контексте.
+"""
+
+SOCIAL_FACT_ANCHOR_EXTRA = """
+Тема социальная (здравоохранение/экология/образование). Анализ основан на фактах новости;
+ленинские концепции — только при прямой связи с этими фактами. Избегай шаблонов без опоры в новости.
+Если фактов мало — ответ короче.
+"""
+
+SOCIAL_EMPTY_R1_EXTRA = """
+Начни с 1–2 конкретных фактов новости. Не используй кавычки и не ссылайся на Ленина как на цитату,
+если в предоставленном контексте нет прямых цитат. Без общих фраз без опоры в новости.
+"""
+
 HINT_ONLY_EXTRA = """
 Рамка анализа задана абстрактными принципами без опоры на дословные цитаты по современной поверхности темы.
 Дай анализ через логическое применение этих принципов к фактам новости.
@@ -49,6 +70,20 @@ HINT_ONLY_EXTRA = """
 """
 
 SYNTHESIS_HINT_TEMPLATE = "Абстрактная рамка анализа: {hints}."
+
+
+def _mode_extras(*, quote_mode: str, social_primary: bool, empty_r1: bool) -> str:
+    parts: list[str] = []
+    if quote_mode == "quote":
+        parts.append(QUOTE_REQUIRE_EXTRA)
+    else:
+        parts.append(PRINCIPLES_NO_QUOTE_EXTRA)
+    if social_primary and empty_r1:
+        parts.append(SOCIAL_EMPTY_R1_EXTRA)
+    elif social_primary:
+        parts.append(SOCIAL_FACT_ANCHOR_EXTRA)
+    return "\n".join(parts)
+
 
 DIALECTICAL_SYSTEM_EXTRA = """
 Доказательная база разбита на секции R1/R2/R3. Используй только цитаты и факты из этих блоков.
@@ -92,6 +127,9 @@ def build_chat_request(
     synthesis_hints: list[str] | None = None,
     hint_only: bool = False,
     legacy_fallback: bool = False,
+    quote_mode: str = "principles",
+    social_primary: bool = False,
+    empty_r1: bool = False,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     if legacy_fallback and context_block:
@@ -103,6 +141,11 @@ def build_chat_request(
     hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
     if hint:
         system_prompt += "\n" + hint
+    system_prompt += "\n" + _mode_extras(
+        quote_mode=quote_mode,
+        social_primary=social_primary,
+        empty_r1=empty_r1,
+    )
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
         f"Контекст RAG (цитаты и provenance):\n{context_block}"
@@ -156,6 +199,9 @@ def build_dialectical_chat_request(
     feedback: list[str] | None = None,
     synthesis_hints: list[str] | None = None,
     hint_only: bool = False,
+    quote_mode: str = "principles",
+    social_primary: bool = False,
+    empty_r1: bool = False,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     system_prompt = GIGACHAT_SYSTEM_PROMPT + "\n" + DIALECTICAL_SYSTEM_EXTRA
@@ -164,6 +210,11 @@ def build_dialectical_chat_request(
     hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
     if hint:
         system_prompt += "\n" + hint
+    system_prompt += "\n" + _mode_extras(
+        quote_mode=quote_mode,
+        social_primary=social_primary,
+        empty_r1=empty_r1,
+    )
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
         f"Доказательная база (не выдумывай вне этих блоков):\n{context_block}\n\n"

@@ -210,7 +210,7 @@ class NewsProcessor:
                     gate_result.reason,
                     ",".join(gate_result.reason_codes),
                 )
-                if gate_result.decision in {"deny", "quarantine"}:
+                if gate_result.decision in {"deny", "quarantine", "skip"}:
                     await repo.mark_as_processed_without_analysis(news.id)
                     self.stats["news_skipped"] += 1
                     return

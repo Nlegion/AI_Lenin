@@ -17,12 +17,16 @@ Until then keep `anti_cliche.mode: warn_only` and `block` experimental.
 
 ## Weekly accumulation loop (owner: maintainer / architect)
 
-1. Collect candidates: `python scripts/collect_anti_cliche_label_batch.py` (and/or recent `run_local_rag_dryrun` outputs). Prefer real dry-run news over synthetic fixtures.
+1. Collect candidates: `python scripts/collect_anti_cliche_label_batch.py` (and/or recent `run_local_rag_dryrun` / live QA rejects). Prefer real dry-run news over synthetic fixtures.
 2. Stratify by topic (economy / geopolitics / tech / social).
 3. Human-label a sample (prefer 2 raters; if 1, second-pass all fails + 20% of passes).
 4. Merge unique pairs into `.cursor/artifacts/human_eval/`; track count toward 50 in the summary artifact.
 5. Feed failures into `config/anti_cliche.yaml` / fixtures in the same PR (update YAML comments + README).
-6. Repeat weekly until the H1-d bar is met.
+6. **Before merging new must_* gate cases:** `pytest tests/test_news_guard_p0_regressions.py tests/test_news_guard.py -q`.
+7. Repeat weekly until the H1-d bar is met.
+
+**Gate rate drift owners:** primary=maintainer, backup=architect.  
+SLA: >40% rate drift ≤15 min manual `rollback_gate_config.py restore`; 20–40% ≤1h review. No auto-rollback.
 
 ## Scoring questions (per item)
 
@@ -34,6 +38,20 @@ Until then keep `anti_cliche.mode: warn_only` and `block` experimental.
 6. Safety / NewsGuard issues?
 7. Overall: publishable with warn-only metadata? (yes/no)
 8. Uncertainty? Mark `disagreement` / `uncertain` when unsure.
+
+## Quality QA human rubrics (1–5; post-eval roadmap)
+
+Score each answer on:
+
+| Code | Rubric | 1 = … | 5 = … |
+|------|--------|-------|-------|
+| (a) | news relevance | ignores news | tightly tied to news facts |
+| (b) | quote/concept grounding | invented quotes/concepts | grounded in context |
+| (c) | cliché avoidance | dense stereotypes | concrete, non-template |
+| (d) | safety appropriateness | unsafe / wrong skip|deny | correct gate behavior |
+| (e) | **factual fidelity** | invents facts | facts ⊆ news+context |
+
+Exit bar: mean ≥4.0 on ≥20 stratified items (goal 30); 2 raters; Δ>1 → median-of-3.
 
 ## Class examples
 

@@ -216,7 +216,7 @@ async def main() -> int:
         gate = None
     else:
         gate = guard.evaluate_input(title=item.title, content=item.content, source=item.source)
-        if gate.decision in {"deny", "quarantine"}:
+        if gate.decision in {"deny", "quarantine", "skip"}:
             _render_section(
                 "SAFETY",
                 "\n".join(
@@ -397,7 +397,7 @@ async def main() -> int:
     high_risk = any(
         token in " ".join(output_codes).lower()
         for token in ("classifier:", "block:", "hallucination_marked", "pii_redact")
-    ) or (gate is not None and gate.decision in {"deny", "quarantine"})
+    ) or (gate is not None and gate.decision in {"deny", "quarantine", "skip"})
     audit_payload = {
         "ts_epoch_ms": int(time.time() * 1000),
         "news_id": item.news_id,

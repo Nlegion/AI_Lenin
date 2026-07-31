@@ -52,12 +52,12 @@ def probe_query(item: QaItem) -> str:
 
 def run_guard_check(*, items: list[QaItem], guard: NewsGuard, max_blocked_ratio: float) -> int:
     blocked_ids: list[str] = []
-    counts = {"allow": 0, "warn": 0, "deny": 0, "quarantine": 0, "other": 0}
+    counts = {"allow": 0, "warn": 0, "deny": 0, "quarantine": 0, "skip": 0, "other": 0}
     for item in items:
         gate = guard.evaluate_input(title=item.title, content=item.content, source=item.source or "unknown")
         decision = str(gate.decision)
         counts[decision if decision in counts else "other"] += 1
-        if decision in {"deny", "quarantine"}:
+        if decision in {"deny", "quarantine", "skip"}:
             blocked_ids.append(item.id)
             logger.info("guard id=%s decision=%s codes=%s", item.id, decision, ",".join(gate.reason_codes))
     total = max(len(items), 1)
@@ -138,15 +138,20 @@ def base_row(item: QaItem, *, persona_model: str, input_hash: str) -> dict[str, 
 
 
 def apply_pre_llm_gate(*, guard: NewsGuard, item: QaItem, row: dict[str, Any]) -> dict[str, Any] | None:
-    """Return a finished blocked row when deny/quarantine; else None (continue to LLM)."""
+    """Return a finished blocked row when deny/quarantine/skip; else None (continue to LLM)."""
     gate = guard.evaluate_input(
         title=item.title,
         content=item.content,
         source=item.source or "unknown",
     )
-    if gate.decision not in {"deny", "quarantine"}:
+    if gate.decision not in {"deny", "quarantine", "skip"}:
         return None
-    reason = "pre_deny" if gate.decision == "deny" else "pre_quarantine"
+    if gate.decision == "deny":
+        reason = "pre_deny"
+    elif gate.decision == "skip":
+        reason = "out_of_scope_skip"
+    else:
+        reason = "pre_quarantine"
     message = (gate.message or "").strip() or REFUSAL_FALLBACK
     row["status"] = "blocked"
     row["blocked"] = True

@@ -1,37 +1,59 @@
-"""NewsGuard input-gate pattern freeze (P0.2.0).
+"""NewsGuard input-gate pattern freeze (P0 / post-eval roadmap).
 
 Source of truth for pattern strings remains [`config/news_guard.yaml`](../config/news_guard.yaml).
-This document freezes **roles** and **expansion policy**. Do not add broad roots
-(`социальн`, `школ`, `медицин`) without must_answer FP check + CHANGELOG.
+Stable snapshot for manual rollback: [`config/stable/news_guard.yaml`](../config/stable/news_guard.yaml).
+Rollback: `python scripts/rollback_gate_config.py restore` (primary=maintainer, backup=architect).
 
 ## Decision layers
 
-| Layer | Decision | Must-refuse target? |
-|-------|----------|---------------------|
-| `military_topics` | deny | Yes |
-| `hard_deny_keywords` | deny | Yes |
-| `quarantine_topics` / `quarantine_keywords` | quarantine (≡ deny on hot path + QA batch) | Yes |
-| `hard_deny_topics` (sport/show/…) | deny | **No** (content-type filter) |
-| `allow_topics` | allow when matched | must_answer fixtures should hit allow |
-| `classify_on_unknown_as: quarantine` | quarantine | Risk for unbaited news; eval fixtures must be allow- or deny-covered |
+| Layer | Decision | Notes |
+|-------|----------|-------|
+| combat co-occurrence (±10) + military phrases | deny | stems + military_co_tokens; metaphor blockers |
+| military_topics (token-safe `сво`) | deny | not substring of `свои`/`свободн*` |
+| hard_deny_keywords | deny | extremism |
+| FIO + charge context | deny | toponym FP ignored unless charge markers |
+| title/lead policy (≥2 markers or key+action-verb allowlist) | allow (full) | not single-word «Кремль» |
+| body density≥1.0∧abs≥2 or unique≥3∧key | allow (full) | unique = marker **types** |
+| primary sport/science/crime/disaster | **skip** | skip_message ≠ safety refusal |
+| primary social/labor/economy/geopolitics | allow (full) | social prompt extras |
+| quarantine_topics (`национальн` w/ excludes) | quarantine | not «национальная компания» |
+| allow_topics / unknown | allow / classify_on_unknown | live soft-pass unknown only |
 
-## Hot-path / QA batch policy
+## Token-safe matching
 
-- `deny` and `quarantine` → **no LLM**; `blocked=true`; `skipped_llm=true`
-- `skipped_llm_reason`: `pre_deny` | `pre_quarantine`
-- Refusal text = `refusal_message` from yaml (not model-parroting)
-
-## Known false-positive risks (do not expand casually)
-
-| Pattern | Risk |
+| Pattern | Rule |
 |---------|------|
-| `сво` in `military_topics` | substring of «свободн*», «своё» |
-| `национальн` in `quarantine_topics` | «национальная экономика/проект» |
-| `военн` in `high_risk_topics` | broad; not hard deny alone |
+| `спорт` | word-boundary; not inside `экспорт`/`транспорт` |
+| `сво` | token/phrases (`в рамках сво`, `ход сво`, …); not `свои` |
+| `национальн` | substring with exclude contexts (компания/проект/экономика) |
+
+## Combat calibration
+
+- Set: `tests/fixtures/quality/combat_calib_30.jsonl`
+- Script: `python scripts/calibrate_combat_gate.py`
+- Target: F1 ≥ 0.90 for combat deny and indirect non-deny; expand to 50 if miss
+
+## Conditional quote mode
+
+- Quote-require if quote-span in top-K=3 chunks **and** lexical overlap ≥ 0.15
+- `overlap = |lemmas(news) ∩ lemmas(chunk)| / |lemmas(news)|` (pymorphy3 when available)
+- Else principles; social+empty R1: facts-first, no fabricated quotes
+- Postcheck: strip quotes if answer has quotes but context has none
+
+## Rate drift response (batch / release_pass)
+
+| Drift | SLA (business hours) | Action |
+|-------|----------------------|--------|
+| 20–40% | ≤1 hour review | confirmed regression → manual rollback |
+| >40% | ≤15 minutes | `rollback_gate_config.py restore` then postmortem |
+| any | — | **no** auto/cron rollback |
+
+Owners: primary=maintainer, backup=architect.
 
 ## Expansion checklist
 
 1. Update yaml + this freeze table.
-2. Run must_answer_12: zero new pre-gate FP.
-3. Add CHANGELOG metrics note.
+2. Run `pytest tests/test_news_guard_p0_regressions.py tests/test_news_guard.py -q`.
+3. Run combat calib; snapshot stable on pass.
+4. CHANGELOG metrics note.
 """

@@ -90,6 +90,10 @@ python scripts/run_local_rag_dryrun.py --fixture economy --verbose
 python scripts/evaluate_rag_quality.py
 python scripts/evaluate_news_guard.py
 python scripts/evaluate_anti_cliche.py
+python scripts/run_live_news_qa_batch.py --help
+python scripts/run_live_news_qa_24h.py --help
+python scripts/calibrate_combat_gate.py
+python scripts/rollback_gate_config.py snapshot   # or: restore
 python scripts/release_pass.py --help
 python scripts/collect_anti_cliche_label_batch.py
 python scripts/update_llama_cpp_release.py

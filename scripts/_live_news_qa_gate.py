@@ -40,11 +40,17 @@ def apply_live_pre_llm_gate(
         and gate.decision == "quarantine"
         and gate.reason == UNKNOWN_REASON
     ):
+        # Soft-pass only for unknown quarantine; never for combat/military deny.
         row["gate_soft_pass"] = "unknown_no_allow_topic"
         row["reason_codes"] = list(gate.reason_codes)
         logger.info("soft_pass id=%s reason=%s", item.id, gate.reason)
         return None
-    reason = "pre_deny" if gate.decision == "deny" else "pre_quarantine"
+    if gate.decision == "deny":
+        reason = "pre_deny"
+    elif gate.decision == "skip":
+        reason = "out_of_scope_skip"
+    else:
+        reason = "pre_quarantine"
     message = (gate.message or "").strip() or REFUSAL_FALLBACK
     row["status"] = "blocked"
     row["blocked"] = True

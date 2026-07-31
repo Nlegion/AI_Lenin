@@ -26,9 +26,17 @@ from src.core.generation.prompt_adapter import (
     build_completion_request,
     build_dialectical_chat_request,
 )
+from src.core.generation.quote_mode import (
+    answer_has_quotes,
+    chunk_trace_payload,
+    has_quote_span,
+    select_quote_mode,
+    strip_quotes,
+)
 from src.core.generation.text_postprocess import finalize_generated_text
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 from src.core.safety.post_generate_gates import apply_post_generate_gates
+from src.core.safety.topic_routing import classify_primary
 from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
 from src.core.settings.generation_config import GenerationConfig, PersonaModel
 
@@ -49,6 +57,20 @@ class PipelineResult:
     prompt_builder: str = ""
     system_prompt: str = ""
     user_prompt: str = ""
+
+
+def _chunks_from_brief(brief: EvidenceBrief | None, context: str) -> list[tuple[str, float, str]]:
+    if brief is not None:
+        items = [
+            *brief.r1_core_self,
+            *brief.r2_influence_agree,
+            *brief.r3_influence_critical,
+        ]
+        if items:
+            return [(item.chunk_id, float(item.score), item.text) for item in items]
+    if not context.strip():
+        return []
+    return [("ctx0", 1.0, context)]
 
 
 def _rag_stats_from_brief(brief: EvidenceBrief | None) -> dict[str, Any]:
@@ -72,6 +94,9 @@ def _rag_stats_from_brief(brief: EvidenceBrief | None) -> dict[str, Any]:
         "r3_count": len(brief.r3_influence_critical),
         "rag_chunk_count": len(items),
         "rag_score_mean": (sum(scores) / len(scores)) if scores else None,
+        "top_chunks": chunk_trace_payload(
+            [(item.chunk_id, float(item.score), item.text) for item in items]
+        ),
     }
 
 
@@ -263,6 +288,12 @@ class AnalysisGenerationPipeline:
         )
         working_context = context
         legacy_fallback = orchestration_mode == "legacy_fallback"
+        news_blob = f"{news_title}\n{news_content}"
+        chunks = _chunks_from_brief(brief=brief, context=working_context)
+        quote_mode, _overlaps = select_quote_mode(news=news_blob, chunks=chunks)
+        empty_r1 = brief is None or len(brief.r1_core_self) == 0
+        social_primary = classify_primary(title=news_title, content=news_content) == "social"
+        context_has_quotes = has_quote_span(working_context)
         request = None
         prompt_builder = "completion"
         for _ in range(6):
@@ -281,6 +312,9 @@ class AnalysisGenerationPipeline:
                         feedback=feedback,
                         synthesis_hints=synthesis_hints,
                         hint_only=hint_only,
+                        quote_mode=quote_mode,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
                     )
                 else:
                     prompt_builder = "chat"
@@ -293,6 +327,9 @@ class AnalysisGenerationPipeline:
                         synthesis_hints=synthesis_hints,
                         hint_only=hint_only,
                         legacy_fallback=legacy_fallback,
+                        quote_mode=quote_mode,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
                     )
             else:
                 prompt_builder = "completion"
@@ -319,6 +356,11 @@ class AnalysisGenerationPipeline:
         if self.text_cleaner is not None and hasattr(self.text_cleaner, "clean_text"):
             text = self.text_cleaner.clean_text(text)
         text, dedupe_meta = finalize_generated_text(text)
+
+        quote_postcheck = False
+        if answer_has_quotes(text) and not context_has_quotes:
+            quote_postcheck = True
+            text = strip_quotes(text)
 
         hallucination_codes: list[str] = []
         if self.news_guard is not None:
@@ -349,6 +391,10 @@ class AnalysisGenerationPipeline:
             "unverified_codes": list(hallucination_codes),
             "context_shrink_steps": list(budget.shrink_steps),
             "approx_prompt_tokens": prompt_tokens,
+            "quote_mode": quote_mode,
+            "social_primary": social_primary,
+            "empty_r1": empty_r1,
+            "quote_postcheck_stripped": quote_postcheck,
             **dedupe_meta,
             **rag_stats,
             **gate_metadata,

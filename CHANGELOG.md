@@ -16,6 +16,33 @@
 - …
 ```
 
+## 2026-07-30 — post-eval-quality-roadmap — agent
+
+### Changed
+- Token-safe NewsGuard matching (`спорт`/`сво`/`национальн` excludes); FIO toponym FP + charge keep.
+- Output FIO redact **without** `IGNORECASE`; combat ±10 co-occurrence + metaphor blockers.
+- Primary-topic routing: title/lead policy, body density/distinct, out-of-scope **skip**, social full.
+- Conditional quote mode (top-K + lexical overlap ≥0.15); social prompt extras; quote postcheck strip.
+- Pipeline metadata: `quote_mode`, `top_chunks` (id/score/sha256/text), routing flags.
+- `config/stable/` snapshot + `scripts/rollback_gate_config.py`; combat calib script/fixtures.
+- Batch metrics helpers + graded drift SLA docs (owners maintainer/architect).
+
+### Metrics
+| metric | target / note |
+|--------|----------------|
+| combat_f1 / indirect_f1 | ≥0.90 on combat_calib_30 (`scripts/calibrate_combat_gate.py`) |
+| export/Audi/tennis FP | must_answer / skip — see `test_news_guard_p0_regressions` |
+| redact_artifact_rate | case-sensitive FIO sub; warn code `redact_artifact_present` |
+
+### Artifacts
+- `tests/fixtures/quality/combat_calib_30.jsonl`
+- `config/stable/news_guard.yaml`
+- `.cursor/artifacts/safety/combat_calib_summary.json` (after calib run)
+
+### Notes
+- Live soft-pass unknown unchanged; skip → `out_of_scope_skip`; combat never soft-passed.
+- Weekly must_* refresh: owner maintainer; pytest gate suite before merge.
+
 ## 2026-07-29 — qa-quality-hardening-p0 — agent
 
 ### Changed

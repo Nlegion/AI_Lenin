@@ -39,7 +39,12 @@ def _pipe(*, text: str, brief: EvidenceBrief | None, dialectical: bool) -> Analy
     pipe.config = SimpleNamespace(
         persona_model="test",
         safety=SimpleNamespace(post_filter=False, fallback=SimpleNamespace(enabled=False)),
-        active_backend=lambda: SimpleNamespace(api_style="chat_completions", max_context_chars=2000),
+        active_backend=lambda: SimpleNamespace(
+            api_style="chat_completions",
+            max_context_chars=2000,
+            ctx_size=4096,
+            max_tokens=256,
+        ),
     )
     return pipe
 

@@ -14,7 +14,7 @@ def test_input_gate_blocks_forbidden_topic():
         title="Матч по футболу завершился",
         content="Спорт и развлекательное событие без социального значения.",
     )
-    assert result.decision in {"deny", "quarantine"}
+    assert result.decision in {"deny", "quarantine", "skip"}
 
 
 def test_input_gate_allows_economic_topic():
