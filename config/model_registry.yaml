@@ -23,10 +23,10 @@ model_registry:
       trust_remote_code: true
       role: production_target
       notes: "Load from local_path offline; hf_id is provenance only."
-    interim_baseline:
-      name: "sentence-transformers/all-MiniLM-L6-v2"
+    retired_baseline:
+      name: "legacy_sentence_transformer_baseline"
       trust_remote_code: false
-      role: previous_runtime_baseline
+      role: removed_from_runtime
     candidates:
       - name: "BAAI/bge-m3"
         trust_remote_code: false

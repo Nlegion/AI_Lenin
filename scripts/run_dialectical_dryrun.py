@@ -38,11 +38,9 @@ def main() -> int:
     provider = build_provider(
         config_path=config_path,
         base_dir=REPO_ROOT,
-        rag_system=None,
     )
     orchestrator = AnalysisContextOrchestrator(
         retrieval_provider=provider,
-        rag_system=None,
         dialectical_config=dialectical,
         taxonomy_path=REPO_ROOT / "config" / "ontology_taxonomy.yaml",
     )

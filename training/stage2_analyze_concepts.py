@@ -30,7 +30,7 @@ class LeninPhilosophyAnalyzer:
         self.EMBEDDING_BATCH_SIZE = 32  # Оптимально для 8GB VRAM
         self.MIN_OCCURRENCES = 3  # Включаем редкие концепты
         self.TOP_CONCEPTS = 1000  # Топ-50 трансформированных концептов
-        self.MODEL_NAME = 'all-MiniLM-L6-v2'  # Оптимальная модель
+        self.MODEL_NAME = "ai-sage/Giga-Embeddings-instruct"  # Runtime embedding baseline
 
         self.ontology_path = Path(ontology_path)
         self.books_dir = Path(books_dir)
@@ -84,7 +84,8 @@ class LeninPhilosophyAnalyzer:
         model = SentenceTransformer(
             self.MODEL_NAME,
             device=self.device,
-            cache_folder='./model_cache'
+            cache_folder='./model_cache',
+            trust_remote_code=True,
         )
         model.max_seq_length = 256
 

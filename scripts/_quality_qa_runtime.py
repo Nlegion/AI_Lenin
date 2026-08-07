@@ -11,10 +11,14 @@ import aiohttp
 from scripts._quality_qa_io import QaItem, sha256_text
 from src.core.generation.pipeline import AnalysisGenerationPipeline
 from src.core.lenin_analyzer import LeninAnalyzer
-from src.core.retrieval.migration_provider import MigrationRetrievalProvider
 from src.core.safety.news_guard import NewsGuard
 
 logger = logging.getLogger("quality_qa_batch")
+
+try:
+    from src.core.retrieval.migration_provider import MigrationRetrievalProvider
+except ImportError:  # pragma: no cover - migration provider removed in qdrant_only cutover
+    MigrationRetrievalProvider = None  # type: ignore[misc, assignment]
 
 REFUSAL_FALLBACK = "Анализ данной темы невозможен в соответствии с политикой безопасности."
 
@@ -78,7 +82,7 @@ def run_guard_check(*, items: list[QaItem], guard: NewsGuard, max_blocked_ratio:
 
 def rag_probe(*, analyzer: LeninAnalyzer, item: QaItem, require_nonempty: bool) -> int:
     provider = analyzer.retrieval_provider
-    if isinstance(provider, MigrationRetrievalProvider):
+    if MigrationRetrievalProvider is not None and isinstance(provider, MigrationRetrievalProvider):
         provider = provider.primary
     query = probe_query(item=item)
     chunk_count = 0

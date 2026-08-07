@@ -102,7 +102,36 @@ def combat_cooccurrence_hit(
     return hits
 
 
+CRIME_DOMESTIC_MARKERS = (
+    "обыск",
+    "коррупц",
+    "мвд",
+    "прокуратур",
+    "уголов",
+    "задержан",
+    "арест",
+    "расследован",
+    "суд",
+    "приговор",
+    "допрос",
+    "хакер",
+)
+
+COMBAT_OVERRIDE_MARKERS = (
+    "обстрел",
+    "фронт",
+    "удар",
+    "бпла",
+    "беспилот",
+    "теракт",
+    "сво",
+    "боевые действия",
+    "ракетн",
+)
+
+
 def military_rf_context_hit(text: str) -> bool:
+    """RF forces/military context; carve out domestic crime without combat markers."""
     patterns = [
         r"(военн\w+|арм\w+|силов\w+).{0,40}(рф|росси\w+)",
         r"(рф|росси\w+).{0,40}(военн\w+|арм\w+|силов\w+)",
@@ -110,4 +139,15 @@ def military_rf_context_hit(text: str) -> bool:
     lowered = text.lower()
     if any(b in lowered for b in METAPHOR_BLOCKERS):
         return False
-    return any(re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in patterns)
+    if not any(re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in patterns):
+        return False
+    # Crime/domestic + no combat → not military_rf hard deny (FIO/силов FP path).
+    has_crime = any(m in lowered for m in CRIME_DOMESTIC_MARKERS)
+    has_combat = any(m in lowered for m in COMBAT_OVERRIDE_MARKERS)
+    if has_crime and not has_combat:
+        # Token-bound СВО check to avoid «свой».
+        from src.core.safety.pattern_match import svo_token_hit
+
+        if not svo_token_hit(lowered=lowered):
+            return False
+    return True

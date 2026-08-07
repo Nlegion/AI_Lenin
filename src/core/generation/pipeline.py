@@ -26,19 +26,25 @@ from src.core.generation.prompt_adapter import (
     build_completion_request,
     build_dialectical_chat_request,
 )
+from src.core.generation.quality_hooks import (
+    apply_quality_post_generate,
+    load_postcheck,
+    resolve_quote_mode,
+    scrub_chunks_for_prompt,
+)
 from src.core.generation.quote_mode import (
-    answer_has_quotes,
     chunk_trace_payload,
     has_quote_span,
     select_quote_mode,
-    strip_quotes,
 )
 from src.core.generation.text_postprocess import finalize_generated_text
+from src.core.safety.fact_opinion import needs_fact_opinion_extra
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 from src.core.safety.post_generate_gates import apply_post_generate_gates
 from src.core.safety.topic_routing import classify_primary
 from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
 from src.core.settings.generation_config import GenerationConfig, PersonaModel
+
 
 # Additive metadata keys for monitoring consumers (coordinate schema allowlists).
 # Do not remove/rename existing metadata keys.
@@ -138,6 +144,9 @@ class AnalysisGenerationPipeline:
         feedback: list[str] | None = None,
         warn_only_guard: bool = False,
         key_concepts: list[str] | None = None,
+        risk_tier: str = "green",
+        context_hints: list[str] | None = None,
+        needs_yellow_warning: bool = False,
     ) -> PipelineResult:
         pipeline_id = str(uuid4())
         concepts = key_concepts or []
@@ -223,6 +232,9 @@ class AnalysisGenerationPipeline:
             synthesis_hints=synthesis_hints if use_hints else None,
             hint_only=hint_only and use_hints,
             pipeline_id=pipeline_id,
+            risk_tier=risk_tier,
+            context_hints=context_hints,
+            needs_yellow_warning=needs_yellow_warning,
         )
 
     def _error_result(
@@ -278,6 +290,9 @@ class AnalysisGenerationPipeline:
         synthesis_hints: list[str] | None = None,
         hint_only: bool = False,
         pipeline_id: str | None = None,
+        risk_tier: str = "green",
+        context_hints: list[str] | None = None,
+        needs_yellow_warning: bool = False,
     ) -> PipelineResult:
         backend_cfg = self.config.active_backend()
         budget = BudgetState(
@@ -290,10 +305,21 @@ class AnalysisGenerationPipeline:
         legacy_fallback = orchestration_mode == "legacy_fallback"
         news_blob = f"{news_title}\n{news_content}"
         chunks = _chunks_from_brief(brief=brief, context=working_context)
-        quote_mode, _overlaps = select_quote_mode(news=news_blob, chunks=chunks)
+        chunks, chunk_artifact_codes = scrub_chunks_for_prompt(chunks)
+        postcheck_cfg = load_postcheck(self.base_dir)
+        base_quote_mode, _overlaps = select_quote_mode(news=news_blob, chunks=chunks)
+        quote_mode, quote_candidates, allowlist_flags = resolve_quote_mode(
+            base_mode=base_quote_mode,
+            chunks=chunks,
+            config=postcheck_cfg,
+        )
         empty_r1 = brief is None or len(brief.r1_core_self) == 0
-        social_primary = classify_primary(title=news_title, content=news_content) == "social"
+        primary = classify_primary(title=news_title, content=news_content)
+        social_primary = primary == "social"
+        sport_primary = primary == "sport"
+        fact_opinion = needs_fact_opinion_extra(title=news_title, content=news_content)
         context_has_quotes = has_quote_span(working_context)
+        applied_hints = list(context_hints or [])
         request = None
         prompt_builder = "completion"
         for _ in range(6):
@@ -315,6 +341,11 @@ class AnalysisGenerationPipeline:
                         quote_mode=quote_mode,
                         social_primary=social_primary,
                         empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        allowlist_quotes=[c.text for c in quote_candidates[:8]],
+                        context_hints=applied_hints,
                     )
                 else:
                     prompt_builder = "chat"
@@ -330,6 +361,11 @@ class AnalysisGenerationPipeline:
                         quote_mode=quote_mode,
                         social_primary=social_primary,
                         empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        allowlist_quotes=[c.text for c in quote_candidates[:8]],
+                        context_hints=applied_hints,
                     )
             else:
                 prompt_builder = "completion"
@@ -357,10 +393,19 @@ class AnalysisGenerationPipeline:
             text = self.text_cleaner.clean_text(text)
         text, dedupe_meta = finalize_generated_text(text)
 
-        quote_postcheck = False
-        if answer_has_quotes(text) and not context_has_quotes:
-            quote_postcheck = True
-            text = strip_quotes(text)
+        text, quality_meta = apply_quality_post_generate(
+            text=text,
+            chunks=chunks,
+            candidates=quote_candidates,
+            brief=brief,
+            config=postcheck_cfg,
+            context_has_quotes=context_has_quotes,
+            news_text=news_blob,
+            # combat_sensitive no longer triggers policy deny in quality path.
+            combat_sensitive=False,
+        )
+        if chunk_artifact_codes:
+            quality_meta["rag_artifact_codes"] = chunk_artifact_codes
 
         hallucination_codes: list[str] = []
         if self.news_guard is not None:
@@ -369,6 +414,8 @@ class AnalysisGenerationPipeline:
                 retrieval_context=working_context,
             )
 
+        # Yellow post-gen pattern blocks are off when yellow_output_filter_enabled=false
+        # (Stage 0/2: pre-LLM SafetyGate + prompt constraints own yellow policy).
         guard_result, gate_metadata = apply_post_generate_gates(
             text=text,
             brief=brief,
@@ -379,7 +426,42 @@ class AnalysisGenerationPipeline:
             warn_only_guard=warn_only_guard,
             base_dir=self.base_dir,
             pipeline_id=pipeline_id,
+            risk_tier=risk_tier,
+            yellow_block_patterns=(
+                list(postcheck_cfg.yellow_output_block_patterns)
+                if postcheck_cfg.yellow_output_filter_enabled
+                else None
+            ),
         )
+        if needs_yellow_warning:
+            from src.core.settings.safety_gate_config import (
+                default_safety_gate_config_path,
+                load_safety_gate_config,
+            )
+            from src.core.safety.safety_gate import apply_yellow_warning
+            from src.core.safety.safety_gate_types import GateDecision
+
+            sg_cfg = load_safety_gate_config(
+                path=default_safety_gate_config_path(self.base_dir),
+                news_guard_path=self.base_dir / "config" / "news_guard.yaml",
+            )
+            warn_decision = GateDecision(
+                decision="allow",
+                risk_tier="yellow",
+                reason="yellow_warning",
+                reason_codes=["risk_tier:yellow"],
+                needs_yellow_warning=True,
+            )
+            moderated = apply_yellow_warning(
+                analysis=guard_result.moderated_text,
+                decision=warn_decision,
+                warning_text=sg_cfg.policy.yellow_warning_text,
+            )
+            guard_result = OutputGuardResult(
+                blocked=guard_result.blocked,
+                moderated_text=moderated,
+                reason_codes=list(guard_result.reason_codes),
+            )
 
         rag_stats = _rag_stats_from_brief(brief=brief)
         metadata: dict[str, Any] = {
@@ -394,8 +476,15 @@ class AnalysisGenerationPipeline:
             "quote_mode": quote_mode,
             "social_primary": social_primary,
             "empty_r1": empty_r1,
-            "quote_postcheck_stripped": quote_postcheck,
+            "fact_opinion_extra": fact_opinion,
+            "risk_tier": risk_tier,
+            "applied_hints": applied_hints,
+            "needs_yellow_warning": needs_yellow_warning,
+            "quote_repair_applied": bool(quality_meta.get("quote_repair_applied")),
+            "repair_success": bool(quality_meta.get("repair_success", True)),
+            **allowlist_flags,
             **dedupe_meta,
+            **quality_meta,
             **rag_stats,
             **gate_metadata,
         }

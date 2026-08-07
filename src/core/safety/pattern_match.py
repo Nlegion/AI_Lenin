@@ -28,7 +28,7 @@ SVO_PHRASES = (
 )
 
 
-def _word_boundary_hit(lowered: str, pattern: str) -> bool:
+def word_boundary_hit(lowered: str, pattern: str) -> bool:
     """True if pattern appears as a whole token (Cyrillic/Latin aware)."""
     escaped = re.escape(pattern.lower())
     return re.search(rf"(?<![а-яёa-z0-9]){escaped}(?![а-яёa-z0-9])", lowered) is not None
@@ -47,11 +47,11 @@ def pattern_hits(text: str, patterns: list[str]) -> list[str]:
                 hits.append(pattern)
             continue
         if key == "сво":
-            if _svo_hit(lowered=lowered):
+            if svo_token_hit(lowered=lowered):
                 hits.append(pattern)
             continue
         if key in TOKEN_BOUND_PATTERNS or key == "спорт":
-            if _word_boundary_hit(lowered=lowered, pattern=key):
+            if word_boundary_hit(lowered=lowered, pattern=key):
                 hits.append(pattern)
             continue
         if key in lowered:
@@ -59,13 +59,8 @@ def pattern_hits(text: str, patterns: list[str]) -> list[str]:
     return hits
 
 
-def _svo_hit(*, lowered: str) -> bool:
-    if "свободн" in lowered:
-        # Allow explicit SVO phrases even near «свободн*».
-        pass
-    if re.search(r"(?<![а-яёa-z0-9])сво(?![а-яёa-z0-9])", lowered):
-        # Bare token «сво» / «СВО» after lowercasing.
+def svo_token_hit(*, lowered: str) -> bool:
+    """Match СВО as a whole token or known military phrases — not «свой/своя»."""
+    if any(phrase in lowered for phrase in SVO_PHRASES):
         return True
-    if "сво" in lowered and re.search(r"\bсво\b", lowered):
-        return True
-    return any(phrase in lowered for phrase in SVO_PHRASES)
+    return re.search(r"(?<![а-яёa-z0-9])сво(?![а-яёa-z0-9])", lowered) is not None

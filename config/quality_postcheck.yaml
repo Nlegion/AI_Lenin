@@ -1,0 +1,79 @@
+# Quality postcheck / feature flags (Quality QA plan). Toggle without code deploy.
+# Kill-switch: set enabled flags false and restart process; restore news_guard via rollback_gate_config.
+
+quality_postcheck:
+  quote_allowlist_enabled: true
+  quote_rewrite_enabled: false  # off by default: strip + template (no extra LLM)
+  # Stage 0 hotfix: disable template-escalation paths; keep cleanup children on.
+  yellow_output_filter_enabled: false
+  loop_fix_enabled: false
+  loop_regen_enabled: false  # shares global LLM budget; off until rewrite path wired
+  path_scrubber_enabled: true
+  principles_fallback_enabled: true
+  grounded_element_check_enabled: true
+  # Stage 2 soft-repair knobs (quality-only; not safety policy).
+  hard_fallback_on_broken_output: false
+  quote_postcheck_enforce_mode: soft  # soft|strict — soft keeps analysis body after strip
+  artifact_enforce_mode: soft  # soft|strict — soft skips short/encoding full replace
+  min_recoverable_tokens: 8
+
+  # Trial50 hotfixes: masters wrap children (see src/core/safety/hotfix_flags.py).
+  # combat_adjacent_softpass_block also covers drone soft-pass path in live QA.
+  trial50_hotfixes:
+    safety_hotfixes_enabled: true
+    generation_hotfixes_enabled: true
+    drone_deny_enabled: true
+    combat_adjacent_softpass_block: true
+    sport_token_bound_enabled: true
+    fio_carveout_enabled: true
+    loop_strip_enabled: true
+    encoding_scrubber_enabled: true
+    disclaimer_footer_enabled: true
+
+  fallback_templates:
+    - "Краткий анализ: событие не содержит достаточного социально-экономического контекста для полноценного марксистского анализа."
+    - "Не удалось сформировать корректный анализ по данной новости."
+    - "Недостаточно данных для анализа."
+  min_meaningful_chars: 40
+  short_disclaimer: "Ответ сгенерирован ИИ в образовательных целях (симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
+
+  min_quote_chars: 25
+  min_quote_content_tokens: 5
+  static_safe_template: "Не удалось сформировать корректный анализ по данной новости."
+  static_insufficient_template: "Недостаточно данных для анализа."
+
+  trivial_quote_stoplist:
+    - "(?i)^(он|она|они)\\s+сказал"
+    - "(?i)^как\\s+сообщается"
+    - "(?i)^как\\s+известно"
+    - "(?i)^сказал\\s*:"
+    - "(?i)^отметил\\s*:"
+
+  loop:
+    min_paragraph_chars: 40
+    jaccard_threshold: 0.85
+    max_repeat_count: 1
+
+  yellow_output_block_patterns:
+    - "(?i)перемещен(ие|ия)\\s+войск"
+    - "(?i)тактик(а|и|е)\\s+(удара|наступлен)"
+    - "(?i)потери\\s+(личного\\s+состава|всу|вс\\s*рф)"
+    - "(?i)к\\s+оружию"
+    - "(?i)оправдан(ие|о)\\s+террор"
+
+  sport_intra_negatives:
+    - "дисциплинарн"
+    - "коммитет по честности"
+    - "спортивный суд"
+    - "спортивного суда"
+    - "жёлтая карточ"
+    - "желтая карточ"
+    - "жёлтой карточ"
+    - "матчевая санкц"
+
+  skip_templates:
+    sport: "Спорт как социальный институт может быть проанализирован через призму коммерциализации, однако данная новость не содержит достаточного социально-политического контекста."
+    science: "Данная новость не содержит социально-политического контекста, пригодного для марксистско-ленинского анализа."
+    crime: "Данная новость не содержит социально-политического контекста, пригодного для марксистско-ленинского анализа."
+    disaster: "Данная новость не содержит социально-политического контекста, пригодного для марксистско-ленинского анализа."
+    default: "Тема вне сферы марксистско-ленинского анализа новостей."

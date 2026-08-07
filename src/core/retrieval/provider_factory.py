@@ -6,16 +6,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 import yaml
 
-from src.core.rag_system import EnhancedRAGSystem
-from src.core.retrieval.chroma_retrieval_provider import ChromaRetrievalConfig, ChromaRetrievalProvider
-from src.core.retrieval.migration_provider import MigrationConfig, MigrationRetrievalProvider
 from src.core.retrieval.qdrant_retrieval_provider import QdrantRetrievalProvider, RetrievalProviderConfig
 
 
 class MigrationSection(BaseModel):
     mode: str = "qdrant_only"
-    parity_min_shared_ratio: float = 0.25
-    audit_log_path: str = ".cursor/artifacts/retrieval/retrieval_ab_audit.jsonl"
 
 
 class RetrievalPipelineConfig(BaseModel):
@@ -40,7 +35,6 @@ class RetrievalPipelineConfig(BaseModel):
     retriever_weights: dict[str, float] = Field(default_factory=dict)
     source_boosts: dict[str, float] = Field(default_factory=dict)
     migration: MigrationSection = Field(default_factory=MigrationSection)
-    chroma_top_k: int = 7
 
 
 def load_retrieval_pipeline_config(config_path: Path) -> RetrievalPipelineConfig:
@@ -52,7 +46,6 @@ def load_retrieval_pipeline_config(config_path: Path) -> RetrievalPipelineConfig
 def build_provider(
     config_path: Path,
     base_dir: Path,
-    rag_system: EnhancedRAGSystem | None,
 ):
     if not config_path.exists():
         return None
@@ -89,28 +82,9 @@ def build_provider(
         )
     )
     migration_mode = config.migration.mode
-    if migration_mode == "qdrant_only":
-        return qdrant_provider
-
-    if rag_system is None:
-        return qdrant_provider
-
-    chroma_provider = ChromaRetrievalProvider(
-        rag_system=rag_system,
-        config=ChromaRetrievalConfig(top_k=config.chroma_top_k),
-    )
-    if migration_mode == "chroma_only":
-        return chroma_provider
-    if migration_mode == "ab_shadow":
-        return MigrationRetrievalProvider(
-            primary=qdrant_provider,
-            shadow=chroma_provider,
-            config=MigrationConfig(
-                mode="ab_shadow",
-                parity_min_shared_ratio=config.migration.parity_min_shared_ratio,
-                audit_log_path=base_dir / config.migration.audit_log_path,
-            ),
-            primary_name="qdrant",
-            shadow_name="chroma",
+    if migration_mode != "qdrant_only":
+        raise ValueError(
+            f"Unsupported retrieval migration mode: {migration_mode}. "
+            "Only qdrant_only is allowed."
         )
-    raise ValueError(f"Unsupported retrieval migration mode: {migration_mode}")
+    return qdrant_provider

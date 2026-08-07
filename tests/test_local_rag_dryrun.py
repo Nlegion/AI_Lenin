@@ -63,7 +63,7 @@ def test_script_returns_nonzero_on_missing_provider(tmp_path: Path):
                 "  enabled: true",
                 "  collection_name: test_collection",
                 "  qdrant_path: database/qdrant_local",
-                "  dense_model: sentence-transformers/all-MiniLM-L6-v2",
+                "  dense_model: models/Giga-Embeddings-instruct",
                 "  sparse_state_path: missing/sparse.json",
                 "  ontology_tags_path: .cursor/artifacts/ontology/ontology_tags.tsv",
                 "  migration:",

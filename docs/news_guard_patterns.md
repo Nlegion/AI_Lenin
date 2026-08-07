@@ -14,10 +14,15 @@ Rollback: `python scripts/rollback_gate_config.py restore` (primary=maintainer, 
 | FIO + charge context | deny | toponym FP ignored unless charge markers |
 | title/lead policy (≥2 markers or key+action-verb allowlist) | allow (full) | not single-word «Кремль» |
 | body density≥1.0∧abs≥2 or unique≥3∧key | allow (full) | unique = marker **types** |
-| primary sport/science/crime/disaster | **skip** | skip_message ≠ safety refusal |
+| primary sport/science/crime/disaster | **skip** (typed soft template) | policy-exception → full unless intra-domain negatives |
 | primary social/labor/economy/geopolitics | allow (full) | social prompt extras |
-| quarantine_topics (`национальн` w/ excludes) | quarantine | not «национальная компания» |
+| economy yellow carve-out | allow + `risk_tier=yellow` | economy markers && !combat && !RF ops; update markers via CR |
+| quarantine_topics (`национальн` w/ excludes) | quarantine (or yellow allow if economy) | not «национальная компания» |
 | allow_topics / unknown | allow / classify_on_unknown | live soft-pass unknown only |
+
+Economy/policy marker lists: `input_gate.economy_policy_markers` + `allow_topics` in `news_guard.yaml`.
+Quote grounding: [`docs/quote_grounding.md`](quote_grounding.md). Feature flags: `config/quality_postcheck.yaml`.
+Red gold: `data/eval/red_gold_combat.jsonl` (≥50).
 
 ## Token-safe matching
 

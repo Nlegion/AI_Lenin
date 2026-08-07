@@ -20,7 +20,7 @@ generation:
       threads: 4
       temperature: 0.4
       top_p: 0.9
-      repetition_penalty: 1.15
+      repetition_penalty: 1.25
       max_tokens: 512
       seed: 42
       max_context_chars: 5500

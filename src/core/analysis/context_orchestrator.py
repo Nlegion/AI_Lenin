@@ -21,7 +21,6 @@ class AnalysisContextOrchestrator:
     def __init__(
         self,
         retrieval_provider: Any | None,
-        rag_system: Any | None,
         *,
         dialectical_config: DialecticalOrchestrationConfig | None = None,
         config_path: Path | None = None,
@@ -30,7 +29,6 @@ class AnalysisContextOrchestrator:
         semantic_config_path: Path | None = None,
     ):
         self.retrieval_provider = retrieval_provider
-        self.rag_system = rag_system
         if dialectical_config is not None:
             self.dialectical_config = dialectical_config
         elif config_path is not None:
@@ -44,10 +42,7 @@ class AnalysisContextOrchestrator:
             self.semantic_config = load_semantic_core_config(path=semantic_config_path)
 
     def build_context(self, enhanced_query: str) -> str:
-        context = self._from_provider(enhanced_query=enhanced_query)
-        if context:
-            return context
-        return self._from_legacy_rag(enhanced_query=enhanced_query)
+        return self._from_provider(enhanced_query=enhanced_query)
 
     def build_evidence_brief(
         self,
@@ -85,24 +80,3 @@ class AnalysisContextOrchestrator:
             logger.error("Error in retrieval provider: %s", error)
             return ""
 
-    def _from_legacy_rag(self, enhanced_query: str) -> str:
-        if self.rag_system is None:
-            return ""
-        try:
-            context = self.rag_system.retrieve_relevant_context(
-                query=enhanced_query,
-                k=7,
-                author_filter="Ленин",
-            )
-            if len(context.split()) < 150:
-                additional_context = self.rag_system.retrieve_relevant_context(
-                    query=enhanced_query,
-                    k=3,
-                    author_filter="МарксЭнгельс",
-                )
-                if additional_context:
-                    context = f"{context}\n\n{additional_context}" if context else additional_context
-            return context
-        except Exception as error:  # noqa: BLE001
-            logger.error("Error in legacy RAG retrieval: %s", error)
-            return ""

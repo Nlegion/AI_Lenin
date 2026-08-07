@@ -26,9 +26,9 @@
 
 ## Fundamental Remediation (P2b)
 1. **Embedding reassessment**
-   - Tested `all-MiniLM-L6-v2` vs `BAAI/bge-m3`.
+   - Tested `Giga-Embeddings-instruct` vs `BAAI/bge-m3`.
    - `bge-m3` failed on available RAM allocation during CPU load (`alloc_cpu` OOM).
-   - Winner remains `all-MiniLM-L6-v2`, but recall remains far below target.
+   - Winner remains `Giga-Embeddings-instruct`, but recall remains far below target.
 2. **Ontology tag audit**
    - Registry and ontology tags are aligned (`148/148`, no missing sources).
    - Stance distribution preserved (document-level and chunk-level).

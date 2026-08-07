@@ -7,7 +7,6 @@ import aiohttp
 
 from src.core.analysis.context_orchestrator import AnalysisContextOrchestrator
 from src.core.generation.pipeline import AnalysisGenerationPipeline
-from src.core.rag_system import get_rag_system
 from src.core.retrieval.provider_factory import build_provider
 from src.core.safety.news_guard import NewsGuard
 from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT, LLAMA_SERVER_URL
@@ -27,7 +26,6 @@ class LeninAnalyzer:
         self.base_dir = Path(self.config.BASE_DIR)
         self.server_url = LLAMA_SERVER_URL
         self.session = None
-        self.rag_system = get_rag_system()
         self.analysis_cache = {}
         self.text_cleaner = TextCleaner()
         self.persona_model = persona_model
@@ -39,7 +37,6 @@ class LeninAnalyzer:
         retrieval_config_path = self.base_dir / "config" / "retrieval_pipeline.yaml"
         self.context_orchestrator = AnalysisContextOrchestrator(
             retrieval_provider=self.retrieval_provider,
-            rag_system=self.rag_system,
             config_path=retrieval_config_path,
             taxonomy_path=self.base_dir / "config" / "ontology_taxonomy.yaml",
         )
@@ -62,10 +59,9 @@ class LeninAnalyzer:
             provider = build_provider(
                 config_path=config_path,
                 base_dir=self.base_dir,
-                rag_system=self.rag_system,
             )
             if provider is None:
-                logger.info("Retrieval provider disabled or unavailable. Using legacy RAG fallback.")
+                logger.info("Retrieval provider disabled or unavailable.")
                 return None
             logger.info("Retrieval provider initialized from pipeline config.")
             return provider
@@ -161,7 +157,15 @@ class LeninAnalyzer:
             concepts.extend(["империализм", "война", "мирное сосуществование", "военно-промышленный комплекс"])
         return list(set(concepts))[:5]
 
-    async def generate_analysis(self, news_title: str, news_content: str, feedback: List[str] = None) -> str:
+    async def generate_analysis(
+        self,
+        news_title: str,
+        news_content: str,
+        feedback: List[str] = None,
+        risk_tier: str = "green",
+        context_hints: list[str] | None = None,
+        needs_yellow_warning: bool = False,
+    ) -> str:
         try:
             await self.initialize_session()
             cache_key = f"{news_title}_{hash(news_content[:200])}"
@@ -178,6 +182,9 @@ class LeninAnalyzer:
                 key_concepts=key_concepts,
                 feedback=feedback,
                 warn_only_guard=False,
+                risk_tier=risk_tier,
+                context_hints=context_hints,
+                needs_yellow_warning=needs_yellow_warning,
             )
             cleaned_content = self.clean_analysis(result.analysis)
             # Caller-level cache skip: never store orchestration_mode=error responses.

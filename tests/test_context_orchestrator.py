@@ -11,28 +11,14 @@ class _ProviderStub:
         return RetrievalResult(context=self.context, candidates_count=1, metadata={"provider": "stub"})
 
 
-class _RagStub:
-    def __init__(self):
-        self.calls: list[tuple[str, int, str]] = []
-
-    def retrieve_relevant_context(self, query: str, k: int = 7, author_filter: str | None = None) -> str:
-        self.calls.append((query, k, author_filter or ""))
-        if author_filter == "Ленин":
-            return "краткий контекст"
-        return "дополнительный контекст"
-
-
-def test_provider_context_has_priority_over_legacy_rag():
+def test_orchestrator_returns_provider_context():
     provider = _ProviderStub(context="provider context")
-    rag = _RagStub()
-    orchestrator = AnalysisContextOrchestrator(retrieval_provider=provider, rag_system=rag)
+    orchestrator = AnalysisContextOrchestrator(retrieval_provider=provider)
     context = orchestrator.build_context(enhanced_query="query")
     assert context == "provider context"
-    assert rag.calls == []
 
 
-def test_legacy_rag_adds_secondary_author_context_when_short():
-    orchestrator = AnalysisContextOrchestrator(retrieval_provider=None, rag_system=_RagStub())
+def test_orchestrator_returns_empty_without_provider():
+    orchestrator = AnalysisContextOrchestrator(retrieval_provider=None)
     context = orchestrator.build_context(enhanced_query="query")
-    assert "краткий контекст" in context
-    assert "дополнительный контекст" in context
+    assert context == ""

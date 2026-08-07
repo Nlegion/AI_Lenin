@@ -77,11 +77,12 @@ class LeninPhilosophyAnalyzer:
     def load_model(self):
         """Загрузка легкой модели, оптимизированной для CPU"""
         # Используем меньшую модель для экономии памяти
-        model_name = 'all-MiniLM-L6-v2'
+        model_name = "ai-sage/Giga-Embeddings-instruct"
         model = SentenceTransformer(
             model_name,
             device=self.device,
-            cache_folder='./model_cache'
+            cache_folder='./model_cache',
+            trust_remote_code=True,
         )
         model.max_seq_length = 256  # Уменьшенная длина последовательности
 

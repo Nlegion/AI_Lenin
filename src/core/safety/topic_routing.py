@@ -66,12 +66,55 @@ ACTION_VERBS = (
     "поддержал",
 )
 
-SKIP_SPORT = ("спорт", "футбол", "теннис", "матч", "чемпионат", "олимп", "хоккей", "баскетбол")
+# Token-bound sport stems (avoid «паспорта»⊃«спорт»). Latin «sport» included.
+SKIP_SPORT_TOKEN = ("спорт", "sport")
+SKIP_SPORT_STEM = ("футбол", "теннис", "матч", "чемпионат", "олимп", "хоккей", "баскетбол")
 SKIP_SCIENCE = ("палеонтолог", "динозавр", "археолог", "астроном", "погода", "прогноз погоды")
 SKIP_CRIME = ("дтп", "авария", "уголовное дело", "кража", "ограбление")
 SKIP_DISASTER = ("землетрясен", "наводнен", "ураган", "пожар в")
 SOCIAL = ("здравоохран", "эпидем", "грипп", "медицин", "эколог", "школ", "образован", "университет")
-LABOR_ECON = ("экономик", "инфляц", "безработ", "зарплат", "забастовк", "профсоюз", "санкц", "экспорт", "торговл")
+LABOR_ECON = (
+    "экономик",
+    "инфляц",
+    "безработ",
+    "зарплат",
+    "забастовк",
+    "профсоюз",
+    "санкц",
+    "экспорт",
+    "торговл",
+    "страхов",
+    "транзит",
+    "инфраструктур",
+    "железн",
+    "железнодорож",
+    "юкжд",
+    "монопол",
+    "энерго",
+    "тариф",
+    "бюджет",
+)
+DOPING_LIFT_FRAME = (
+    "wada",
+    "мок",
+    "международн",
+    "федерац",
+    "министерств",
+    "государств",
+    "правительств",
+    "президент",
+    "санкц",
+)
+STATE_SANCTION_FRAME = (
+    "правительств",
+    "министр",
+    "президент",
+    "стран",
+    "государств",
+    "госдума",
+    "посольств",
+    "мид",
+)
 
 
 @dataclass(frozen=True)
@@ -130,13 +173,26 @@ def body_policy_override(content: str) -> list[str]:
     return []
 
 
+def _sport_primary_hit(text: str) -> bool:
+    """Token-prefix sport match: спортивный/спортсмен yes; паспорта no."""
+    from src.core.safety.hotfix_flags import safety_flag_enabled
+
+    lowered = text.lower()
+    if safety_flag_enabled("sport_token_bound_enabled"):
+        for tok in re.findall(r"[а-яёa-z0-9]+", lowered):
+            if tok == "sport" or tok.startswith("спорт"):
+                return True
+        return any(stem in lowered for stem in SKIP_SPORT_STEM)
+    return any(m in lowered for m in (*SKIP_SPORT_TOKEN, *SKIP_SPORT_STEM))
+
+
 def classify_primary(title: str, content: str) -> str:
     text = f"{title}\n{content}".lower()
     if any(m in text for m in SOCIAL):
         return "social"
     if any(m in text for m in LABOR_ECON):
         return "labor_economy"
-    if any(m in text for m in SKIP_SPORT):
+    if _sport_primary_hit(text):
         return "sport"
     if any(m in text for m in SKIP_SCIENCE):
         return "science"
@@ -149,7 +205,37 @@ def classify_primary(title: str, content: str) -> str:
     return "unknown"
 
 
-def route_topic(*, title: str, content: str) -> TopicRouteResult:
+def _sport_policy_lift(blob: str, positives: list[str]) -> bool:
+    """Lift sport skip only with labor/protest or state/intl doping/sanctions frame."""
+    lowered = blob.lower()
+    if any(p.startswith("policy_exception") for p in positives):
+        pass
+    labor = any(m in lowered for m in ("забастовк", "протест", "митинг", "бойкот", "профсоюз"))
+    if labor:
+        return True
+    if "госфинанс" in lowered or "финансирован" in lowered and "государств" in lowered:
+        return True
+    doping = any(m in lowered for m in ("допинг", "дисквалиф", "отстранен"))
+    if doping and any(m in lowered for m in DOPING_LIFT_FRAME):
+        return True
+    if "санкц" in lowered and any(m in lowered for m in STATE_SANCTION_FRAME):
+        return True
+    # Non-sport policy markers from policy_exception_markers (corruption etc.)
+    if any(m in lowered for m in ("коррупц", "политик", "бюджет")) and "санкц" not in lowered:
+        return True
+    if "санкц" in lowered:
+        return any(m in lowered for m in STATE_SANCTION_FRAME)
+    return bool(positives) and labor
+
+
+def route_topic(
+    *,
+    title: str,
+    content: str,
+    sport_intra_negatives: list[str] | None = None,
+) -> TopicRouteResult:
+    from src.core.safety.risk_routing import policy_exception_markers, sport_intra_negative_hit
+
     codes = title_lead_policy_full(title=title, content=content)
     if codes:
         return TopicRouteResult(route="full", primary="policy", reason_codes=codes)
@@ -157,7 +243,34 @@ def route_topic(*, title: str, content: str) -> TopicRouteResult:
     if body_codes:
         return TopicRouteResult(route="full", primary="policy_body", reason_codes=body_codes)
     primary = classify_primary(title=title, content=content)
+    blob = f"{title}\n{content}"
     if primary in {"sport", "science", "crime", "disaster"}:
+        positives = policy_exception_markers(blob)
+        if positives:
+            lowered = blob.lower()
+            state_frame = any(m in lowered for m in STATE_SANCTION_FRAME)
+            if (
+                primary == "sport"
+                and sport_intra_negatives
+                and sport_intra_negative_hit(blob, sport_intra_negatives)
+                and not state_frame
+            ):
+                return TopicRouteResult(
+                    route="skip",
+                    primary=primary,
+                    reason_codes=[f"out_of_scope:{primary}", "intra_domain_negative"],
+                )
+            if primary == "sport" and not _sport_policy_lift(blob, positives):
+                return TopicRouteResult(
+                    route="skip",
+                    primary=primary,
+                    reason_codes=[f"out_of_scope:{primary}", "sport_lift_insufficient"],
+                )
+            return TopicRouteResult(
+                route="full",
+                primary=primary,
+                reason_codes=[f"policy_exception:{primary}", *positives],
+            )
         return TopicRouteResult(route="skip", primary=primary, reason_codes=[f"out_of_scope:{primary}"])
     if primary in {"social", "labor_economy", "geopolitics"}:
         return TopicRouteResult(route="full", primary=primary, reason_codes=[f"primary:{primary}"])

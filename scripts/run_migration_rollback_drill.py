@@ -17,7 +17,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.rag_system import get_rag_system  # noqa: E402
 from src.core.retrieval.provider_factory import build_provider  # noqa: E402
 
 
@@ -46,7 +45,6 @@ def _provider_for_mode(config_path: Path, mode: str):
     provider = build_provider(
         config_path=temp_path,
         base_dir=REPO_ROOT,
-        rag_system=get_rag_system(),
     )
     temp_path.unlink(missing_ok=True)
     return provider
@@ -76,7 +74,7 @@ def main() -> int:
     args = parser.parse_args()
 
     config_path = (REPO_ROOT / args.config).resolve()
-    modes = ["ab_shadow", "qdrant_only", "chroma_only"]
+    modes = ["qdrant_only"]
     queries = _queries()
     results: dict[str, dict[str, float | int]] = {}
 

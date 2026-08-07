@@ -1,0 +1,27 @@
+# Anti-cliché gate config (H1).
+# All gate Jaccard uses src.core.analysis.jaccard_metrics exclusively
+# (token length >= 3, casefold, JACCARD_STOPWORDS). Do not reimplement Jaccard here.
+#
+# quote_anchor_phrases exempt only cliche_low_r1_overlap / cliche_lexicon_dense when
+# r1_count > 0. They never clear cliche_no_r1.
+
+mode: warn_only  # warn_only | block (block experimental until H1-d bar)
+min_r1_jaccard: 0.02
+lexicon_density_min_hits: 3
+
+lexicon:
+  - революция
+  - эксплуатация
+  - пролетариат
+  - буржуазия
+  - классовая
+  - империализм
+  - диктатура
+
+quote_anchor_phrases:
+  - как отмечает
+  - по данным
+  - согласно
+  - цитирует
+  - как писал
+  - в псс

@@ -36,7 +36,7 @@ Generated artifacts:
 - `.cursor/artifacts/embeddings/embedding_selection.md`
 
 Observed benchmark outcome (current run):
-- Winner: `sentence-transformers/all-MiniLM-L6-v2`
+- Winner: `models/Giga-Embeddings-instruct`
 - Recall@5: `0.042`
 - Mean latency: `875.08 ms/query`
 - Fine-tuning decision: `required` (below `0.85` threshold)

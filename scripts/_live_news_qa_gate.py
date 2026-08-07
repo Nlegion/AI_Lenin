@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from scripts._quality_qa_io import QaItem
-from scripts._quality_qa_runtime import REFUSAL_FALLBACK, base_row
+from scripts._quality_qa_runtime import REFUSAL_FALLBACK
+from src.core.safety.drone_combat_guard import soft_pass_allowed
+from src.core.safety.hotfix_flags import safety_flag_enabled
 from src.core.safety.news_guard import NewsGuard
-
-import logging
 
 logger = logging.getLogger("live_news_qa_batch")
 
@@ -25,8 +26,8 @@ def apply_live_pre_llm_gate(
     """Return blocked row for real safety hits; None to continue to LLM.
 
     When ``unknown_as_allow`` and gate would quarantine only because no allow-topic
-    matched, proceed to LLM (row annotated with ``gate_soft_pass``). Explicit
-    quarantine topics/keywords and deny still block.
+    matched, proceed to LLM (row annotated with ``gate_soft_pass``) unless
+    risk_tier is red or combat_adjacent_hit (quarantine / no-publish).
     """
     gate = guard.evaluate_input(
         title=item.title,
@@ -40,7 +41,27 @@ def apply_live_pre_llm_gate(
         and gate.decision == "quarantine"
         and gate.reason == UNKNOWN_REASON
     ):
-        # Soft-pass only for unknown quarantine; never for combat/military deny.
+        blob = f"{item.title}\n{item.content}"
+        if safety_flag_enabled("combat_adjacent_softpass_block"):
+            allowed, block_codes = soft_pass_allowed(
+                risk_tier=gate.risk_tier,
+                text=blob,
+            )
+            if not allowed:
+                row["status"] = "blocked"
+                row["blocked"] = True
+                row["skipped_llm"] = True
+                row["skipped_llm_reason"] = "soft_pass_blocked_combat_adjacent"
+                row["answer"] = (gate.message or "").strip() or REFUSAL_FALLBACK
+                row["reason_codes"] = list(gate.reason_codes) + block_codes
+                row["prompt_builder"] = "pre_llm_gate"
+                row["gate_soft_pass_blocked"] = True
+                logger.info(
+                    "soft_pass_blocked id=%s codes=%s",
+                    item.id,
+                    ",".join(block_codes),
+                )
+                return row
         row["gate_soft_pass"] = "unknown_no_allow_topic"
         row["reason_codes"] = list(gate.reason_codes)
         logger.info("soft_pass id=%s reason=%s", item.id, gate.reason)

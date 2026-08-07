@@ -8,7 +8,6 @@ from src.core.analysis.evidence_brief import EvidenceBrief, EvidenceItem
 from src.core.analysis.evidence_brief_builder import (
     build_short_lead,
     build_slot_query,
-    safe_legacy_context,
 )
 from src.core.analysis.jaccard_metrics import jaccard_overlap, tokenize_for_jaccard
 from src.core.ontology.taxonomy import OntologyTaxonomy
@@ -94,20 +93,6 @@ def test_slot_query_modality_flag():
     )
     assert with_mod.endswith("критика")
     assert "критика" not in without
-
-
-def test_safe_legacy_synthesizes_when_enhanced_missing():
-    warnings: list[str] = []
-    text = safe_legacy_context(
-        build_context_fn=lambda query: f"CTX:{query}",
-        enhanced_query=None,
-        news_title="Title",
-        news_content="Body " * 20,
-        key_concepts=["капитал"],
-        warnings=warnings,
-    )
-    assert text and text.startswith("CTX:")
-    assert "legacy_query_synthesized" in warnings
 
 
 def test_multi_stance_render_marker():

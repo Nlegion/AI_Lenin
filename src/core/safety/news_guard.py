@@ -1,4 +1,12 @@
-"""NewsGate and NewsGuard safety layer for legal-risk mitigation."""
+"""NewsGate and NewsGuard safety layer for legal-risk mitigation.
+
+Migration note (SafetyGate Stage 1+):
+- Do not add new business rules here; land new policy in ``SafetyGate``.
+- Critical bug-fixes in existing heuristics must be mirrored into SafetyGate
+  with parity tests in the same change window.
+- This module remains a temporary compatibility / output-guard adapter until
+  Stage 3 freeze removes the dual path.
+"""
 
 from __future__ import annotations
 
@@ -11,9 +19,17 @@ from pydantic import BaseModel, Field
 import yaml
 
 from src.core.safety.combat_detect import combat_cooccurrence_hit, military_rf_context_hit
+from src.core.safety.drone_combat_guard import drone_air_raid_hit
 from src.core.safety.fio_guards import fio_spans, should_block_fio
 from src.core.safety.pattern_match import pattern_hits
+from src.core.safety.risk_routing import (
+    RiskTier,
+    map_decision_to_tier,
+    strong_military_hits,
+    yellow_economy_eligible,
+)
 from src.core.safety.topic_routing import route_topic
+from src.core.safety.hotfix_flags import safety_flag_enabled
 
 Decision = Literal["allow", "deny", "quarantine", "skip"]
 
@@ -48,6 +64,8 @@ class InputGateConfig(BaseModel):
     skip_message: str = SKIP_MESSAGE
     classify_on_unknown_as: Decision = "quarantine"
     combat: CombatConfig = Field(default_factory=CombatConfig)
+    economy_policy_markers: list[str] = Field(default_factory=list)
+    yellow_block_patterns: list[str] = Field(default_factory=list)
 
 
 class OutputGuardConfig(BaseModel):
@@ -75,6 +93,7 @@ class InputGateResult:
     reason: str
     reason_codes: list[str]
     message: str = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    risk_tier: RiskTier = "green"
 
 
 @dataclass(frozen=True)
@@ -116,7 +135,13 @@ class NewsGuard:
 
     def evaluate_input(self, title: str, content: str, source: str | None = None) -> InputGateResult:
         if not self.config.input_gate.enabled:
-            return InputGateResult(decision="allow", reason="input gate disabled", reason_codes=[], message="")
+            return InputGateResult(
+                decision="allow",
+                reason="input gate disabled",
+                reason_codes=[],
+                message="",
+                risk_tier="green",
+            )
 
         original = f"{title}\n{content}"
         text = original.lower()
@@ -129,15 +154,56 @@ class NewsGuard:
             co_tokens=gate.combat.military_co_tokens or None,
             window=gate.combat.window_tokens,
         )
+        drone_hit = (
+            drone_air_raid_hit(original)
+            if safety_flag_enabled("drone_deny_enabled")
+            else None
+        )
+        if drone_hit is not None and drone_hit.hit:
+            return InputGateResult(
+                decision="deny",
+                reason="drone/air-raid hard deny matched",
+                reason_codes=list(drone_hit.codes),
+                message=refuse,
+                risk_tier="red",
+            )
+        military_rf = military_rf_context_hit(text)
+        strong_hits = strong_military_hits(text)
         military_hits = pattern_hits(text=text, patterns=self._military_topics())
-        if military_rf_context_hit(text):
+        if military_rf:
             military_hits = [*military_hits, "context:military_rf_forces"]
-        if combat_hits or military_hits:
+        hard_red = bool(combat_hits or military_rf or strong_hits)
+        if hard_red:
             return InputGateResult(
                 decision="deny",
                 reason="military/combat topic hard deny matched",
-                reason_codes=combat_hits + military_hits,
+                reason_codes=combat_hits + strong_hits + military_hits,
                 message=refuse,
+                risk_tier="red",
+            )
+        if military_hits:
+            eligible, econ = yellow_economy_eligible(
+                text=original,
+                combat_hits=combat_hits,
+                military_rf=military_rf,
+                strong_military=strong_hits,
+                other_red=[],
+                economy_markers=gate.economy_policy_markers or None,
+            )
+            if eligible:
+                return InputGateResult(
+                    decision="allow",
+                    reason="economy yellow carve-out (weak military lexical)",
+                    reason_codes=[*econ, *military_hits, "risk_tier:yellow"],
+                    message="",
+                    risk_tier="yellow",
+                )
+            return InputGateResult(
+                decision="deny",
+                reason="military/combat topic hard deny matched",
+                reason_codes=military_hits,
+                message=refuse,
+                risk_tier="red",
             )
 
         if gate.trusted_sources and source:
@@ -150,21 +216,35 @@ class NewsGuard:
                     reason="source not in trusted list for high-risk topic",
                     reason_codes=high_risk + [f"source:{source}"],
                     message="Источник новости не входит в перечень доверенных изданий.",
+                    risk_tier="red",
                 )
+
+        from src.core.safety.fio_guards import has_public_interest_context, is_private_victim_context
 
         fio_codes = should_block_fio(text=original, matches=fio_spans(original))
         public_interest = pattern_hits(text=text, patterns=gate.public_interest_topics)
+        if safety_flag_enabled("fio_carveout_enabled") and has_public_interest_context(original):
+            public_interest = [*public_interest, "public_interest:stem_or_role"]
         other_pii = [
             p
             for p in _extract_pii_hits(text=original, patterns=self._pii_patterns())
             if not _is_fio_pattern(p)
         ]
+        if is_private_victim_context(original) and not public_interest:
+            return InputGateResult(
+                decision="skip",
+                reason="private victim/relative context soft-skip",
+                reason_codes=["private_victim_context"],
+                message=self._skip_message(primary="default"),
+                risk_tier="yellow",
+            )
         if gate.block_private_pii and not public_interest and (fio_codes or other_pii):
             return InputGateResult(
                 decision="deny",
                 reason="private pii detected without public-interest context",
                 reason_codes=fio_codes + other_pii,
                 message=refuse,
+                risk_tier="red",
             )
 
         hard_kw = pattern_hits(text=text, patterns=gate.hard_deny_keywords)
@@ -174,15 +254,22 @@ class NewsGuard:
                 reason="hard deny keyword matched",
                 reason_codes=hard_kw,
                 message=refuse,
+                risk_tier="red",
             )
 
-        routed = route_topic(title=title, content=content)
+        sport_negatives = self._sport_intra_negatives()
+        routed = route_topic(
+            title=title,
+            content=content,
+            sport_intra_negatives=sport_negatives,
+        )
         if routed.route == "skip":
             return InputGateResult(
                 decision="skip",
                 reason="out-of-scope primary topic",
                 reason_codes=routed.reason_codes,
-                message=gate.skip_message,
+                message=self._skip_message(primary=routed.primary),
+                risk_tier="green",
             )
         if routed.route == "full":
             return InputGateResult(
@@ -190,39 +277,90 @@ class NewsGuard:
                 reason="topic route full path",
                 reason_codes=routed.reason_codes,
                 message="",
+                risk_tier="green",
             )
 
-        # Remaining hard_deny content-types (non-sport handled by router when possible)
         hard_topics = pattern_hits(text=text, patterns=gate.hard_deny_topics)
         if hard_topics:
             return InputGateResult(
                 decision="skip",
                 reason="content-type out of scope",
                 reason_codes=hard_topics,
-                message=gate.skip_message,
+                message=self._skip_message(primary="default"),
+                risk_tier="green",
             )
 
         quarantine = pattern_hits(text=text, patterns=gate.quarantine_topics + gate.quarantine_keywords)
         if quarantine:
+            eligible, econ = yellow_economy_eligible(
+                text=original,
+                combat_hits=[],
+                military_rf=False,
+                strong_military=[],
+                other_red=[],
+                economy_markers=gate.economy_policy_markers or None,
+            )
+            if eligible:
+                return InputGateResult(
+                    decision="allow",
+                    reason="economy yellow carve-out from quarantine",
+                    reason_codes=[*econ, *quarantine, "risk_tier:yellow"],
+                    message="",
+                    risk_tier="yellow",
+                )
             return InputGateResult(
                 decision="quarantine",
                 reason="quarantine topic/keyword matched",
                 reason_codes=quarantine,
                 message=refuse,
+                risk_tier="yellow",
             )
 
         allow_hits = pattern_hits(text=text, patterns=gate.allow_topics)
         if allow_hits:
-            return InputGateResult(decision="allow", reason="allow topic matched", reason_codes=allow_hits, message="")
+            return InputGateResult(
+                decision="allow",
+                reason="allow topic matched",
+                reason_codes=allow_hits,
+                message="",
+                risk_tier="green",
+            )
 
-        return InputGateResult(
+        eligible, econ = yellow_economy_eligible(
+            text=original,
+            combat_hits=[],
+            military_rf=False,
+            strong_military=[],
+            other_red=[],
+            economy_markers=gate.economy_policy_markers or None,
+        )
+        if eligible:
+            return InputGateResult(
+                decision="allow",
+                reason="economy yellow carve-out for unknown topic",
+                reason_codes=[*econ, "risk_tier:yellow"],
+                message="",
+                risk_tier="yellow",
+            )
+
+        unknown = InputGateResult(
             decision=gate.classify_on_unknown_as,
             reason="no explicit allow topic matched",
             reason_codes=["unknown_topic"],
             message=refuse,
+            risk_tier=map_decision_to_tier(gate.classify_on_unknown_as),
         )
+        return unknown
 
-    def guard_output(self, analysis: str, source_text: str | None = None, warn_only: bool = False) -> OutputGuardResult:
+    def guard_output(
+        self,
+        analysis: str,
+        source_text: str | None = None,
+        warn_only: bool = False,
+        *,
+        risk_tier: RiskTier | None = None,
+        extra_block_patterns: list[str] | None = None,
+    ) -> OutputGuardResult:
         if not self.config.output_guard.enabled:
             return OutputGuardResult(blocked=False, moderated_text=self._apply_disclaimer(analysis), reason_codes=[])
 
@@ -231,7 +369,12 @@ class NewsGuard:
         classifier_hits = self._classify_extremism(text=text)
         if classifier_hits:
             reason_codes.extend([f"classifier:{item}" for item in classifier_hits])
-        for pattern in self.config.output_guard.block_patterns:
+        block_patterns = list(self.config.output_guard.block_patterns)
+        if risk_tier == "yellow":
+            block_patterns.extend(self.config.input_gate.yellow_block_patterns)
+            if extra_block_patterns:
+                block_patterns.extend(extra_block_patterns)
+        for pattern in block_patterns:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 reason_codes.append(f"block:{pattern}")
 
@@ -253,10 +396,10 @@ class NewsGuard:
                 if pattern in source_pii:
                     continue
                 flags = 0 if _is_fio_pattern(pattern) else re.IGNORECASE
-                text = re.sub(pattern, "[обезличено]", text, flags=flags)
+                text = re.sub(pattern, "«[место]»", text, flags=flags)
                 reason_codes.append(f"pii_redact:{pattern}")
 
-        if "[обезличено]" in text:
+        if "[обезличено]" in text or "«[место]»" in text:
             reason_codes.append("redact_artifact_present")
 
         return OutputGuardResult(
@@ -299,6 +442,30 @@ class NewsGuard:
         ]
         return list(dict.fromkeys([*defaults, *self.config.input_gate.military_topics]))
 
+    def _quality_config(self):
+        from src.core.settings.quality_postcheck_config import (
+            default_quality_postcheck_path,
+            load_quality_postcheck_config,
+        )
+
+        root = Path(__file__).resolve().parents[3]
+        path = default_quality_postcheck_path(root)
+        if not path.is_file():
+            return None
+        return load_quality_postcheck_config(path=path)
+
+    def _sport_intra_negatives(self) -> list[str]:
+        cfg = self._quality_config()
+        return list(cfg.sport_intra_negatives) if cfg is not None else []
+
+    def _skip_message(self, *, primary: str) -> str:
+        from src.core.safety.skip_templates import skip_message_for_primary
+
+        cfg = self._quality_config()
+        if cfg is None:
+            return self.config.input_gate.skip_message
+        return skip_message_for_primary(primary=primary, config=cfg)
+
     def _pii_patterns(self, output: bool = False) -> list[str]:
         defaults = [
             r"\b\d{3}[-\s]?\d{3}[-\s]?\d{2}[-\s]?\d{2}\b",
@@ -327,6 +494,25 @@ class NewsGuard:
         return []
 
     def _apply_disclaimer(self, text: str) -> str:
+        from src.core.generation.output_artifacts import LONG_DISCLAIMER_RE
+        from src.core.safety.hotfix_flags import generation_flag_enabled
+
+        working = text
+        if generation_flag_enabled("disclaimer_footer_enabled"):
+            working = LONG_DISCLAIMER_RE.sub("", working).strip()
+            # Prefer short footer from quality config when present.
+            cfg = self._quality_config()
+            disclaimer = (
+                (cfg.short_disclaimer if cfg is not None else "")
+                or self.config.disclaimer.text
+            ).strip()
+            if not self.config.disclaimer.enabled and not disclaimer:
+                return working
+            body = working.strip()
+            if disclaimer and disclaimer in body:
+                return body
+            return f"{body}\n\n{disclaimer}".strip() if disclaimer else body
+
         if not self.config.disclaimer.enabled:
             return text
         disclaimer = self.config.disclaimer.text.strip()

@@ -39,7 +39,7 @@ class LeninAnalyzer:
         self.config = {
             "model_path": os.path.join(BASE_DIR, "models", "saiga", "model-q4_K.gguf"),
             "lora_path": os.path.join(BASE_DIR, "models", "saiga", "lora_adapter.gguf"),
-            "embedding_model": "all-MiniLM-L6-v2"
+            "embedding_model": "models/Giga-Embeddings-instruct"
         }
 
         # Путь к векторной БД по умолчанию

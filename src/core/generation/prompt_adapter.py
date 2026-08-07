@@ -45,9 +45,30 @@ QUOTE_REQUIRE_EXTRA = """
 """
 
 PRINCIPLES_NO_QUOTE_EXTRA = """
-В релевантном контексте нет подходящих цитат. Запрещено выдумывать цитаты и кавычки.
-Дай анализ через принципы, опираясь на факты новости. Не пиши «Ленин сказал/писал» без дословной опоры в контексте.
+В релевантном контексте нет подходящих цитат. Запрещено выдумывать цитаты, кавычки и том/стр.
+Дай развёрнутый анализ через принципы, опираясь на факты новости (3–5 предложений).
+Не пиши «Ленин сказал/писал» без дословной опоры в контексте.
+Используй числа, названные сущности и официальные действия из заголовка/текста новости.
+Не отказывайся анализировать из‑за отсутствия цитат; не используй шаблонный отказ.
+Не повторяй длинный юридический дисклеймер в начале ответа.
 """
+
+FACT_OPINION_EXTRA = """
+В новости есть экспертные или оценочные суждения. Явно отделяй факты события от мнений:
+пиши «эксперт заявляет / считает, что…». Строй анализ на сообщённых фактах, а не на интерпретации эксперта.
+"""
+
+YELLOW_CONSTRAINT_EXTRA = """
+Режим ограниченного анализа (yellow): разбирай экономические и политические отношения.
+Запрещено комментировать боевые действия, тактику, перемещения войск, потери, призывы к насилию.
+"""
+
+SPORT_ANALOGY_BAN_EXTRA = """
+Не проводи прямых аналогий спортивных событий с революционной борьбой, «пробуждением масс»
+или свержением строя, если в новости нет прямого политического протеста или классового конфликта.
+"""
+
+ALLOWLIST_QUOTE_HEADER = "Допустимые цитаты из RAG (используй только их дословно, без выдуманных том/стр):"
 
 SOCIAL_FACT_ANCHOR_EXTRA = """
 Тема социальная (здравоохранение/экология/образование). Анализ основан на фактах новости;
@@ -72,7 +93,31 @@ HINT_ONLY_EXTRA = """
 SYNTHESIS_HINT_TEMPLATE = "Абстрактная рамка анализа: {hints}."
 
 
-def _mode_extras(*, quote_mode: str, social_primary: bool, empty_r1: bool) -> str:
+def _hints_extras(context_hints: list[str] | None) -> str:
+    """Map typed SafetyHint values to prompt paragraphs (ALLOW/green => empty)."""
+    if not context_hints:
+        return ""
+    parts: list[str] = []
+    hints = {str(h) for h in context_hints}
+    if "yellow_constrained_analysis" in hints or "avoid_combat_estimates" in hints:
+        parts.append(YELLOW_CONSTRAINT_EXTRA)
+    if "separate_fact_opinion" in hints:
+        parts.append(FACT_OPINION_EXTRA)
+    if "no_sport_revolution_analogy" in hints:
+        parts.append(SPORT_ANALOGY_BAN_EXTRA)
+    return "\n".join(parts)
+
+
+def _mode_extras(
+    *,
+    quote_mode: str,
+    social_primary: bool,
+    empty_r1: bool,
+    fact_opinion: bool = False,
+    risk_tier: str = "green",
+    sport_primary: bool = False,
+    context_hints: list[str] | None = None,
+) -> str:
     parts: list[str] = []
     if quote_mode == "quote":
         parts.append(QUOTE_REQUIRE_EXTRA)
@@ -82,6 +127,17 @@ def _mode_extras(*, quote_mode: str, social_primary: bool, empty_r1: bool) -> st
         parts.append(SOCIAL_EMPTY_R1_EXTRA)
     elif social_primary:
         parts.append(SOCIAL_FACT_ANCHOR_EXTRA)
+    # Prefer typed hints from SafetyGate; fall back to legacy risk_tier/flags.
+    hint_block = _hints_extras(context_hints)
+    if hint_block:
+        parts.append(hint_block)
+    else:
+        if fact_opinion:
+            parts.append(FACT_OPINION_EXTRA)
+        if risk_tier == "yellow":
+            parts.append(YELLOW_CONSTRAINT_EXTRA)
+        if sport_primary:
+            parts.append(SPORT_ANALOGY_BAN_EXTRA)
     return "\n".join(parts)
 
 
@@ -130,10 +186,18 @@ def build_chat_request(
     quote_mode: str = "principles",
     social_primary: bool = False,
     empty_r1: bool = False,
+    fact_opinion: bool = False,
+    risk_tier: str = "green",
+    sport_primary: bool = False,
+    allowlist_quotes: list[str] | None = None,
+    context_hints: list[str] | None = None,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     if legacy_fallback and context_block:
         context_block = f"{FALLBACK_LEGACY_MARKER}\n{FALLBACK_LEGACY_FRAME}\n{context_block}"
+    if allowlist_quotes and quote_mode == "quote":
+        bullets = "\n".join(f"- «{q}»" for q in allowlist_quotes if q)
+        context_block = f"{ALLOWLIST_QUOTE_HEADER}\n{bullets}\n\n{context_block}"
     system_prompt = GIGACHAT_SYSTEM_PROMPT
     if feedback:
         system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
@@ -145,6 +209,10 @@ def build_chat_request(
         quote_mode=quote_mode,
         social_primary=social_primary,
         empty_r1=empty_r1,
+        fact_opinion=fact_opinion,
+        risk_tier=risk_tier,
+        sport_primary=sport_primary,
+        context_hints=context_hints,
     )
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"
@@ -202,8 +270,16 @@ def build_dialectical_chat_request(
     quote_mode: str = "principles",
     social_primary: bool = False,
     empty_r1: bool = False,
+    fact_opinion: bool = False,
+    risk_tier: str = "green",
+    sport_primary: bool = False,
+    allowlist_quotes: list[str] | None = None,
+    context_hints: list[str] | None = None,
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
+    if allowlist_quotes and quote_mode == "quote":
+        bullets = "\n".join(f"- «{q}»" for q in allowlist_quotes if q)
+        context_block = f"{ALLOWLIST_QUOTE_HEADER}\n{bullets}\n\n{context_block}"
     system_prompt = GIGACHAT_SYSTEM_PROMPT + "\n" + DIALECTICAL_SYSTEM_EXTRA
     if feedback:
         system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
@@ -214,6 +290,10 @@ def build_dialectical_chat_request(
         quote_mode=quote_mode,
         social_primary=social_primary,
         empty_r1=empty_r1,
+        fact_opinion=fact_opinion,
+        risk_tier=risk_tier,
+        sport_primary=sport_primary,
+        context_hints=context_hints,
     )
     user_content = (
         f"Новость: {news_title}\n{news_content[:400]}\n\n"

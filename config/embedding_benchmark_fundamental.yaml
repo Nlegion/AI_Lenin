@@ -1,9 +1,9 @@
 embedding_benchmark:
   min_recall_at_5: 0.85
   models:
-    - name: "sentence-transformers/all-MiniLM-L6-v2"
-      trust_remote_code: false
-      device: "cpu"
+    - name: "models/Giga-Embeddings-instruct"
+      trust_remote_code: true
+      device: "auto"
       enabled: true
     - name: "BAAI/bge-m3"
       trust_remote_code: false

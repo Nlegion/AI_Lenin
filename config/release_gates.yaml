@@ -9,6 +9,8 @@ rag_quality:
     core_self_ratio: { threshold: 0.70, direction: higher }
     ideology_consistency: { threshold: 0.70, direction: higher }
     citation_hallucination_rate_max: { threshold: 0.05, direction: lower }
+    # Hard-fail: fabricated том/стр/work/path among answers that contain attribution.
+    critical_attribution_hallucination_rate: { threshold: 0.0, direction: lower }
     empty_context_rate_max: { threshold: 0.10, direction: lower }
 
 news_guard:

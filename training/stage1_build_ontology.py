@@ -29,7 +29,10 @@ class OntologyBuilder:
         self.nlp.max_length = 5000000
 
         logger.info("Загрузка модели эмбеддингов...")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.model = SentenceTransformer(
+            "ai-sage/Giga-Embeddings-instruct",
+            trust_remote_code=True,
+        )
 
         self.graph = nx.Graph()
         self.concept_embeddings = {}

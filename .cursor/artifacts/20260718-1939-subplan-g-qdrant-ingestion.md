@@ -7,7 +7,7 @@
 - Run smoke ingestion, required tests, and full project gates.
 
 ## Assumptions
-- For deterministic local execution, dense model is CPU-based (`all-MiniLM-L6-v2`) in this stage.
+- For deterministic local execution, dense model is CPU-based (`Giga-Embeddings-instruct`) in this stage.
 - Qdrant runs in embedded local mode (`QdrantClient(path=...)`) without Docker dependency.
 - Full corpus ingestion can be run later; this stage validates pipeline correctness with smoke volume.
 

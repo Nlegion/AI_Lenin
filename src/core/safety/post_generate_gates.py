@@ -25,6 +25,8 @@ def apply_post_generate_gates(
     warn_only_guard: bool,
     base_dir: Path,
     pipeline_id: str | None = None,
+    risk_tier: str | None = None,
+    yellow_block_patterns: list[str] | None = None,
 ) -> tuple[OutputGuardResult, dict[str, Any]]:
     """Run cliche → lacuna → anachronism → groundedness → NewsGuard. Gates do not modify ``text``."""
     r1_items = list(brief.r1_core_self) if brief is not None else []
@@ -82,10 +84,17 @@ def apply_post_generate_gates(
         )
 
     if news_guard is not None and post_filter:
+        from src.core.safety.risk_routing import RiskTier
+
+        tier: RiskTier | None = None
+        if risk_tier in {"red", "yellow", "green"}:
+            tier = risk_tier  # type: ignore[assignment]
         guard_result = news_guard.guard_output(
             analysis=text,
             source_text=f"{news_title}\n{news_content}",
             warn_only=warn_only_guard,
+            risk_tier=tier,
+            extra_block_patterns=yellow_block_patterns,
         )
     else:
         guard_result = OutputGuardResult(blocked=False, moderated_text=text, reason_codes=[])
@@ -96,5 +105,6 @@ def apply_post_generate_gates(
         "anachronism_gate": anachronism_result.to_metadata(),
         "news_groundedness": grounded.to_metadata(),
         "guard_codes": list(guard_result.reason_codes),
+        "risk_tier": risk_tier or "green",
     }
     return guard_result, gate_metadata

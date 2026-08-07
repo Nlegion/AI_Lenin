@@ -15,7 +15,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.rag_system import get_rag_system  # noqa: E402
 from src.core.retrieval.provider_factory import build_provider  # noqa: E402
 
 
@@ -40,7 +39,6 @@ def main() -> int:
     provider = build_provider(
         config_path=(REPO_ROOT / args.config).resolve(),
         base_dir=REPO_ROOT,
-        rag_system=get_rag_system(),
     )
     if provider is None:
         raise RuntimeError("Retrieval provider disabled in config.")

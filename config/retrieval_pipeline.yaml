@@ -12,9 +12,10 @@ retrieval_pipeline:
   top_k: 20
   rrf_k: 60
   max_context_chunks: 7
-  hyde_enabled: true
+  # Temporarily lighter retrieval for live QA while embeddings share CPU with llama-server.
+  hyde_enabled: false
   query_rewrite_enabled: true
-  query_decomposition_enabled: true
+  query_decomposition_enabled: false
   judge_enabled: true
   judge_alpha: 0.2
   retriever_weights:
@@ -27,10 +28,7 @@ retrieval_pipeline:
     influence_critical: 1.0
     contextual: 0.9
   migration:
-    mode: "ab_shadow"  # qdrant_only | chroma_only | ab_shadow
-    parity_min_shared_ratio: 0.25
-    audit_log_path: ".cursor/artifacts/retrieval/retrieval_ab_audit.jsonl"
-  chroma_top_k: 7
+    mode: "qdrant_only"
 
 dialectical_orchestration:
   enabled: true
@@ -43,9 +41,9 @@ dialectical_orchestration:
   include_modality_suffix: true
   axes_lemma_enabled: true
   fallback_to_legacy_context: true
-  # Calibrate after Phase 0 latency probe (wall >= ~3 * p95_slot + margin).
-  slot_timeout_sec: 3.0
-  retrieve_wall_timeout_sec: 4.0
+  # CPU embeddings while llama-server holds GPU: first encode ~15-20s; wall must cover 3 parallel slots.
+  slot_timeout_sec: 45.0
+  retrieve_wall_timeout_sec: 90.0
   widen_factor: 3
   max_retries: 2
   r1_modality_suffix: ""  # usually unused for R1

@@ -19,7 +19,7 @@ class DialecticalOrchestrationConfig:
     include_axes_in_query: bool = True
     include_modality_suffix: bool = True
     axes_lemma_enabled: bool = True
-    fallback_to_legacy_context: bool = True
+    fallback_to_legacy_context: bool = False
     slot_timeout_sec: float = 3.0
     retrieve_wall_timeout_sec: float = 4.0
     widen_factor: int = 3
@@ -47,7 +47,7 @@ def load_dialectical_config(config_path: Path) -> DialecticalOrchestrationConfig
         include_axes_in_query=bool(section.get("include_axes_in_query", True)),
         include_modality_suffix=bool(section.get("include_modality_suffix", True)),
         axes_lemma_enabled=bool(section.get("axes_lemma_enabled", True)),
-        fallback_to_legacy_context=bool(section.get("fallback_to_legacy_context", True)),
+        fallback_to_legacy_context=bool(section.get("fallback_to_legacy_context", False)),
         slot_timeout_sec=float(section.get("slot_timeout_sec", 3.0)),
         retrieve_wall_timeout_sec=float(section.get("retrieve_wall_timeout_sec", 4.0)),
         widen_factor=int(section.get("widen_factor", 3)),

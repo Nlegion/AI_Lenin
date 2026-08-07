@@ -3,9 +3,9 @@ legacy_rag_registry:
   components:
     - path: "src/core/rag_system.py"
       category: "runtime_legacy"
-      status: "active_fallback"
-      action: "keep_until_cutover_complete"
-      note: "Legacy Chroma fallback used for migration parity mode."
+      status: "removed"
+      action: "cutover_complete"
+      note: "Removed after full retrieval cutover to qdrant_only."
     - path: "training/build_ontology_index.py"
       category: "training_legacy"
       status: "deprecated"

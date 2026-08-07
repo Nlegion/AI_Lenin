@@ -5,10 +5,6 @@ embedding_benchmark:
       trust_remote_code: false
       device: "cpu"
       enabled: true
-    - name: "sentence-transformers/all-MiniLM-L6-v2"
-      trust_remote_code: false
-      device: "cpu"
-      enabled: true
     - name: "models/Giga-Embeddings-instruct"
       trust_remote_code: true
       device: "auto"

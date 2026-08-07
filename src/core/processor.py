@@ -10,10 +10,11 @@ from src.core.settings.config import Settings
 from src.core.utils.decorators import handle_errors
 from src.core.database.db_core import session_scope
 from src.core.llama_server import LeninServer
-from src.core.rag_system import get_rag_system
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
 from src.core.safety.news_guard import NewsGuard
+from src.core.safety.safety_gate import SafetyGate
+from src.core.safety.safety_gate_types import GateContext
 from src.core.settings.analysis_defaults import REFUSAL_PHRASES
 
 logger = logging.getLogger(__name__)
@@ -30,10 +31,9 @@ class NewsProcessor:
         self.classifier = NewsClassifier()
         self.validator = AnalysisValidator()
         self.news_guard = self._init_news_guard()
+        self.safety_gate = self._init_safety_gate()
         self.analyzer_ready = asyncio.Event()
 
-        # Инициализация RAG системы
-        self.rag_system = None
         asyncio.create_task(self.initialize_components())
 
         self.publisher = TelegramPublisher()
@@ -67,16 +67,12 @@ class NewsProcessor:
             logger.exception("Failed to initialize NewsGuard: %s", error)
             return None
 
-    async def initialize_rag_system(self):
-        """Инициализация RAG системы"""
+    def _init_safety_gate(self) -> SafetyGate | None:
         try:
-            loop = asyncio.get_event_loop()
-            self.rag_system = await loop.run_in_executor(None, get_rag_system)
-            logger.info("RAG система инициализирована")
-            await self.publisher.send_admin_notification("✅ RAG система инициализирована")
-        except Exception as e:
-            logger.error(f"Ошибка инициализации RAG: {str(e)}")
-            await self.publisher.send_admin_notification(f"❌ Ошибка RAG системы: {str(e)[:200]}")
+            return SafetyGate.from_base_dir(Path(self.config.BASE_DIR))
+        except Exception as error:  # noqa: BLE001
+            logger.exception("Failed to initialize SafetyGate: %s", error)
+            return None
 
     async def initialize_components(self):
         """Параллельная инициализация компонентов с запуском сервера"""
@@ -201,19 +197,85 @@ class NewsProcessor:
             # Логируем информацию о новости
             logger.info(f"Обработка новости: {news.title[:50]}...")
 
-            if self.news_guard is not None:
-                gate_result = self.news_guard.evaluate_input(news.title, news.content, source=news.source)
-                logger.info(
-                    "NewsGate decision news_id=%s decision=%s reason=%s codes=%s",
-                    news.id,
-                    gate_result.decision,
-                    gate_result.reason,
-                    ",".join(gate_result.reason_codes),
+            gate_decision = None
+            if self.safety_gate is not None and self.safety_gate.config.flags.enabled:
+                ctx = GateContext(
+                    title=news.title,
+                    content=news.content,
+                    source=news.source,
+                    item_id=str(news.id),
+                    config_version_hash=self.safety_gate.config_version_hash,
                 )
-                if gate_result.decision in {"deny", "quarantine", "skip"}:
+                shadow = self.safety_gate.evaluate_with_shadow(
+                    ctx,
+                    legacy_guard=self.news_guard,
+                )
+                gate_decision = shadow.enforced
+                logger.info(
+                    "SafetyGate decision news_id=%s decision=%s risk_tier=%s "
+                    "match=%s old=%s new=%s codes=%s",
+                    news.id,
+                    gate_decision.decision,
+                    gate_decision.risk_tier,
+                    shadow.decision_match,
+                    shadow.old_decision.decision if shadow.old_decision else None,
+                    shadow.new_decision.decision if shadow.new_decision else None,
+                    ",".join(gate_decision.reason_codes),
+                )
+            elif self.news_guard is not None:
+                legacy = self.news_guard.evaluate_input(
+                    news.title, news.content, source=news.source
+                )
+                from src.core.safety.safety_gate_types import GateDecision, SafetyHint
+
+                hints = []
+                if legacy.risk_tier == "yellow":
+                    hints = [
+                        SafetyHint.YELLOW_CONSTRAINED_ANALYSIS,
+                        SafetyHint.AVOID_COMBAT_ESTIMATES,
+                    ]
+                gate_decision = GateDecision(
+                    decision=legacy.decision,
+                    risk_tier=legacy.risk_tier,
+                    reason=legacy.reason,
+                    reason_codes=list(legacy.reason_codes),
+                    message=legacy.message,
+                    context_hints=hints,
+                    needs_yellow_warning=legacy.risk_tier == "yellow"
+                    and legacy.decision == "allow",
+                )
+                logger.info(
+                    "NewsGate decision news_id=%s decision=%s risk_tier=%s reason=%s codes=%s",
+                    news.id,
+                    gate_decision.decision,
+                    gate_decision.risk_tier,
+                    gate_decision.reason,
+                    ",".join(gate_decision.reason_codes),
+                )
+            if gate_decision is not None:
+                if gate_decision.decision in {"deny", "quarantine", "skip"}:
                     await repo.mark_as_processed_without_analysis(news.id)
                     self.stats["news_skipped"] += 1
                     return
+                setattr(news, "_risk_tier", gate_decision.risk_tier)
+                setattr(
+                    news,
+                    "_context_hints",
+                    [h.value if hasattr(h, "value") else str(h) for h in gate_decision.context_hints],
+                )
+                setattr(news, "_needs_yellow_warning", gate_decision.needs_yellow_warning)
+                if gate_decision.risk_tier == "yellow":
+                    from src.core.safety.yellow_audit import append_yellow_audit
+
+                    append_yellow_audit(
+                        base_dir=Path(__file__).resolve().parents[2],
+                        item_id=str(news.id),
+                        title=news.title,
+                        content=news.content,
+                        risk_tier=gate_decision.risk_tier,
+                        reason_codes=list(gate_decision.reason_codes),
+                        decision=gate_decision.decision,
+                    )
 
             # Проверяем, нужно ли анализировать новость
             should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
@@ -228,7 +290,13 @@ class NewsProcessor:
             try:
                 # Генерируем анализ
                 logger.info(f"Генерация анализа для новости {news.id}")
-                analysis = await self.analyzer.generate_analysis(news.title, news.content)
+                analysis = await self.analyzer.generate_analysis(
+                    news.title,
+                    news.content,
+                    risk_tier=getattr(news, "_risk_tier", "green"),
+                    context_hints=getattr(news, "_context_hints", None),
+                    needs_yellow_warning=bool(getattr(news, "_needs_yellow_warning", False)),
+                )
 
                 # Проверяем, не отказалась ли модель от анализа
                 if any(phrase in analysis.lower() for phrase in REFUSAL_PHRASES):
@@ -240,7 +308,11 @@ class NewsProcessor:
                 logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
 
                 if self.news_guard is not None:
-                    guard_result = self.news_guard.guard_output(analysis=analysis)
+                    guard_result = self.news_guard.guard_output(
+                        analysis=analysis,
+                        source_text=f"{news.title}\n{news.content}",
+                        risk_tier=getattr(news, "_risk_tier", "green"),
+                    )
                     logger.info(
                         "NewsGuard output news_id=%s blocked=%s codes=%s",
                         news.id,

@@ -8,8 +8,6 @@ from pathlib import Path
 import time
 from typing import Any
 
-from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedResponse
-
 from src.core.analysis.axes_extractor import extract_complementary_axes
 from src.core.analysis.dialectical_config import DialecticalOrchestrationConfig
 from src.core.analysis.evidence_brief import EvidenceBrief, truncate_query_for_trace
@@ -25,24 +23,6 @@ from src.core.analysis.semantic_integration import (
 from src.core.analysis.slot_retrieve import retrieve_slot_with_fallback
 
 logger = logging.getLogger(__name__)
-
-LEGACY_EXPECTED_EXCEPTIONS: tuple[type[BaseException], ...] = (
-    TimeoutError,
-    ConnectionError,
-    OSError,
-    UnexpectedResponse,
-    ResponseHandlingException,
-)
-
-
-def synthesize_legacy_query(
-    *,
-    news_title: str,
-    news_content: str,
-    key_concepts: list[str],
-) -> str:
-    return f"{news_title} {news_content[:200]} {' '.join(key_concepts)}".strip()
-
 
 def build_short_lead(*, news_content: str, short_lead_chars: int) -> str:
     raw = news_content[:short_lead_chars]
@@ -73,37 +53,6 @@ def build_slot_query(
     if suffix:
         return f"{base} {suffix}".strip()
     return base
-
-
-def safe_legacy_context(
-    *,
-    build_context_fn,
-    enhanced_query: str | None,
-    news_title: str,
-    news_content: str,
-    key_concepts: list[str],
-    warnings: list[str],
-) -> str | None:
-    query = enhanced_query
-    if not query:
-        query = synthesize_legacy_query(
-            news_title=news_title,
-            news_content=news_content,
-            key_concepts=key_concepts,
-        )
-        warnings.append("legacy_query_synthesized")
-        logger.warning("legacy_query_synthesized")
-    try:
-        text = build_context_fn(query)
-        if not text or not str(text).strip():
-            return None
-        return str(text)
-    except LEGACY_EXPECTED_EXCEPTIONS as error:
-        logger.warning("expected_legacy_error: %s", error)
-        return None
-    except Exception as error:  # noqa: BLE001
-        logger.exception("unexpected_legacy_error: %s", error)
-        return None
 
 
 def build_evidence_brief(
@@ -329,24 +278,6 @@ def _apply_empty_policies(
         return brief
 
     if all_empty:
-        if config.fallback_to_legacy_context:
-            legacy = safe_legacy_context(
-                build_context_fn=build_context_fn,
-                enhanced_query=enhanced_query,
-                news_title=brief.news_title,
-                news_content=brief.news_content,
-                key_concepts=brief.key_concepts,
-                warnings=brief.warnings,
-            )
-            if legacy:
-                brief.trace["orchestration_mode"] = "legacy_fallback"
-                brief.legacy_context = legacy
-                brief.warnings.append("all_slots_empty")
-                return brief
-            brief.trace["orchestration_mode"] = "error"
-            brief.trace["error"] = default_error
-            brief.legacy_context = None
-            return brief
         brief.trace["orchestration_mode"] = "error"
         brief.trace["error"] = "all_slots_empty"
         brief.legacy_context = None
@@ -416,18 +347,20 @@ def _parallel_slots(
                 "r2": "wall_timeout",
                 "r3": "wall_timeout",
             }
-            if config.fallback_to_legacy_context:
-                legacy = safe_legacy_context(
-                    build_context_fn=build_context_fn,
-                    enhanced_query=enhanced_query,
-                    news_title=brief.news_title,
-                    news_content=brief.news_content,
-                    key_concepts=brief.key_concepts,
-                    warnings=brief.warnings,
-                )
-                if legacy:
+            # Prefer legacy context over hard error so generation can still attempt analysis.
+            if config.fallback_to_legacy_context and build_context_fn is not None:
+                query = (enhanced_query or "").strip() or " ".join(
+                    q for q in queries.values() if q
+                ).strip()
+                try:
+                    brief.legacy_context = build_context_fn(query) if query else ""
+                except Exception as error:  # noqa: BLE001
+                    logger.warning("legacy_context_after_wall_timeout_failed error=%s", error)
+                    brief.legacy_context = None
+                if brief.legacy_context and str(brief.legacy_context).strip():
                     brief.trace["orchestration_mode"] = "legacy_fallback"
-                    brief.legacy_context = legacy
+                    brief.trace["error"] = "retrieve_wall_timeout_legacy_fallback"
+                    brief.warnings.append("retrieve_wall_timeout_legacy_fallback")
                     return brief
             brief.trace["orchestration_mode"] = "error"
             brief.trace["error"] = "retrieve_wall_timeout"
