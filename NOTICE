@@ -1,0 +1,14 @@
+This repository may consume external open-license datasets for censorship quality evaluation.
+
+Attribution and license tracking are recorded in:
+- .cursor/artifacts/quality/dataset_manifest.json
+- config/external_dataset_sources.yaml
+
+Current explicitly allowed license examples:
+- Apache-2.0
+- MIT
+- BSD-3-Clause
+- CC-BY-4.0
+
+Any dataset whose license changes to a non-allowed or unknown value is blocked by:
+- scripts/audit_external_dataset_licenses.py

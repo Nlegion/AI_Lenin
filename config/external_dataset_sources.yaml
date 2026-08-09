@@ -1,0 +1,38 @@
+external_datasets:
+  weekly_check_enabled: true
+  holdout_ratio: 0.1
+  sources:
+    - id: lenta_kaggle
+      source_url: https://www.kaggle.com/datasets/yutkin/corpus-of-russian-news-articles-from-lenta
+      download_url: https://github.com/yutkin/Lenta.Ru-News-Dataset/releases/download/v1.1/lenta-ru-news.csv.bz2
+      license: unknown
+      allowed_use: pending_review
+      mapped_labels:
+        - POLITICS
+        - ECONOMY
+        - SPORT_BLOCKED
+    - id: rus_news_classifier
+      source_url: https://huggingface.co/datasets/data-silence/rus_news_classifier
+      hf_dataset_id: data-silence/rus_news_classifier
+      license: unknown
+      allowed_use: pending_review
+      mapped_labels:
+        - SENSITIVE_POLITICS
+        - WAR_OPERATIONAL
+        - SPORT_BLOCKED
+    - id: dzen_russian_articles
+      source_url: https://huggingface.co/datasets/ru-dataset/dzen-russian-articles
+      license: apache-2.0
+      allowed_use: yes
+      mapped_labels:
+        - SENSITIVE_POLITICS
+        - ECONOMY
+        - CULTURE
+    - id: ru_ethno_hate
+      source_url: https://github.com/hse-scila/ethnohate-project
+      git_repo_url: https://github.com/hse-scila/ethnohate-project
+      license: unknown
+      allowed_use: pending_review
+      mapped_labels:
+        - HATE
+        - ETHNIC_RELIGIOUS

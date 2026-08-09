@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship, declarative_base, Mapped, mapped_column
 from datetime import datetime
 from src.core.database.db_core import Base
@@ -28,3 +28,19 @@ class Analysis(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     news: Mapped["News"] = relationship("News", back_populates="analysis")
+
+
+class CensorDecisionCache(Base):
+    __tablename__ = "censor_decision_cache"
+
+    content_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    config_version_hash: Mapped[str] = mapped_column(String, primary_key=True)
+    model_version_hash: Mapped[str] = mapped_column(String, nullable=False)
+    decision: Mapped[str] = mapped_column(String, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=True)
+    risk_tier: Mapped[str] = mapped_column(String, nullable=False)
+    reason_codes_json: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_accessed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    hit_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

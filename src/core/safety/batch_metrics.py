@@ -16,7 +16,18 @@ _HAS_ATTR = re.compile(r"(?i)\bтом\s*\d+|\bстр\.?\s*\d+|\[source:|/pss/|\\
 
 def routing_rates(rows: list[dict[str, Any]]) -> dict[str, float]:
     total = max(len(rows), 1)
-    deny = sum(1 for r in rows if r.get("skipped_llm_reason") == "pre_deny" or r.get("decision") == "deny")
+    deny = sum(
+        1
+        for r in rows
+        if r.get("skipped_llm_reason") == "pre_deny"
+        or r.get("decision") in {"deny", "hard_block"}
+    )
+    review = sum(
+        1
+        for r in rows
+        if r.get("skipped_llm_reason") == "pre_quarantine"
+        or r.get("decision") in {"quarantine", "review"}
+    )
     skip = sum(
         1
         for r in rows
@@ -29,6 +40,7 @@ def routing_rates(rows: list[dict[str, Any]]) -> dict[str, float]:
     return {
         "hard_deny_rate": deny / total,
         "deny_rate": deny / total,
+        "review_rate": review / total,
         "soft_skip_rate": skip / total,
         "skip_rate": skip / total,
         "yellow_rate": yellow / total,
@@ -215,7 +227,15 @@ def drift_vs_baseline(
     current: dict[str, float],
     baseline: dict[str, float],
     *,
-    keys: tuple[str, ...] = ("deny_rate", "skip_rate", "allow_rate", "redact_artifact_rate", "hard_deny_rate", "soft_skip_rate"),
+    keys: tuple[str, ...] = (
+        "deny_rate",
+        "review_rate",
+        "skip_rate",
+        "allow_rate",
+        "redact_artifact_rate",
+        "hard_deny_rate",
+        "soft_skip_rate",
+    ),
 ) -> dict[str, Any]:
     """Flag relative drift >20% on rate keys."""
     flags: list[str] = []

@@ -1,0 +1,462 @@
+line_no,news_id,source,title,new_decision,new_category,new_risk_tier,changed
+1,6fc1a6e56b57c1e29463bee7801d7d9f,TASS,В ГД предложили смягчить требования к тонировке передних боковых стекол машин,allow,NON_TOPICAL,green,True
+2,72379ae33d15ce7b2973685ffdee6eb3,TASS,В Москве закроют движение по части улиц и набережных 8-9 августа,allow,NON_TOPICAL,green,True
+5,c016818cd2b2338500d93e30dc048250,TASS,Военная операция на Украине. Онлайн,allow,NON_TOPICAL,green,True
+6,8142a6d85110e01aa76a140568638090,TASS,Telegraph: лидер Reform UK подал в суд на агентство по борьбе с преступностью,allow,NON_TOPICAL,green,True
+8,8b46efeb21c9aa7c970c60e62b4a6842,TASS,На Кипре арестовали подозреваемого в покушении на убийство монаха,allow,NON_TOPICAL,green,True
+9,52189f868b11fe0d60df92ef69f9443b,TASS,Экс-глава МИД Украины спрогнозировал рост числа нападений на украинцев в Польше,allow,NON_TOPICAL,green,True
+10,88b84c1a8176acdaa47fe63da1a2ee88,TASS,Трамп объявил об инвестициях в размере $3 млрд в горнодобывающей отрасли,allow,NON_TOPICAL,green,True
+11,01b219c7d808f48e19f3deff65d686e0,TASS,Акция-реквием по павшим защитникам Южной Осетии собрала более 4 тыс. человек,allow,NON_TOPICAL,green,True
+16,96803f4ee87cb54ae9287123c6944e3a,TASS,"""Грузавтотранс"" потребовала снять запрет на каботаж для Калининграда",allow,NON_TOPICAL,green,True
+20,7aaed1d02290cdf3c86ce71a1762386e,TASS,В Москве жара достигла 30 градусов пятый раз с начала лета,allow,NON_TOPICAL,green,True
+21,d39c296d7911483893d506bb54b335ca,TASS,El País: в Испании введут контроль на границе для путешественников из Италии,allow,NON_TOPICAL,green,True
+24,72e39ca456ea69ba78027d2d1e5e44c2,TASS,Heartlander News: Минюст США поддержал монастырь РПЦЗ в борьбе с ветропарком,allow,NON_TOPICAL,green,True
+27,dd211fc3e811946ca11ff36c0e47ae5b,TASS,"Экс-президент Южной Осетии считает, что Грузия оказалась прагматичней Украины",allow,NON_TOPICAL,green,True
+30,706033d35ae208b357dcbc996c23bbb3,TASS,Военизированные группировки в Ираке отложили атаку на соседнюю страну,allow,NON_TOPICAL,green,True
+32,d78addf91af676a37a9a6d0fd1c12516,TASS,Медицинские программы обучения стали самыми популярными в крупнейшем вузе КБР,allow,,green,False
+33,cf744d8b32996ceb37f088cfb86ca0d9,TASS,Канцелярия Бернэма раскритиковала предложение запретить пить в пабах стоя,allow,NON_TOPICAL,green,True
+35,56bf4781ca15a35b6d57c73fcf6f2aca,TASS,Экс-президент Южной Осетии назвал дату первой гибридной войны Запада,allow,NON_TOPICAL,green,True
+36,1774a5f96a825bc10259f15d867bf0e1,TASS,Зеленский усилил свою охрану для первого визита в Сербию,allow,NON_TOPICAL,green,True
+37,ed981587b3302cbf7ceb891adc04e17d,TASS,ТАСС возглавил рейтинг цитируемости СМИ в июле,allow,NON_TOPICAL,green,True
+40,473e9c3f1a37f4f7de863920f1b3f86f,TASS,Раскрыт молекулярный механизм развития средиземноморской семейной лихорадки,allow,NON_TOPICAL,green,True
+41,9cd90df0407b4a40c00577e23008e593,TASS,"""Прозрачный блокчейн"" помог выявить связи криптомошенников с иностранной биржей",allow,NON_TOPICAL,green,True
+42,706d1b1a3ea1c3507a0e19cb1b72994f,TASS,В Раде предложили Федорову вступить в ряды ВС Украины,allow,NON_TOPICAL,green,True
+44,22bf2eca15200a8c319d6ed5d09f40c9,TASS,В Минздраве одобрили еще пять лекарств для перечня жизненно необходимых,allow,NON_TOPICAL,green,True
+47,5a948eeb5ecc33c28ebff6ab43ead22c,TASS,Экс-президент Финляндии заявил о необходимости диалога Европы с РФ,allow,,green,False
+49,3773235b074c02148bf1d2376264e6ad,TASS,На юго-востоке Украины повреждены объекты инфраструктуры,allow,,green,False
+50,4d62641f28ef200c051e40d4f364d421,TASS,Политик Джурджев: приезд Зеленского в Белград не отвечает интересам Сербии,allow,,green,False
+52,b3ab479418de60c6f09388e33a346d66,TASS,Agerpres: Румыния разрешила ограничивать экспорт и потребление электроэнергии,allow,,green,True
+53,6dea2f28c7eb9f8bdba885f8853f6a61,TASS,"ГП проконтролирует расследование дела криптообменников, работавших на Киев",allow,NON_TOPICAL,green,True
+54,e1ce21d5543b76f267da69b1670e58fd,TASS,Минпромторг ждет антидемпингового расследования ЕАЭС по лимонной кислоте,allow,NON_TOPICAL,green,True
+57,87d62741c20273b9af49c2aff301a614,TASS,Защита олигарха Плахотнюка обвинила премьера Молдавии в давлении на юстицию,allow,NON_TOPICAL,green,True
+59,a4df6366125a11c1d1667603dc4dce58,TASS,Российский рынок акций завершил неделю снижением основных индексов,allow,NON_TOPICAL,green,True
+60,5213dcdd654152596f555fb882c107f6,TASS,"Журова считает, что весь мир ожидает выступления Валиевой на соревнованиях",allow,NON_TOPICAL,green,True
+61,1eb0b881702548680c6d6733149b1d6b,TASS,"Минтруд предложил расширить число категорий лиц, имеющих право на две пенсии",allow,NON_TOPICAL,green,True
+62,79301378318e3ab6f78012ccc4f8cd88,TASS,В Сербии оценили последствия приезда Зеленского в Белград,allow,NON_TOPICAL,green,True
+63,3dd73dcbcb5f17d1779dba6832fe4dbd,TASS,"The Times of India: США в 2026 году поставили Индии 3,6 млн тонн СНГ",allow,NON_TOPICAL,green,True
+64,6205324d16a7898c25d7b6000fd2605b,TASS,На Украине задерживаются более 60 пассажирских поездов,allow,NON_TOPICAL,green,True
+70,957e8556ce9f1a7b127e0fdcf086b4f3,TASS,Несколько населенных пунктов ДНР обесточены из-за аварии на электросетях,allow,NON_TOPICAL,green,True
+71,d95f1c9f86131df294358556f45a9d8c,TASS,Зеленский впервые прибыл в Сербию,allow,NON_TOPICAL,green,True
+74,3d344a7e53604a6dd3efefe9360a6f17,TASS,Лукашенко подарили изготовленный по стандартам НАТО белорусский бинокль,allow,NON_TOPICAL,green,True
+76,3e97344046fbb21d0e1397d2d9a4bf36,TASS,"Отмену регистрации списка ""Яблока"" в Заксобрание Карелии признали законной",allow,NON_TOPICAL,green,True
+81,c4fa6eb512fd4519e0cc2e64390d8b99,TASS,Памятник деревянного зодчества в Сестрорецке восстановят в дореволюционном облике,allow,NON_TOPICAL,green,True
+84,5e58ecd1349db09ed2fc965abebc7971,TASS,"Швыдкой заявил, что ""Интервидение"" состоится в 2026 году",allow,NON_TOPICAL,green,True
+88,f625347253a6e3bf9cf955ad8ac28b8e,TASS,"В генконсульстве РФ в Анталье заявили, что россиян среди пострадавших в ДТП нет",allow,,green,True
+89,c5da1574e1f71ec878a07d451701b931,TASS,LRT: литовец протаранил шлагбаумы на КПП и попытался пересечь границу с Россией,allow,NON_TOPICAL,green,True
+92,2d5072794d8f6606bbfe59f64d3a03bf,TASS,Нарколог Холдин развеял мифы об алкоголе во время грудного вскармливания,allow,NON_TOPICAL,green,True
+94,175487671d1fa66a25d2ab120566e255,TASS,"В СК назвали недостоверной данные о сообщении жены Усольцева, полученном другом",allow,NON_TOPICAL,green,True
+96,97359e59ad5a2315f3196d52722453cb,TASS,Хай-дайвер Истомин хочет совершить прыжок с парашютом,allow,NON_TOPICAL,green,True
+97,99cbdd6c3cb3e2e0de5b2a2074e23d9a,TASS,Бельгия отправит 30 военных в Гренландию в составе миссии НАТО Arctic Sentry,allow,NON_TOPICAL,green,True
+99,cf3492420aa679ad318517d8364e03ba,TASS,На фиолетовой ветке Московского метро увеличивали интервалы,allow,NON_TOPICAL,green,True
+301,07b9a3bc6fe8a013da7e2d275f772d6b,TASS,CENTCOM: США перенаправили более 50 судов с момента возобновления блокады Ирана,allow,NON_TOPICAL,green,True
+303,b29e1431d0cb3115104c362ecfc3ea31,TASS,Залужный возглавил рейтинг доверия на Украине,allow,NON_TOPICAL,green,True
+401,7b218612cd0c73eea8c963466209c448,TASS,"""Страна"" сообщает, что на Украине сотрудники ТЦК схватили мужчину на огороде",allow,NON_TOPICAL,green,True
+601,c31821d3758092695414d3d1f9490abd,TASS,Россия и Пакистан работают над запуском первого грузового ж/д маршрута,allow,NON_TOPICAL,green,True
+605,07b9a3bc6fe8a013da7e2d275f772d6b,TASS,США перенаправили более 50 судов с момента возобновления блокады Ирана,allow,NON_TOPICAL,green,True
+701,788aec950d042fb9ca66b1b458f97c7b,TASS,"Bloomberg: США хотят завершить первые испытания ПРО ""Золотой купол"" в 2026 году",allow,NON_TOPICAL,green,True
+705,7b218612cd0c73eea8c963466209c448,TASS,"""Страна"" сообщила, что сотрудники ТЦК схватили мужчину на огороде",allow,NON_TOPICAL,green,True
+801,dc4aa6897da35e67aa66175d3616a327,TASS,Абелардо де ла Эсприэлья вступил в должность президента Колумбии,allow,NON_TOPICAL,green,True
+901,dceeea51d17c5ac09096879c51274741,TASS,В МИД РФ отметили возможность расширения списка кандидатов на пост генсека ООН,allow,NON_TOPICAL,green,True
+1102,e6eb15c741b7ebdb8a084924a5510d70,TASS,"Марочко: Драпатый начал ""мясные штурмы"" на дружковском участке",allow,NON_TOPICAL,green,True
+1104,3a266cd6e9f15cfdd065d56785bc1ac8,TASS,"В Пензенской области ввели план ""Ковер""",allow,NON_TOPICAL,green,True
+1206,dceeea51d17c5ac09096879c51274741,TASS,МИД РФ допустил расширение списка кандидатов на пост генсека ООН,allow,NON_TOPICAL,green,True
+1405,76079b9a78f219ebef30df8d812fac8c,TASS,Назван регион с самым высоким средним размером пенсии,allow,NON_TOPICAL,green,True
+1601,7a883033a19972dc01951dffdb1618b9,TASS,"Диетолог Чунтонова рассказала, к чему может привести переедание арбуза",allow,NON_TOPICAL,green,True
+1701,254383ffc6dbed512ab43e17871d46d6,TASS,CNN: глава Комитета начальников штабов пытается вывести США из войны с Ираном,allow,NON_TOPICAL,green,True
+1902,39f8accac4eddb4d461c079a79772988,TASS,"В ОП предложили оформлять через ""Госуслуги"" доверенность на ребенка для бабушек",allow,NON_TOPICAL,green,True
+2102,b06ac588bd47d585268547e37b4b3c73,TASS,В Якутии создают необходимую инфраструктуру для развития отрасли огранки алмазов,allow,,green,False
+2302,0572f441bdb3563282b62d49919ca1c5,TASS,Лидер фракции ХДС/ХСС отверг вариант досрочной отставки Мерца с поста канцлера,allow,NON_TOPICAL,green,True
+2306,8a15dc53c0d5910de85a9e90ef056b72,TASS,ABC узнал о снятии с должности координирующего помощь Украине генерала США,allow,NON_TOPICAL,green,True
+2502,48adc39a254dc1a9442e484d1b3cbc2a,TASS,На Крымском мосту временно перекрыли движение автомобилей,allow,NON_TOPICAL,green,True
+2601,dde6b959f687b1de44171ef83573643f,TASS,ЛДПР предложила ввести единый стандарт медпомощи для силовиков,allow,NON_TOPICAL,green,True
+2602,4f38f019aeaef27ca6db6ef06b03e423,TASS,Осенние каникулы у некоторых школьников будут длиннее зимних,allow,,green,False
+2605,cfe01c39e051218f059dc7d5b0d2de60,TASS,Пентагон обнародовал пятый массив архивных данных об НЛО,allow,NON_TOPICAL,green,True
+2802,ecb0883d58ef4c7bf2a8a2a0a830bc64,TASS,Стасишин сравнил качество жилья в США и в России,allow,NON_TOPICAL,green,True
+2902,0f7fe62b6526d6f370c0768bbfde8848,TASS,"Хуснуллин сообщил о значительном улучшении ситуации на трассе ""Новороссия""",allow,NON_TOPICAL,green,True
+3202,1086c77ee8cdcb2beed71069a6dfb903,TASS,Экс-министра ВВС США лишили доступа к секретным данным,allow,NON_TOPICAL,green,True
+3501,eafa5e5feb1c3b83b0fb57140ecc81ab,TASS,"Мирошник: Киев и Запад ""ушли на каникулы"" по теме якобы похищенных РФ детей",allow,NON_TOPICAL,green,True
+3502,ffdca3b6d60f1debbdf11e351c6b34b2,TASS,"В Сахалинской области зафиксировали землетрясение магнитудой 5,3",allow,,green,True
+3701,13cd8a3ece03cea55fec935e4c4317c0,TASS,Дефицит бюджета Украины в 2026 году составит рекордные 35% ВВП,allow,,green,False
+3704,676c83885aac3360453bb273028b8811,TASS,У Сахалина из-за разлива ГСМ загрязнено почти 60 тыс. кв. м,allow,NON_TOPICAL,green,True
+3802,1eedc8f5dd3607f6e8ae787a202e549f,TASS,"Сын Усольцевой рассчитывает, что его пропавшие в тайге родные живы",allow,NON_TOPICAL,green,True
+3809,ffdca3b6d60f1debbdf11e351c6b34b2,TASS,"В Сахалинской области произошло землетрясение магнитудой 5,3",allow,,green,True
+3901,ed09cc63e343bc2805f02ca9cbf71220,TASS,"Диетолог Гречинская посоветовала, какие продукты лучше есть в жару",allow,NON_TOPICAL,green,True
+4002,611b962150102bf095b5c8c527ce4048,TASS,Онколог Олькин напомнил о бесплатной химиотерапии по ОМС,allow,NON_TOPICAL,green,True
+4010,676c83885aac3360453bb273028b8811,TASS,У Сахалина из-за разлива ГСМ загрязнено почти 60 тыс. кв. м акватории,allow,NON_TOPICAL,green,True
+4101,17944518d6dd3d2e9b99e56efac26323,TASS,"NYT узнала, что США ищут способы сменить руководство Кубы по сценарию Венесуэлы",allow,NON_TOPICAL,green,True
+4201,6141896b3da23ad2317f064d52605aad,TASS,"Сальдо рассказал, на чем держится украинская система власти",allow,NON_TOPICAL,green,True
+4404,17944518d6dd3d2e9b99e56efac26323,TASS,NYT узнала о поиске США кандидата на пост главы Кубы по венесуэльскому сценарию,allow,NON_TOPICAL,green,True
+4701,ab94a23457bf051d431362ca882c23c5,TASS,"Мирошник назвал страну-активиста мистификации о ""похищении РФ"" детей Украины",allow,NON_TOPICAL,green,True
+4702,ac975beb5ddde2ea1a72a5341869dd71,TASS,Боец Чех: в детских лагерях на Украине учат убивать русских,allow,NON_TOPICAL,green,True
+4801,e11eef7c6f210a1528dc007aac58dc60,TASS,"Колумбия присоединится к созданному США альянсу ""Щит Америк""",allow,NON_TOPICAL,green,True
+5001,248ba7a9f18e16adafdac9fbb91f0953,TASS,Суд в Москве по делу Лерчек оставил под арестом Rolls-Royce блогера за 42 млн рублей,allow,NON_TOPICAL,green,True
+5002,b8754a44b8e26d006cb095d21ab8e0ee,TASS,"В Россию за полгода въехали почти 7,2 тыс. граждан США",allow,NON_TOPICAL,green,True
+5201,1601db9bc1f1eaaabd1efd3ab9209da8,TASS,"Сербский снайпер Берич рассказал, где видит свое будущее",allow,NON_TOPICAL,green,True
+5202,16ed9caa042bb3bef67875ec265b3a7c,TASS,В ГД предложили освободить многодетных и инвалидов от НДС за ввоз в РФ минивэнов,allow,NON_TOPICAL,green,True
+5203,bc6ff976339c6a99b03ca14c3ef70317,TASS,Режим опасного неба введен в Удмуртии,allow,NON_TOPICAL,green,True
+5204,64321d2919c114a2f77a19a9c0d1e7f9,TASS,США выделят $1 млрд на поддержку администрации нового президента Колумбии,allow,NON_TOPICAL,green,True
+5306,248ba7a9f18e16adafdac9fbb91f0953,TASS,Суд по делу Лерчек оставил под арестом ее Rolls-Royce и более 45 млн рублей,allow,NON_TOPICAL,green,True
+5501,0aecb9b2cde36823a619fd38238d676b,TASS,На юге европейской России прогнозируют жару до 42 градусов,allow,NON_TOPICAL,green,True
+5506,bc6ff976339c6a99b03ca14c3ef70317,TASS,В Удмуртии ввели режим опасного неба,allow,NON_TOPICAL,green,True
+5601,8c2c300fd8c2e8b72ef2546e2c70e7d1,TASS,Во Владивостоке завели дело после нападения мужчины на подростка в лифте,allow,NON_TOPICAL,green,True
+5905,2bde5306523e46aecf60714635d912bd,TASS,"Мирошник назвал историю про ""похищенных Россией детей"" очередным бредом",allow,,green,False
+5906,6a2e6f2089cfa3fbcd4b9b54dae91b25,TASS,Число жертв землетрясения в Японии выросло до 39,allow,,green,True
+5908,8c2c300fd8c2e8b72ef2546e2c70e7d1,TASS,Во Владивостоке завели дело после нападения на подростка в лифте,allow,NON_TOPICAL,green,True
+6201,fd7b0c188fb5a53b8b3e89ad51daebaa,TASS,В ДНР готовят решение о досрочном голосовании на выборах в Госдуму,allow,,green,False
+6202,e38ce7aa84b8e622cf277d7d51f209c8,TASS,Эксперт Верховец рассказал о задачах России в условиях климатического стресса,allow,NON_TOPICAL,green,True
+6203,c4920e514dd833db6132373fcf86f4ea,TASS,В отношении Долиной закрыли исполнительные производства после оплаты штрафов ГАИ,allow,NON_TOPICAL,green,True
+6402,79b13f62158bfaec04dfc5d39cb71f6a,TASS,"Врач Шипелин объяснил, почему термообработка не разрушает токсины плесени",allow,NON_TOPICAL,green,True
+6502,4892518206ae99fd357214944ec93c80,TASS,"В ПФО, Сибири и на Дальнем Востоке ожидают штормовой ветер и ливни",allow,NON_TOPICAL,green,True
+6504,e56a6e21b353fc3ef8d53b7c7939b2ef,TASS,"Сооснователь ""Википедии"" назвал платформу пропагандистским инструментом ЦРУ",allow,NON_TOPICAL,green,True
+6509,c4920e514dd833db6132373fcf86f4ea,TASS,Приставы закрыли исполнительные производства против Долиной,allow,NON_TOPICAL,green,True
+6601,3a4e3826ab172f9641ff724c8881e1a1,TASS,Bloomberg: Киев обещал США не атаковать инфраструктуру КТК в Черном море,allow,,green,True
+6602,3be803e50e1af42221856bf3bfbaa9c2,TASS,Корабельные группы ТОФ отработали задачи противороботовой защиты,allow,NON_TOPICAL,green,True
+6701,5d0fb8dfcfb70bb0dc77bde2875554d3,TASS,Ми-8 МЧС России снова вылетел на поиски пропавшего в Приморье вертолета,allow,NON_TOPICAL,green,True
+6801,67ed2641d50e4accd987e23137b98682,TASS,"Водолацкий объяснил, зачем западным элитам нужна русофобия",allow,NON_TOPICAL,green,True
+6904,3a4e3826ab172f9641ff724c8881e1a1,TASS,Bloomberg: Украина обещала США не атаковать инфраструктуру КТК в Черном море,allow,,green,True
+7102,fa1424df245c994334d41c8eda5e67ea,TASS,"Мирошник: Запад готов заплатить миллионы за сфабрикованные данные о ""похищенных РФ"" детях",allow,NON_TOPICAL,green,True
+7201,8bc724bdac1fe040a43c023cc9c2e385,TASS,"На петербургском ""Пикнике Афиши"" выступят FEDUK, Slava Marlow и ЛСП",allow,NON_TOPICAL,green,True
+7202,866b2a20ec363b219e33ee581b32fb77,TASS,Разыскиваемый Европолом испанец планирует получить постоянную визу в России,allow,NON_TOPICAL,green,True
+7203,49725166cfc159901cb9cb0564fbf7b6,TASS,Громов: Спартакиада народов РФ позволит выявить лучших для сборной страны,allow,NON_TOPICAL,green,True
+7204,9369ba1ca3f81f297907f187cb5ed4c2,TASS,"Разработка ""Калашникова"" упростит контроль за временем нахождения жгута на ране",allow,NON_TOPICAL,green,True
+7301,d4e32c669524f53b6109311693989f3b,TASS,"Биолог Глазков предположил, как кошки находят дорогу домой",allow,NON_TOPICAL,green,True
+7302,b19b8b14b90bc5438fe17d368611352f,TASS,"Биолог Глазков напомнил, почему кошек нельзя оставлять надолго в одиночестве",allow,NON_TOPICAL,green,True
+7401,08c0b9ec20eb7e0d86696b8e40c9e3de,TASS,В Японии около 56 тыс. домохозяйств остались без электроэнергии из-за тайфуна,allow,NON_TOPICAL,green,True
+7402,b92a823dccb2c529c89a1e1ea63a9441,TASS,"Биолог Глазков объяснил, зачем кошки едят птенцов",allow,NON_TOPICAL,green,True
+7403,af22adab6b303512b1d1d5b66425cf95,TASS,Биолог Глазков назвал главных врагов домашних кошек на Северо-Западе России,allow,NON_TOPICAL,green,True
+7404,ea86dbdab2a6a4562c194f0b3843b1dc,TASS,"ТАСС выяснил, как за 10 лет выросла средняя пенсия госслужащих",allow,NON_TOPICAL,green,True
+7405,e5bded39f3e3a2427a8cf595db4607f1,TASS,Сигнал опасного неба отменили в Удмуртии,allow,NON_TOPICAL,green,True
+7414,fa1424df245c994334d41c8eda5e67ea,TASS,"Мирошник: Запад готов платить миллионы за ложные данные о ""похищенных РФ"" детях",allow,NON_TOPICAL,green,True
+7501,515b9a51b32209f6ae3f194afc2d9a5a,TASS,Названы регионы-лидеры по росту бронирований квартир и апартаментов,allow,NON_TOPICAL,green,True
+7502,3f4f594b1c9b282d8f9e13e3f08b578f,TASS,"Эксперт Моисеев рассказал, как получить перерасчет по ЖКХ за время отсутствия",allow,NON_TOPICAL,green,True
+7602,60c1cc7ad89d69d52266cc18f94f64e2,TASS,В ГД рассказали об основных правилах оборота цифровой валюты с 1 сентября,allow,NON_TOPICAL,green,True
+7701,e3533b084c375afa4d47900fce5b1a7c,TASS,ТАСС: в Сумской области зафиксирована вспышка лихорадки Западного Нила,allow,NON_TOPICAL,green,True
+7703,04c468e4184610fd7e177fffc9bb94e2,TASS,"Алаудинов считает Драпатого ""страшнейшим националистом и русофобом""",allow,NON_TOPICAL,green,True
+7704,9cf1dfdab01e7d52ba73b13fd0c2b7b0,TASS,РФ планирует поставлять лекарственные травы для китайской традиционной медицины,allow,,green,False
+7714,e5bded39f3e3a2427a8cf595db4607f1,TASS,В Удмуртии отменили сигнал опасного неба,allow,NON_TOPICAL,green,True
+7901,132cf7f800fc5c7b6fe259c8c5a94b82,TASS,"Эксперт Патаман заявил, что Украина готова на рабство у Запада",allow,NON_TOPICAL,green,True
+7903,1dc8079d3d65f10bad8fc32b65a3bbc4,TASS,"ТАСС: под Харьков перебросили 10-ю горно-штурмовую бригаду ""Эдельвейс""",allow,NON_TOPICAL,green,True
+7912,515b9a51b32209f6ae3f194afc2d9a5a,TASS,Названы регионы с самым высоким ростом аренды квартир в России,allow,NON_TOPICAL,green,True
+8001,7aa30fbaf0ae3a36e8baea37a8294316,TASS,Турышев: сборная Югры по лыжным гонкам даже без Устюгова будет бороться за Топ-3,allow,NON_TOPICAL,green,True
+8003,81efa9d3be90c92f36a49fcf76642bdb,TASS,"В ГД рассказали, в каких случаях необходим межевой план земельного участка",allow,NON_TOPICAL,green,True
+8019,b92a823dccb2c529c89a1e1ea63a9441,TASS,"Биолог Глазков объяснил, почему дачи становятся ""мертвой зоной"" для птиц",allow,NON_TOPICAL,green,True
+8101,29287fdbf5d12a50b378d5550a8fe8d0,TASS,В WADA не стали комментировать получение нейтрального статуса Валиевой,allow,NON_TOPICAL,green,True
+8102,ecc407e2bdabc60522a7fa4a24d1cffd,TASS,В ГД предложили изменить финансирование питания детей из многодетных семей,allow,NON_TOPICAL,green,True
+8206,132cf7f800fc5c7b6fe259c8c5a94b82,TASS,Эксперт Патаман заявил о готовности Украины стать рабом Запада,allow,NON_TOPICAL,green,True
+8302,b396eddfd76aa4a5abc4681fb485dba5,TASS,Хуснуллин призвал навести порядок в организации работы мигрантов на стройках,allow,NON_TOPICAL,green,True
+8303,c4e7b2c5a64fe0cbe15f9a4eb3e6d775,TASS,Два литра воды и 10 тыс. шагов: какие правила ЗОЖ оказались вымыслом,allow,NON_TOPICAL,green,True
+8305,a8f1c73e810de013d1ad6b78c1293bdc,TASS,Мамиашвили назвал решение хорватских властей скрытой формой бойкота РФ,allow,NON_TOPICAL,green,True
+8308,7aa30fbaf0ae3a36e8baea37a8294316,TASS,Турышев: сборная Югры даже без лыжника Устюгова будет бороться за топ-3,allow,NON_TOPICAL,green,True
+8327,af22adab6b303512b1d1d5b66425cf95,TASS,Биолог Глазков назвал главных врагов домашних кошек,allow,NON_TOPICAL,green,True
+8401,947866e89865ee6195d717afd83911ff,TASS,В аэрокосмическом фестивале под Владимиром приняли участие порядка 300 человек,allow,NON_TOPICAL,green,True
+8402,9711a09c4a53a83d145dae1e111f6949,TASS,"В МВД рассказали, как защитить аккаунты от взлома",allow,NON_TOPICAL,green,True
+8502,98c21175c76c0b044bd0becb55b6d3f2,TASS,Эксперт Сорокин: власти Молдавии двуличны в отношении диаспор в России и ЕС,allow,NON_TOPICAL,green,True
+8601,fb775505972119bf7fcbd5f25a3c378f,TASS,"В hh.ru рассказали, какую подработку чаще всего ищут жители Сибири",allow,NON_TOPICAL,green,True
+8602,ede71bc5f73b0dcfc350241be55c0b6a,TASS,Психиатр Сахаров обозначил группу риска лудомании,allow,NON_TOPICAL,green,True
+8702,34c2116f046b65fac911d1229426f51b,TASS,В ОП назвали требования к ручкам по новому ГОСТу,allow,NON_TOPICAL,green,True
+8704,297442cb97c0bc8a9daa4516a812381f,TASS,Эксперт Кузина рассказала о нужных питомцу витаминах и кислотах перед осенью,allow,NON_TOPICAL,green,True
+8802,fe7b544d25f7bce9ea980d90bdee9666,TASS,Сборная России по прыжкам в воду вернулась с ЧЕ,allow,NON_TOPICAL,green,True
+8901,f18991b6bcf9278e8a506e93f86de64f,TASS,Голикова поздравила волонтеров-медиков с юбилеем,allow,NON_TOPICAL,green,True
+8903,736c26481fa7f66be25a964d06921e64,TASS,"В ""Авито"" выяснили, сколько россияне готовы потратить на покупку мотоцикла",allow,NON_TOPICAL,green,True
+9004,d40d0ad00926b789cfad1845ff76681a,TASS,"Эксперт Патаман объяснил, что может вернуть украинцев в реальность",allow,NON_TOPICAL,green,True
+9015,297442cb97c0bc8a9daa4516a812381f,TASS,Ветеринар Кузина назвала нужные питомцу витамины перед осенью,allow,NON_TOPICAL,green,True
+9303,7da42cb956b338258029fa08feacbb56,TASS,"В Киеве поражено предприятие, производящее комплектующие для ракет FP-5 ""Фламинго""",allow,NON_TOPICAL,green,True
+9403,5dce007f684df2812bc49d9baa258407,TASS,Жители шести районов Екатеринбурга остались без холодной воды,allow,NON_TOPICAL,green,True
+9501,6ffddbac3ad2fa8cf550bfbc630fd2f5,TASS,"""Читай-город"": россияне стали чаще покупать книги о здоровом питании и десертах",allow,NON_TOPICAL,green,True
+9503,1553cff0b0c28c1e5fb83e7c596f3568,TASS,"Дегтярев: День физкультурника - праздник тех, кто разделяет ценности ЗОЖ",allow,NON_TOPICAL,green,True
+9504,922aa166b2b7c5c69f7dda27b35d010b,TASS,Экс-глава MI6 ежегодно посещал Японию для консультаций по проблемам разведки,allow,NON_TOPICAL,green,True
+9601,466a43f061d3d937df87514c92a95a73,TASS,"В Минтрансе рассказали, как вернуть деньги за проезд",allow,NON_TOPICAL,green,True
+9701,06cef25262d089d30ccf73b1fe0541b1,TASS,Испанский IT-специалист раскрыл 400 шпионов НАТО и СБУ,allow,NON_TOPICAL,green,True
+9702,2950f54709ef6ef4e87849c7f36e1005,TASS,В Свердловской области паводковая вода за сутки ушла с 79 приусадебных участков,allow,NON_TOPICAL,green,True
+9705,6a9f2d4793e714e5d48fb5bbb9b51124,TASS,"Эксперт Чжоу объяснил, чем эффективно сотрудничество КНР, России и Белоруссии",allow,NON_TOPICAL,green,True
+9706,df9b6d50c3a6995f72f0f8ccbe6f13b2,TASS,Эксперт Лумумба: РФ пользуется кредитом доверия в Африке благодаря роли СССР,allow,NON_TOPICAL,green,True
+9801,2907a05aaab519a0cfdc3928fa7cdc5a,TASS,В Иркутской области в ДТП погиб ребенок,allow,,green,True
+9802,c6e96950726d80a7f903cc7bf6209beb,TASS,Аксаков не исключил появление пластиковых банкнот в России,allow,NON_TOPICAL,green,True
+9803,48b6efb77dd3b811bb3ba0f6c71642b4,TASS,Экс-лидер Южной Осетии заявил о конце однополярного мира после войны 2008 года,allow,NON_TOPICAL,green,True
+9902,7953484bf7b83eff1fd734fd2fbc91b1,TASS,"Эксперты Level Group выяснили, кто больше всех склонен к дружбе на работе",allow,NON_TOPICAL,green,True
+9904,585fd23a4b12e0f71e3c8c23f7f9a0a9,TASS,РУСАДА за 7 месяцев выдало 93 разрешения на применение запрещенных лекарств,allow,NON_TOPICAL,green,True
+9905,9b071f337dc0983a1d0ab80d021e0e9b,TASS,Сенатор Шейкин: экстрасенсы обманывают людей по видеосвязи,allow,NON_TOPICAL,green,True
+9906,1f6df2b80547784115c8b41e65cf9835,TASS,Россияне назвали главные стереотипы о своей нации за рубежом,allow,NON_TOPICAL,green,True
+10002,0ec25466ca446ad39ce273d2f74af3e1,TASS,Постпред Кубы при ООН: США готовят почву для возможной агрессии,allow,NON_TOPICAL,green,True
+10101,c5817d5291c23db8bd3bb48d3065dce0,TASS,"Володин рассказал о законах, вступающих в силу в августе",allow,NON_TOPICAL,green,True
+10102,8b2a8acb18996a1e1b95cf389e04b460,TASS,"Прыгунья в воду Трифонова сдавала ЕГЭ заранее, чтобы выступить на ЧЕ в Париже",allow,NON_TOPICAL,green,True
+10103,402614bbd1c9b8d70b2906765486ed26,TASS,В Крыму более 800 детей с инвалидностью смогут ежегодно проходить реабилитацию,allow,NON_TOPICAL,green,True
+10106,1106bb28e1650b1b845b97b5ac257bfc,TASS,"Юрист Сикач объяснил, кого из кандидатов не затронет снятие ""Яблока"" с выборов",allow,,green,False
+10202,7f7a67bd62dbc356363164abc6d4717d,TASS,"Пашинян сообщил о скором начале практической реализации проекта ""Маршрут Трампа""",allow,NON_TOPICAL,green,True
+10203,9068090a5c5bd86a9b38210084781437,TASS,В Москве более трети загранпаспортов выдали жителям других регионов России,allow,NON_TOPICAL,green,True
+10301,7ac5f34b3aa70e1092f8c4884256bd98,TASS,"""Калашников"" спустит на воду в середине августа буксир-ледокол для Петербурга",allow,NON_TOPICAL,green,True
+10303,35551a4a8ce86540e509676cbb7f2168,TASS,"Синоптик Паршина: температура воды в Москве-реке такая же, как в море в Крыму",allow,NON_TOPICAL,green,True
+10304,1c3e608916c5ffc294665561f4fbab0d,TASS,Постпред Кубы при ООН назвал причину кризиса в стране,allow,NON_TOPICAL,green,True
+10306,6a67f7b42464e8262bc76fdf5a018e7b,TASS,ВТБ заявил о сохранении позитивного настроя на рынке акций России,allow,NON_TOPICAL,green,True
+10401,2f150626b527153d03064c0ad6aa0564,TASS,"Психолог Акимкина рассказала, как выстроить режим дня у первоклассников",allow,NON_TOPICAL,green,True
+10402,3697f7b472fa38890ea4c882876e260f,TASS,В Ивановской области в ДТП погибли два человека,allow,,green,True
+10403,efe8e42ca2589f8705cc7e8f27db3ae6,TASS,Каждый второй опрошенный россиянин установил самозапрет на кредиты и займы,allow,NON_TOPICAL,green,True
+10404,dc51d1b3200870698492117fe703a48b,TASS,"Директор ВДНХ: реставрацию ресторана ""Золотой колос"" ведут строго по архивам",allow,NON_TOPICAL,green,True
+10502,b0628862f4ad96d75c54be8be0f300a3,TASS,Под Тюменью самосвал снес надземный пешеходный переход на федеральной трассе,allow,NON_TOPICAL,green,True
+10515,7f7a67bd62dbc356363164abc6d4717d,TASS,"Пашинян сообщил о скором начале практической реализации ""Маршрута Трампа""",allow,NON_TOPICAL,green,True
+10601,6e2e5f3d429c0f0363a4dd62871cdf64,TASS,В больницы Екатеринбурга организовали подвоз воды автоцистернами,allow,NON_TOPICAL,green,True
+10701,6fd3970c20a23b30a06317f60109eaaa,TASS,Каждый восьмой опрошенный турист не знает о дополнительных услугах в отелях,allow,NON_TOPICAL,green,True
+10703,84fd9991a974115a6cfffe6df410af23,TASS,В ЕР предложили включить препарат от рака груди в перечень жизненно важных,allow,NON_TOPICAL,green,True
+10704,d92e2abb2567d9bc514b753655be4841,TASS,"РФ ждет подписания соглашения о неприменении силы между Тбилиси, Сухумом и Цхинвалом",allow,NON_TOPICAL,green,True
+10705,ed0ef282d9b6709bdbd121a91637b9dc,TASS,"На Камчатке произошло землетрясение магнитудой 5,1",allow,,green,True
+10706,a8273fbd61aa98718645badc13706cfb,TASS,"Эксперт аль-Халиди объяснил, к чему приведет открытие Ормузского пролива",allow,NON_TOPICAL,green,True
+10707,25fe929231ec0000c5d0d0f5ab643218,TASS,В РФ планируют провести первый ЧМ по самбо среди военных,allow,NON_TOPICAL,green,True
+10801,928f978fdc698db1bdb0ec23751a578b,TASS,МИД РФ: Украина и Запад пытаются втянуть Тбилиси в кровавые авантюры на Южном Кавказе,allow,NON_TOPICAL,green,True
+10802,d7aed5c301d7807f35319d6c0f7fb245,TASS,В Приэльбрусье появится тропа для болельщиков ЦСКА,allow,NON_TOPICAL,green,True
+10901,4d52983539b83328dcd38094ec2bb2e5,TASS,"Эксперт Карташева рассказала, какой вопрос задать работодателю на собеседовании",allow,NON_TOPICAL,green,True
+10903,5851f82f9f567c1b52d180109bf13061,TASS,В ГД предложили оборудовать колясочные внутри домов или рядом с ними,allow,NON_TOPICAL,green,True
+10904,54822c622b36727565a3917193a9d594,TASS,Экс-лидер Южной Осетии рассказал о роли журналистов РФ в событиях 2008 года,allow,NON_TOPICAL,green,True
+11011,d92e2abb2567d9bc514b753655be4841,TASS,"РФ ждет соглашения о неприменении силы между Тбилиси, Сухумом и Цхинвалом",allow,NON_TOPICAL,green,True
+11108,928f978fdc698db1bdb0ec23751a578b,TASS,МИД РФ: Киев и Запад пытаются втянуть Тбилиси в кровавые авантюры в Закавказье,allow,NON_TOPICAL,green,True
+11202,cc5d41703160453b7a31283ff758dd4d,TASS,В Орловской области 16 тыс. жителей остались без электроснабжения из-за непогоды,allow,NON_TOPICAL,green,True
+11204,42ba5ce9281f8bbbb925726a14fa6540,TASS,В Баренцевом море обнаружили опасные природные явления,allow,NON_TOPICAL,green,True
+11302,b61e3f0f0ae788c61b1555b1da6d3df5,TASS,S&P Global оставило рейтинг Грузии на уровне BB,allow,NON_TOPICAL,green,True
+11303,3287725097eafe1480f1448d379b9daf,TASS,Прокуратура проведет проверку из-за инцидента с водой в Екатеринбурге,allow,NON_TOPICAL,green,True
+11304,5843cec2d4dc8c532a92840c049214f8,TASS,"Врач Солнцева объяснила, почему люди активнее худеют летом",allow,NON_TOPICAL,green,True
+11357,9b071f337dc0983a1d0ab80d021e0e9b,TASS,"В СФ рассказали, как экстрасенсы-мошенники обманывают людей по видеосвязи",allow,NON_TOPICAL,green,True
+11401,01c7137db2889cb974b06757cffdb6ee,TASS,"Сальдо считает, что Киев заменяет военный результат террором мирных жителей",allow,NON_TOPICAL,green,True
+11501,349edccd6305fd82633e305c5f40eb87,TASS,В Хакасии на отдельных АЗС отменили ограничения на отпуск топлива,allow,NON_TOPICAL,green,True
+11502,da40078c2e0ce214d3df96dbb587e947,TASS,В Красноярском крае при сплаве пропали три человека,allow,NON_TOPICAL,green,True
+11602,fd9d4789247208590f8eeb58793245f2,TASS,"Директор ВДНХ рассказал, какие павильоны выставки лидируют по посещаемости",allow,NON_TOPICAL,green,True
+11701,13b8a28acf034c3d590d751015b19116,TASS,Основатель Megaupload выразил уверенность в победе РФ над Украиной,allow,NON_TOPICAL,green,True
+11702,7971e01484583842da428b785b42bc81,TASS,В ФИФА опровергли информацию об отношениях Инфантино с экс-сотрудницей УЕФА,allow,NON_TOPICAL,green,True
+11801,bb9b532542d4da85c10d7fdc4265df10,TASS,Кабмин рассматривает установление приоритета для отечественных ИИ-решений при госзакупках,allow,NON_TOPICAL,green,True
+11802,cf78e2090ce0b617a6d96fcb5d95e156,TASS,Чемпионка РФ Осипова на тренировках прыгала через барьеры в полной темноте,allow,NON_TOPICAL,green,True
+11901,fcd4ae25eef75aef71254f21ea5892ae,TASS,"В ""Ясной Поляне"" Тульской области впервые стартовал фестиваль ""Усадьбы Москвы""",allow,NON_TOPICAL,green,True
+11905,727f50d9f5b7855f0b5537d39ca2bf22,TASS,Бутман: России необходима своя консерватория для неакадемической музыки,allow,NON_TOPICAL,green,True
+11906,730d0b956f53b8b5e40d36c69914661e,TASS,Мишустин рекомендовал регионам расширить налоговые льготы по УСН для IT-компаний,allow,NON_TOPICAL,green,True
+11907,e2531bc1b2e854f47254378452bc0fcd,TASS,"""Калашников"" выводит на госиспытания новый комплект бронежилета и шлема",allow,NON_TOPICAL,green,True
+11908,cea0e68090eca0d664bcd3bc393d97d4,TASS,Кабмин поручил продолжать перевод IT-инфраструктуры на российское ПО,allow,,green,True
+12001,5605d3107b106f3d64714d58dd3d0bdf,TASS,"Астрономы рассказали, как увидеть затмение Солнца в Москве 12 августа",allow,,green,True
+12002,3911d7eb5d9df79f4064cd30ee55979f,TASS,В РФ с 1 марта 2027 года банки будут отказывать в переводах при вредоносном ПО,allow,NON_TOPICAL,green,True
+12003,b77794dba299873efd730d58ca1280ed,TASS,В Кисловодске возобновила работу канатная дорога,allow,NON_TOPICAL,green,True
+12004,3b2f9ebe78c7879b12bec47f9c091eba,TASS,"Разыскиваемый Европолом испанец рассказал, за что его называют шпионом Кремля",allow,NON_TOPICAL,green,True
+12016,7971e01484583842da428b785b42bc81,TASS,ФИФА опровергла сообщения об отношениях Инфантино с экс-сотрудницей УЕФА,allow,NON_TOPICAL,green,True
+12101,3e62acbbd10614d7bcca59e992f2b8a8,TASS,В Ярославской области в ДТП погибли три человека,allow,,green,True
+12114,bb9b532542d4da85c10d7fdc4265df10,TASS,Кабмин: отечественные ИИ могут получить приоритет при госзакупках,allow,NON_TOPICAL,green,True
+12201,f14b7461b070a6ba1184c57fc9458fdd,TASS,Прокуратура контролирует устранение последствий непогоды в Орловской области,allow,NON_TOPICAL,green,True
+12202,12af7c61a4c87f3f2d2b676bb3515fc5,TASS,В Красноярском крае в поисках пропавшей при сплаве семьи обследуют участки реки,allow,NON_TOPICAL,green,True
+12401,48cbcce2ebe2844d87e87fcc71d72690,TASS,В Абхазии высоко ценят решающую роль России в защите народа Южной Осетии,allow,NON_TOPICAL,green,True
+12601,4dd2a884386e21d8cc2a8d9cf905030e,TASS,Politico: отказ Германии закупать газ угрожает зимнему отопительному сезону в ЕС,allow,NON_TOPICAL,green,True
+12602,35c7219d664cb9eb8432a6167883f372,TASS,"Лидер фракции ХДС/ХСС считает, что оснований для запрета АдГ нет",allow,NON_TOPICAL,green,True
+12701,1d05829222852447a1a5ba2d0bac8c9d,TASS,ТАСС: Европа закачала в хранилища 33 млрд куб. м газа к следующей зиме,allow,NON_TOPICAL,green,True
+12702,38599d3077a52217af0050e3770c181b,TASS,Депутат Мишин раскрыл планы НАТО и Украины в Калининградской области,allow,NON_TOPICAL,green,True
+12801,8e2ee88c6d824e17670c129fc0595765,TASS,20 Minutos: защиту Сеуты усилили из-за возможного нового наплыва мигрантов,allow,NON_TOPICAL,green,True
+12802,8581fe2e291bcd9495e38025d291961e,TASS,"Welt am Sonntag: ЕС импортировал в июне на 14% больше СПГ из РФ, чем год назад",allow,NON_TOPICAL,green,True
+12803,a2abb3f20886bd5ac22645fe4a10a033,TASS,В Нижегородской области загорелись емкости с жидкостью для моющих средств,allow,NON_TOPICAL,green,True
+13002,0576d6a32ed4612538b72c3393d4c2f6,TASS,"Кабмин расширил перечень премий, лауреаты которых освобождаются от НДФЛ",allow,NON_TOPICAL,green,True
+13101,1f54d175056d83001625e3a6618cbf29,TASS,"Мосгортранс перевез более 1,2 млн человек с начала года",allow,NON_TOPICAL,green,True
+13102,deba39a563447f0b1fc63b9147f4d7e5,TASS,Психолог Деулин рассказал как отказаться от сквернословия,allow,NON_TOPICAL,green,True
+13103,fc99d0436a1ee923f690c459418d6075,TASS,"Депутат Рады Железняк: Свириденко могут назначить главой ""Нафтогаза""",allow,,green,False
+13104,0bd281b3988c64d2bcb26c758a8ec649,TASS,"Директор ВДНХ рассказал, туристы из каких стран чаще всего посещают выставку",allow,NON_TOPICAL,green,True
+13201,80cbd63f879f15a9dc983831a4930585,TASS,Собянин сообщил о росте темпов ввода недвижимости в Москве с начала года,allow,NON_TOPICAL,green,True
+13202,935805d5f15ee322c89e7ed84e34a279,TASS,FAS: на Западе выступили с новой инициативой по замороженным активам РФ,allow,NON_TOPICAL,green,True
+13501,8d23fde7e3fe7105b3991b4c3b27d69e,TASS,"В Японии массово регистрируют браки в связи со счастливым днем ""трех восьмерок""",allow,NON_TOPICAL,green,True
+13701,e1bba9737e88c5442966a7fb417b44a9,TASS,"В Москве взыскали ущерб за залив квартиры водой от крана, который открыла кошка",allow,NON_TOPICAL,green,True
+13801,ab285d6908c9aad5a163d87ae502fb84,TASS,В Волгоградской области в ДТП пострадали шесть человек,allow,,green,True
+13806,8d23fde7e3fe7105b3991b4c3b27d69e,TASS,"В Японии массово регистрируют браки в счастливый день ""трех восьмерок""",allow,NON_TOPICAL,green,True
+14001,344a5a4f67cd2a16201558ba1e319807,TASS,AP: Сенат США согласовал финансирование правительства до декабря,allow,NON_TOPICAL,green,True
+14002,06a7ecfae2f2960ba97a0e9dcc78e5d5,TASS,В Чебоксарах водитель без прав и с признаками опьянения протаранил пять машин,allow,NON_TOPICAL,green,True
+14003,6e0a5cb8392bff2c14697e4aca3c9b82,TASS,Поезда на Украине задерживаются более чем на 12 часов,allow,NON_TOPICAL,green,True
+14004,d308e776ae3ae21737fde6d1acbd0d15,TASS,Алиев и Пашинян обсудили нормализацию отношений между Баку и Ереваном,allow,NON_TOPICAL,green,True
+14101,a1a6469c9b861aadaf4a7bbc9c81b0ed,TASS,В Москве одобрили и реализуют 250 проектов КРТ,allow,NON_TOPICAL,green,True
+14102,6c562d78d21993cdb92bfd4746a524de,TASS,Губернатор Воробьев и Овечкин встретились с финалистами Кубка Овечкина,allow,NON_TOPICAL,green,True
+14201,81acd5230e4aa0a076274e234b4b4bbf,TASS,Глава ФНПР заявил о необходимости баланса между праздничными и рабочими днями,allow,NON_TOPICAL,green,True
+14202,030a93e0123f20793b6f19af236bdfa2,TASS,ТАСС: самолет-разведчик НАТО летает у побережья Финского залива,allow,NON_TOPICAL,green,True
+14204,a565e1b007e94e306c5e693ad6985ba7,TASS,Глава ФНПР Сергей Черногаев: безумная эксплуатация человека ни к чему хорошему не приведет,allow,NON_TOPICAL,green,True
+14305,91d8232d8beaccaeda650e567c0a981a,TASS,В Сахалинской области произошло землетрясение магнитудой 5,allow,,green,True
+14306,47908d51bafdb16e20231f95b70d8af5,TASS,В Ивановской области арестовали мужчину за изнасилование несовершеннолетних,allow,NON_TOPICAL,green,True
+14307,be159c31817a6508edc029805bd88f76,TASS,Посольство РФ в Швеции обвинило страну в нарушении норм международного права,allow,DIPLOMACY,green,False
+14512,316938b53c1535aaca96a658722280d4,TASS,На Кубани из-за возгорания на Ильском НПЗ пострадали шесть человек,allow,NON_TOPICAL,green,True
+14606,141e67c3e586c0ac5f79cc3bcdebfedb,TASS,"ПВО РФ за сутки сбила снаряды Vampire, HIMARS и ракеты ""Фламинго""",allow,NON_TOPICAL,green,True
+14702,b66b8251b3b2ef3ff5e43ade93c38dd3,TASS,"Директор ВДНХ рассказал, туристы из каких стран стали чаще посещать выставку",allow,NON_TOPICAL,green,True
+14801,8300a208082ec870157bca0cb58d6154,TASS,В Геленджике и пригороде из-за работы ПВО закрыли пляжи,allow,NON_TOPICAL,green,True
+14901,465e20918b2911d646913dbdd73e081e,TASS,В Мариуполе из-за проблем со светом ввели веерные отключения электричества,allow,NON_TOPICAL,green,True
+14902,5999b54912c3f973f5969c735996a539,TASS,AP: Сенат утвердил Тодда Бланша на пост генпрокурора США,allow,NON_TOPICAL,green,True
+15001,0e538927912157d8238dbba23e5bcba9,TASS,Хуснуллин допустил введение льготной ипотеки для достройки домов в Крыму,allow,NON_TOPICAL,green,True
+15201,4b0099c60615d3e7b895cbac1d313e16,TASS,По части улиц Москвы открывают движение после проведения триатлона,allow,NON_TOPICAL,green,True
+15202,d436e71eabe5cf14bd891f3fb169890a,TASS,Проекты из Индии и стран Северной Африки представят на неделе интерьера и дизайна,allow,NON_TOPICAL,green,True
+15203,051e7d2749654381f0c57c77235aa4e4,TASS,МО показало кадры установления контроля над Ивановкой в Харьковской области,allow,NON_TOPICAL,green,True
+15301,0b54391de0cb145ac3e0ab722abcce31,TASS,В Оренбуржье держат на контроле ситуацию с голодовкой экс-сенатора Арашукова,allow,NON_TOPICAL,green,True
+15401,9baa32770e654a8776a6cb7a1cd4867c,TASS,"Глава ""Калашникова"" отметил колоссальный интерес в мире к российскому оружию",allow,NON_TOPICAL,green,True
+15402,c29ef44559b7893a7ed3c39292cab696,TASS,В Томске завели дело из-за подтопления домов дождевыми и грунтовыми водами,allow,NON_TOPICAL,green,True
+15403,587068bd09d115b3498b1cdba992f3ab,TASS,Thairath: число погибших из-за стрельбы в школе в Таиланде возросло до девяти,allow,,green,False
+15501,4788c27216d880281230da5fdaa87d3f,TASS,"Бутман допустил, что Долина станет ключевым педагогом в первом джазовом вузе РФ",allow,NON_TOPICAL,green,True
+15503,1fb08760e4dfe86b7a814c44846ac8c8,TASS,"""Калашников"" не работает с недружественными странами",allow,NON_TOPICAL,green,True
+15601,f91d69b50933c0012e79d6dcc0af863a,TASS,"Кобахидзе: масштабный блэкаут в Грузии, возможно, не был связан с саботажем",allow,NON_TOPICAL,green,True
+15701,624b76e560026689b5e22a00280ade0b,TASS,В Краснодаре неизвестные избили подростка,allow,NON_TOPICAL,green,True
+15703,20aba323a31691666b0442ff20c2738e,TASS,В Германии демонстранты потребовали отставки правительства Мерца,allow,PERSONAL_DATA,green,True
+15801,f0e36c24e33511015c8c5fa5bf1479dd,TASS,Кобахидзе назвал русофобию в Грузии попыткой устроить провокацию в стране,allow,NON_TOPICAL,green,True
+15803,fdb684650ae76f93faf0b1431da50363,TASS,В Великом Новгороде девушка по указанию мошенников забрала у пенсионерки деньги,allow,NON_TOPICAL,green,True
+15902,c72f88e76953bf80cd10b51659d22c78,TASS,"Фестиваль самодельных летательных аппаратов ""Летфест"" пройдет 22 августа",allow,NON_TOPICAL,green,True
+15903,2cacfded8ddcd765b11466a7f1dcea6e,TASS,По части набережных Москвы открывают движение после проведения триатлона,allow,NON_TOPICAL,green,True
+15904,52b562d3da94f672368b31e47a4c156e,TASS,"Иран готов открыть Ормузский пролив, если США примут условия Тегерана",allow,NON_TOPICAL,green,True
+15905,0361afef70db6ecfc84338dc64435381,TASS,В Екатеринбурге восстановили холодное водоснабжение,allow,NON_TOPICAL,green,True
+15906,7d1d1bf92a8615a45f9348ee6d0eff5d,TASS,Пловец Муратов оценил на пятерку с минусом выступление на ЧЕ,allow,NON_TOPICAL,green,True
+16201,e8870642fa10042abcc9ed229c9845aa,TASS,Bloomberg: Турция начала ограничивать судоходство в Черном море,allow,NON_TOPICAL,green,True
+16203,aba7a28cb551a37165382abfd0f3e9ab,TASS,"Театр Пушкина готовит спектакль ""Гордость и предубеждение""",allow,NON_TOPICAL,green,True
+16204,18960a753514740a75244c605640cfb9,TASS,МАГАТЭ сообщило о третьем за неделю отключении ЗАЭС от внешнего питания,allow,NON_TOPICAL,green,True
+16206,b24f1edd63fcb58964ef9bfaad96f531,TASS,Пловец Муратов отметил теплое отношение иностранцев к россиянам на ЧЕ,allow,NON_TOPICAL,green,True
+16207,4a61c941e4bde34a86898596937b5147,TASS,В Петербурге завели дело о хулиганстве после нападения на медиков скорой,allow,NON_TOPICAL,green,True
+16214,52b562d3da94f672368b31e47a4c156e,TASS,"Иран готов открыть Ормузский пролив, если США примут условия республики",allow,NON_TOPICAL,green,True
+16301,9007361dec72d6a161edcc77e53af08b,TASS,Украинские ТЦК массово лишают мужчин прав на законную отсрочку,allow,NON_TOPICAL,green,True
+16302,963cc8dc450b872a46bf1e86d78b99b5,TASS,Умер отец Лионеля Месси,allow,NON_TOPICAL,green,True
+16503,14750f8f0520b76be5789d8fc568ac11,TASS,Сальдо не исключил формирование новых БАРС для защиты Херсонской области,allow,NON_TOPICAL,green,True
+16504,df18463049a06902f2de191ab92bdcbf,TASS,"Пловец Муратов рассказал, что иностранные волонтеры помогали ему на ЧЕ",allow,NON_TOPICAL,green,True
+16505,7fef47ef5d5262e782d9c0ae9b3a3f11,TASS,На юго-западе Москвы реабилитируют Нижний Афонинский пруд,allow,NON_TOPICAL,green,True
+16601,15b10c882f0cf0a95a12679d3a732a4b,TASS,Сальдо поручил МинТЭК Херсонщины обеспечить регион трехкратным запасом угля,allow,NON_TOPICAL,green,True
+16603,cf4442c4c097373650b05f225214ba6d,TASS,"Вучич заявил, что не обсуждал с Зеленским военное сотрудничество",allow,NON_TOPICAL,green,True
+16604,aa174192b2e90a4dc1f621231b32f73c,TASS,Сальдо поручил организовать к зиме пункты обогрева в округах Херсонщины,allow,NON_TOPICAL,green,True
+16606,b629c76ffa17c8760f37cbaf18d7e077,TASS,Ректор РМАНПО: молодой врач не останется один,allow,NON_TOPICAL,green,True
+16615,9007361dec72d6a161edcc77e53af08b,TASS,"Омбудсмен Украины заявил, что ТЦК массово лишают мужчин прав на отсрочку",allow,NON_TOPICAL,green,True
+16701,f611ee7acaf29d724323aa1d421bcdd9,TASS,"Юрист Сикач: ""Яблоко"" лишится эфира на федеральных каналах при снятии списка",allow,NON_TOPICAL,green,True
+16703,c8f69d02811df0f20daa88b30d205168,TASS,Все месторождения нефти Ирака готовы возобновить производство на прежнем уровне,allow,NON_TOPICAL,green,True
+16704,6171f956a6d512dd531b89691ef48ee4,TASS,В ДНР рецидивист без паспорта 12 лет выдавал себя за чешского добровольца,allow,NON_TOPICAL,green,True
+16705,75581c33036c0fa4df134d8026060bb6,TASS,Судно нефтяной компании ADNOC атаковали ракеты в Ормузском проливе,allow,NON_TOPICAL,green,True
+16801,bb78edb04e0c41bfc77c030ca1c6d06d,TASS,В Калмыкии в ДТП погиб человек,allow,,green,True
+16802,9b82089d2a66d25ecdc739985806a635,TASS,"Собянин рассказал, где создают оборудование для обновления поездов метро Москвы",allow,NON_TOPICAL,green,True
+16901,8452a386ff83313cfdde29a889d99d85,TASS,Сальдо поручил усилить работу по физической защите энергообъектов Херсонщины,allow,,green,False
+17012,75581c33036c0fa4df134d8026060bb6,TASS,В Ормузском проливе ракеты атаковали судно нефтяной компании ADNOC,allow,NON_TOPICAL,green,True
+17301,7f03def3d733cc921838d34c766b6c58,TASS,Собянин рассказал о преимуществах нового путепровода над трассой СБВ,allow,NON_TOPICAL,green,True
+17302,5b575e83b94c13f14b444b682ca5498c,TASS,"Вучич сообщил, что Сербия ""сделает все"" для помощи Украине с вступлением в ЕС",allow,NON_TOPICAL,green,True
+17401,846c5df3f095e537ea954914d862259d,TASS,Движение машин по Крымскому мосту возобновили,allow,NON_TOPICAL,green,True
+17402,1413dafae370b86e6f5c9224472e4e2e,TASS,Овечкин вынужден ходить в окружении восьми охранников из-за ажиотажа в Мытищах,allow,NON_TOPICAL,green,True
+17414,9b82089d2a66d25ecdc739985806a635,TASS,Собянин: масштабные заказы Москвы формируют долгосрочные производственные цепочки,allow,NON_TOPICAL,green,True
+17501,8e12cd6bd227c4662daf000a6562a554,TASS,Вучич назвал маловероятным скорое вступление Сербии в ЕС,allow,NON_TOPICAL,green,True
+17503,80d7d028abcdca5724d03b6ca8ae5ee0,TASS,Правящая партия Венгрии предложила назначить президентом экс-главу Верховного суда,allow,NON_TOPICAL,green,True
+17504,b6b6a34433e4f26e81d338d23334fa46,TASS,Внешнее энергоснабжение Запорожской АЭС восстановили менее чем за час,allow,,green,False
+17505,b5ba971e692e64a6be436a1e4188ab1c,TASS,Писатель Цыпкин назвал оправданным перенос премьер зарубежных фильмов в РФ,allow,NON_TOPICAL,green,True
+17601,e1e891cd0e9edc0f97cee782fee0c5b5,TASS,Арагчи: Иран и Оман близки к заключению соглашения по Ормузскому проливу,allow,NON_TOPICAL,green,True
+17602,cd4485e071f335e56d6147a3fda27cb8,TASS,В Армении арестовали зятя Царукяна по делу о заказном убийстве,allow,NON_TOPICAL,green,True
+17603,89312ce519ebfeb22086ed56cac8f0de,TASS,Вучич: товарооборот Сербии и Украины за I полугодие превысил $320 млн,allow,NON_TOPICAL,green,True
+17701,6e4ef117b5e9756bf34a696d521c8db0,TASS,СК призвал избегать нелегальных экскурсий по крышам в Петербурге,allow,NON_TOPICAL,green,True
+17803,1a16c6edf031bb0252421f3e73cddd8c,TASS,"Панарин: Овечкин заслуживает вывода его номера из обращения в ""Вашингтоне""",allow,NON_TOPICAL,green,True
+17805,6bca905d5df4d32234eb673bc8c1ed92,TASS,Прокуратура начала проверку после столкновения теплохода и катера на Малой Невке,allow,NON_TOPICAL,green,True
+17806,f796eec567a47fb79dbdfe04f8ad7cf4,TASS,"Фотопрогулку с ""Зенитом"" по центру Москвы провел руководитель редакции фотоинформации ТАСС",allow,NON_TOPICAL,green,True
+17901,498a062934007d5acaddcf4ce4720458,TASS,ТАСС: под Одессой обслуживавшая гитлеровскую Германию компания теряет сухогрузы,allow,NON_TOPICAL,green,True
+17904,768374f82edc4dbcb92e177f9af627c7,TASS,В Калининградской области в акватории Приморской бухты столкнулись катер и лодка,allow,NON_TOPICAL,green,True
+18001,63c34c902ba7c877c8fb66abf0d4d416,TASS,"Зеленский утверждает, что договорился с США о ежемесячных поставках ракет ПВО",allow,NON_TOPICAL,green,True
+18101,2c665df662f00201ea3fbf2e7fe2be97,TASS,"В Москве пенсионер лишился 18 млн рублей по схеме ""спасения"" сбережений",allow,NON_TOPICAL,green,True
+18201,379078af9b20f2938877b9ba573af378,TASS,В Южной Осетии почтили память защитников Цхинвала и миротворцев РФ,allow,NON_TOPICAL,green,True
+18202,18a21180029362984f82cd97f5cb5ed5,TASS,Полиция Испании показала фото погранконтроля для путешественников из Италии,allow,NON_TOPICAL,green,True
+18602,7f8da236e89caf3c467f262cec9c525c,TASS,"""Газпром"" заявил об антирекорде запасов газа в европейских хранилищах",allow,NON_TOPICAL,green,True
+18603,219c2d8d1b2a49d25700996bb1023b1e,TASS,Анохин оценил ход обновления социальной инфраструктуры в Смоленской области,allow,,green,True
+18604,b06e807927ff657e7cfd3bdb010ee6fd,TASS,В Поморье организовали проверку после гибели ребенка в реке,allow,NON_TOPICAL,green,True
+18701,c8cecf0062895377c2d3eaa9285864ff,TASS,В Норильске грузовой Boeing выкатился за пределы ВПП после посадки,allow,NON_TOPICAL,green,True
+18902,5eeab731c5024d0109eadb9f6cce4a22,TASS,Зеленский: на Украине практически не осталось целых тепловых электростанций,allow,NON_TOPICAL,green,True
+18903,0d41f9b882e091aa631b51b88d4152d0,TASS,Российский режиссер Кирилл Соколов снимет фильм для Netflix,allow,NON_TOPICAL,green,True
+18904,18c6f1b0715c8e000fcb3e88232f5db6,TASS,Закупки лифтов при капремонте разрешат только напрямую у заводов и их дилеров,allow,NON_TOPICAL,green,True
+19001,72ebe033ed03aee191e96a9a8e561d17,TASS,FT: группа предпринимателей строит укрытие на случай ядерной войны,allow,NON_TOPICAL,green,True
+19102,1e05ee3693135b4b8a68ba77fc075f4f,TASS,"Юные хоккеисты ""Спартака"" стали двукратными победителями Кубка Овечкина",allow,NON_TOPICAL,green,True
+19103,6c2b2594f6d24d00a6a3f8b024194aa2,TASS,Главу правящей партии самопровозглашенного Косова закидали яйцами в парламенте,allow,NON_TOPICAL,green,True
+19402,435b2061f071378e9bb4da9c067a1dbd,TASS,СК начал проверку после выкатывания грузового Boeing за ВПП в Норильске,allow,NON_TOPICAL,green,True
+19404,c7a86c1ebba6dc1ab18b258b70cece13,TASS,МИД РФ назвал приоритетной задачей развитие сотрудничества с АСЕАН,allow,NON_TOPICAL,green,True
+19406,993d623161fef778e98715520714af1c,TASS,В Финском заливе эвакуировали судоводителя с севшей на мель яхты,allow,NON_TOPICAL,green,True
+19601,b3aa7571316cb9ea2cd3c4b50f18e5ce,TASS,Овечкин по окончании игровой карьеры вернется в Москву,allow,NON_TOPICAL,green,True
+19702,c7e541c4190e7ad8d89d065547f34ca5,TASS,UKMTO: у побережья Омана атаковали грузовое судно,allow,NON_TOPICAL,green,True
+19801,5ef2cdc253b03715cedc8dd508d5606f,TASS,Гутерриш: десятилетие укрепления мира отражает ценный вклад Таджикистана,allow,NON_TOPICAL,green,True
+19802,72dbc6069747386e13417e92f596f874,TASS,"В Москве стартовал волонтерский фестиваль ""Время добра. Лето""",allow,NON_TOPICAL,green,True
+20001,71cf656f2cb9a435146a4219310d509f,TASS,В Забайкалье двое подростков утонули на реке Ингоде,allow,NON_TOPICAL,green,True
+20002,76fea3837872e9462cde1aa83e1a68bb,TASS,В Белоруссии ввели новые правила постановки женщин на воинский учет,allow,NON_TOPICAL,green,True
+20005,af2ef0ec40e5a88d30e2fa4b6a590c4f,TASS,"Ветеринар Блюменкранц объяснил, как в дом попадает опасный для кошек вирус",allow,NON_TOPICAL,green,True
+20006,a694ee02ce605a4fd3d5a32bb526719e,TASS,Политик Йованович: приезд Зеленского в Белград ставит Сербию на сторону Запада,allow,,green,False
+20007,801654656aefe8fe00c9a65207dfadba,TASS,Эколог Рыбальченко назвал сезонным явлением рост числа кротов в Подмосковье,allow,,green,False
+20101,dfb930f81471eaf1322c3f6a87a85b55,TASS,Аналитик Снегирев: Украина никогда не будет производить ракеты для Patriot,allow,NON_TOPICAL,green,True
+20302,89a13c7c95aaed8b6c8ceea99d007643,TASS,NY Post: визит Нетаньяху в Нью-Йорк станет кошмаром для полиции,allow,NON_TOPICAL,green,True
+20303,6cbcd51c9ca5b034d554fc0af4f1525e,TASS,В Знаменской роще Курска установят памятник невинно убиенным,allow,NON_TOPICAL,green,True
+20304,a72a1858c34425fde83256aa3462ec48,TASS,ТАСС: Уиткофф и Кушнер могут посетить Киев и Москву на следующей неделе,allow,NON_TOPICAL,green,True
+20306,39c479c3cc0a49fe4179d55091af9130,TASS,Умер узбекский актер и режиссер Абдуманнон Убайдуллаев,allow,NON_TOPICAL,green,True
+20401,e9c4f81d056b8e6bdf20dd27724f4baf,TASS,Уральца арестовали по делу о финансировании террористической организации,allow,NON_TOPICAL,green,True
+20512,c11cb2ef12d14107447d59af9503d348,TASS,МИД Омана заявил о позитивном ходе переговоров по Ормузскому проливу,allow,NON_TOPICAL,green,True
+20601,c0b665201de40e7478c9cea247f7302c,TASS,Фермеры Франции оценили ущерб от жары в несколько миллиардов евро,allow,NON_TOPICAL,green,True
+20602,2b2503229188a2aad76059597ebdc405,TASS,Эксперт Шпиг заявил об угрозе дефицита воды Украине,allow,NON_TOPICAL,green,True
+20603,19f8a0e24b8edcea1087bbbf9b2a9d0c,TASS,В трех точках Энгельса превышены нормы загрязняющих веществ в воздухе,allow,NON_TOPICAL,green,True
+20605,533161e56c7d31714f3957747d181154,TASS,Дегтярев назвал Спартакиаду ключевым российским соревнованием,allow,NON_TOPICAL,green,True
+20606,828a10811774c89e56323b4856cff59a,TASS,"Пашинян и Трамп считают, что Вашингтонский саммит привел к миру Еревана и Баку",allow,NON_TOPICAL,green,True
+20607,91820105a304b2157097aeb2e2d3fd3a,TASS,В Мытищах к осени завершат второй этап благоустройства набережной Яузы,allow,NON_TOPICAL,green,True
+20704,3ef98145af7bfda1ba8678253c928f7f,TASS,В Херсонской области мужчина подорвался на мине,allow,NON_TOPICAL,green,True
+20902,3536103e5759bb7e5175c379320424c5,TASS,В Сочи предупредили о формировании смерчей над акваторией до 11 августа,allow,NON_TOPICAL,green,True
+20903,bd161a310c959631821453dcc8fc3dc4,TASS,Вэнс заявил о прогрессе на переговорах с Ираном,allow,NON_TOPICAL,green,True
+20906,813df538eb16f33b853969d48bde548e,TASS,"""Балтика"" нанесла ""Крыльям Советов"" первое поражение в сезоне",allow,NON_TOPICAL,green,True
+20912,2b2503229188a2aad76059597ebdc405,TASS,Эксперт Шпиг заявил об угрозе дефицита воды на Украине,allow,NON_TOPICAL,green,True
+21201,d577b9fbe2ea8fe9016b6386b728c3ff,TASS,Bloomberg: Украина и Запад могут встать перед необходимостью принять условия РФ,allow,NON_TOPICAL,green,True
+21202,c9f44250492cf79c50a743c3762d583f,TASS,Рубио: США выделили $201 млн на стимулирование частных инвестиций в Закавказье,allow,NON_TOPICAL,green,True
+21205,e4177d68a71a48e3335757a1ff24424f,TASS,ANSA: на юге Италии переселили почти 2 тыс. человек из-за сейсмической активности,allow,NON_TOPICAL,green,True
+21301,4f84b63ed5b68fc1dd2f260d7eaa0d42,TASS,Рынок акций РФ отреагировал ростом на возможный визит Уиткоффа и Кушнера,allow,NON_TOPICAL,green,True
+21401,3adc19b2b260e53184f9683cd538b9fb,TASS,В Кавказском заповеднике близ Сочи туристы встретили медведей,allow,NON_TOPICAL,green,True
+21601,68d1b9b072d575ca277f5efd2102b820,TASS,В Китае эвакуировали более 420 тыс. человек из-за приближения тайфуна,allow,NON_TOPICAL,green,True
+21602,fddfbe604dce1e9a65a16f23c65da0ed,TASS,В Красноярском крае нашли пропавшую при сплаве по реке семью,allow,NON_TOPICAL,green,True
+21605,37a9fc6084147a67f6413c461e75c20e,TASS,Британию ожидает пятая волна жары,allow,NON_TOPICAL,green,True
+21701,2d0510d947986af604fda42c2debf2ad,TASS,S7 проводит внутреннюю проверку после выкатывания самолета за ВПП в Норильске,allow,NON_TOPICAL,green,True
+21702,171e8a85ee5ab29b32414be34a13f729,TASS,Вэнс: США надеются на возвращение довоенного объема поставок нефти через Ормуз,allow,NON_TOPICAL,green,True
+21802,d4224d558dab3e2fbb10d58c9c810191,TASS,В Ленобласти в ДТП пострадали четыре человека,allow,,green,True
+21901,2a6679094bec7368033ea4a8d0d8a16c,TASS,Правительственные войска Йемена провели военную операцию против хуситов,allow,PERSONAL_DATA,green,False
+21902,10a560971bfc3a715dc8c75ddc0116a1,TASS,Церемония открытия Спартакиады народов России прошла в Екатеринбурге,allow,NON_TOPICAL,green,True
+21903,59f2d5395b241b7576713fd1ecb78494,TASS,"Зеленский утверждает, что Украина получит от Сербии €2 млн на энергетику",allow,NON_TOPICAL,green,True
+22001,2af4c22dcb2fc7be7811edd992a96bdf,TASS,В Псковской области увеличили поддержку участников мобильных огневых групп,allow,NON_TOPICAL,green,True
+22003,11dab3da419a08af503181333878f3a4,TASS,Ненефтяной товарооборот ОАЭ со странами БРИКС увеличился в 2025 году,allow,NON_TOPICAL,green,True
+22101,31716b466b2a2cf812e3575fa3db194e,TASS,"Медведев: Россия победит, что бы ни говорила фон дер Ляйен",allow,NON_TOPICAL,green,True
+22201,3a5bc39c8613f03fb56287700096693b,TASS,"Хай-дайвер Истомин рассказал, что со временем разочаровался в Месси",allow,NON_TOPICAL,green,True
+22202,4bcc8fe3d393519de50dcdc056368b3e,TASS,"Девочка из США с ""маской Бэтмена"" покидает Россию 13 августа",allow,NON_TOPICAL,green,True
+22401,0fdd6190363f736bbc672ed8e21f433f,TASS,Экс-глава Верховного суда Венгрии принял предложение занять пост президента,allow,NON_TOPICAL,green,True
+22402,685bcad1b66baf003c09ea469a6d8688,TASS,Хай-дайвер Истомин назвал шикарной Эйфелеву башню,allow,NON_TOPICAL,green,True
+22403,6682b45e644f78c1e684e80cea1f4672,TASS,"ТАСС: фигурантам дела ""Облкоммунэнерго"" смягчили меру пресечения",allow,,green,False
+22601,a7f773dfc969bff6e21372e482673ced,TASS,В Кузбассе в ДТП пострадали пять человек,allow,,green,True
+22701,e10a818fe32b96cfc17963406a349e75,TASS,Ирина Безрукова временно прекратит участие в пяти спектаклях из-за травмы,allow,NON_TOPICAL,green,True
+22704,0fdd6190363f736bbc672ed8e21f433f,TASS,Мадьяр: экс-глава Верховного суда Венгрии принял предложение занять пост президента,allow,NON_TOPICAL,green,True
+22801,36ae63f2c540b360ef83bfc626723f94,TASS,Алиев и Трамп обсудили реализацию проекта TRIPP,allow,NON_TOPICAL,green,True
+22901,4d120b7cbc7eb68b5adb99381ae3b69c,TASS,БелТА: в Киргизии ищут пропавших белорусских альпинистов,allow,NON_TOPICAL,green,True
+23001,1b155bc8820d57b4d6a35a4db7083475,TASS,"Хай-дайвер Истомин признался, что поезд метро не мешал ему на ЧЕ",allow,NON_TOPICAL,green,True
+23201,eacc8db3eae5c9395cb2250e72fc1520,TASS,В Екатеринбурге полностью восстановят водоснабжение вечером 9 августа,allow,NON_TOPICAL,green,True
+23309,0fdd6190363f736bbc672ed8e21f433f,TASS,Мадьяр: экс-глава Верховного суда Венгрии согласился занять пост президента,allow,NON_TOPICAL,green,True
+23401,6f1ac115821984a7877c2989b1da554f,TASS,В Дагестане двое детей утонули в озере,allow,NON_TOPICAL,green,True
+23501,e78173ad3e23f31d431ff477326f68bf,TASS,Сын Байдена рассказал об ухудшении состояния экс-президента США из-за рака,allow,NON_TOPICAL,green,True
+23701,341ce6a2459b80ecbe6d037ff1d96f60,TASS,Министры культуры БРИКС будут сотрудничать в сфере реституции культурных ценностей,allow,NON_TOPICAL,green,True
+23702,2ae6c1d2d974656a2c079e5733df4ebd,TASS,"""Локомотив"" не смог прервать безвыигрышную серию, сыграв вничью с ""Акроном""",allow,NON_TOPICAL,green,True
+23703,43301052b3f5a22c570bd0b770d04ebb,TASS,Замминистра культуры Алексеева: БРИКС выступила за этичное применение ИИ,allow,NON_TOPICAL,green,True
+23803,9f20f71517f7526f67e5372e4aa6d3af,TASS,"В Вологодской области воссоздали события 10-11 веков на фестивале ""Небо славян""",allow,NON_TOPICAL,green,True
+24002,39d63500cb219f337bf40d742c81085c,TASS,"Хай-дайвер Истомин рассказал, какой практикой пользуется для борьбы со страхом",allow,NON_TOPICAL,green,True
+24102,cfde39315452606c3448c2c5aefdf021,TASS,Швейцария не видит противоречия между нейтралитетом и солидарностью с Киевом,allow,NON_TOPICAL,green,True
+24201,3c4c6bc05fb1b930890d918caaf3c708,TASS,В Прикубанском округе Краснодара произошло аварийно отключение электроэнергии,allow,NON_TOPICAL,green,True
+24202,e3e020ecf60b11b965a651d27eb9846b,TASS,В Свердловской области подросток устроил ДТП на автомобиле матери,allow,,green,True
+24401,6f46c273f0aeaff6834a712561d9d2ed,TASS,Тофан: жители Молдавии тратят на азартные игры более $500 млн в год,allow,NON_TOPICAL,green,True
+24402,5b021c29e9ca010881d51531384f5bea,TASS,Фидан: обязательства стран Мекканского соглашения совпадают со статьей 5 НАТО,allow,NON_TOPICAL,green,True
+24403,3fa6078fbdcb932ec7704fced3f5b08b,TASS,СКА подписал контракт с хоккеистом Кныжовым,allow,NON_TOPICAL,green,True
+24601,1a6f09a5011db82490e427ce1dd64d67,TASS,На Ставрополье опровергли информацию о краже ребенка в курортном парке,allow,NON_TOPICAL,green,True
+24602,ba8825336348d176e4f95db5b5a80750,TASS,Россиянин Громадский стал чемпионом Европы по пятиборью,allow,NON_TOPICAL,green,True
+24606,68866135425fa64dd85d3015ee9852d8,TASS,"Юран доволен стартом ""Урала"" в сезоне Первой лиги",allow,NON_TOPICAL,green,True
+24701,c86118083e247a83c6fd357df23643fc,TASS,Фидан: Мекканское соглашение не содержит понятия общей угрозы,allow,NON_TOPICAL,green,True
+24715,cfde39315452606c3448c2c5aefdf021,TASS,Швейцария не видит противоречия между нейтралитетом и солидарностью с Украиной,allow,NON_TOPICAL,green,True
+24801,c571fc88f7df9d65ac86b141f35c9a53,TASS,БРИКС перейдет к долгосрочным культурным проектам,allow,NON_TOPICAL,green,True
+24802,faba9ef21dd583ee044d09192ca30c2f,TASS,"Мартиросов: Liga Pro Team ""перемудрила"" в финале по фиджитал-шутерам",allow,NON_TOPICAL,green,True
+24901,75a821bdd47bc7fe858e834a86349378,TASS,Фидан: Турция передала сторонам конфликта на Украине предложение о моратории на бои,allow,NON_TOPICAL,green,True
+25001,05d001ff140e76ca05a3f4868825ddb7,TASS,В Москве на еще восьми набережных открыли движение после триатлона,allow,NON_TOPICAL,green,True
+25002,68c1c6eaa58b99b40d8836e6dfe2468b,TASS,Фидан отметил интерес нескольких стран к Мекканскому союзу,allow,NON_TOPICAL,green,True
+25201,f83b204fc3b310981d619e3ed1ea9205,TASS,BFMTV: во Франции уровень воды в Луаре достиг критической отметки,allow,NON_TOPICAL,green,True
+25202,24699ad7c229d69bb4f892ccecde4499,TASS,В Иране предостерегли страны Мекканского соглашения от действий против Тегерана,allow,NON_TOPICAL,green,True
+25206,75a821bdd47bc7fe858e834a86349378,TASS,Фидан: Турция предложила сторонам конфликта на Украине мораторий на бои,allow,NON_TOPICAL,green,True
+25501,c3c03a00e80099e2911157aae57456c7,TASS,В Прикубанском округе Краснодара восстановили электроснабжение,allow,NON_TOPICAL,green,True
+25502,b758613ed8f4f158b19bcb71a6e2d257,TASS,Фидан призвал к международной изоляции Израиля за агрессию в Газе,allow,,green,False
+25601,23f90f5ac3936b38233b7908db5baa0e,TASS,Bild: из ФРГ выслали около 400 россиян с февраля 2022 года,allow,NON_TOPICAL,green,True
+25701,1e30cb370b7a3b6157b3b56106ee5cbd,TASS,"Дмитриев: ЕС столкнулся с энергокризисом, который сам же и спровоцировал",allow,,green,True
+25801,7a6302ba3d02ce589a4ecb40a998ae42,TASS,"""Шаляпин-фестиваль"" собрал свыше 1 тыс. человек",allow,NON_TOPICAL,green,True
+26102,4a5e87cfa74ca2d72bd4c0344eb802d0,TASS,В Южной Осетии почтили память военного летчика Владимира Едаменко,allow,NON_TOPICAL,green,True
+26103,53bcc81cf8b8cf19f77cba0787e3f285,TASS,В Нальчике сгорела кровля многоквартирного дома,allow,NON_TOPICAL,green,True
+26105,cb28c9ace9c3d12ec0aece0be8efa668,TASS,Bloomberg: США добиваются выхода нефтяного магната из проектов в Венесуэле,allow,NON_TOPICAL,green,True
+26501,cd2053ef4fd18f1b5d6f9704aa61646c,TASS,Депутат Колесник предложил Польше вернуть освобожденные Красной армией земли,allow,NON_TOPICAL,green,True
+27001,f7fb932f1e7e93b73152fbaf9216b84d,TASS,"Фанаты белградской ""Црвены Звезды"" выступили против приезда Зеленского",allow,NON_TOPICAL,green,True
+27002,a8a59f974b4393df7941ae7349dbafc3,TASS,На части набережных Москвы открыли движение после соревнований по триатлону,allow,NON_TOPICAL,green,True
+27003,78599da577a1524697ded7895410b91a,TASS,Bild: АдГ продолжает уверенно лидировать в рейтинге партий ФРГ,allow,NON_TOPICAL,green,True
+27005,b6739d439e4bc7b3a57a4440e62f517a,TASS,"NYT: у США осталось менее 1,7 тыс. ракет для Patriot из-за операции против Ирана",allow,NON_TOPICAL,green,True
+27305,a833054664f6520f2bcfc711f9b24ee7,TASS,На Земле днем наблюдалась неожиданная слабая магнитная буря,allow,NON_TOPICAL,green,True
+27402,ea048596917373e8880524e5df19be65,TASS,"Al Hadath: в Ираке арестовали членов группировки, готовивших атаку на соседнюю страну",allow,NON_TOPICAL,green,True
+27403,6a78412de7285caa41cc24b809b9791d,TASS,На участке Дуная в Болгарии уровень воды опустился до рекордно низкого,allow,NON_TOPICAL,green,True
+27501,4c8e8edc9201e9944990b93145b93022,TASS,В Тверской области прошел заезд на 20 км в рамках многодневной велогонки,allow,NON_TOPICAL,green,True
+27609,a833054664f6520f2bcfc711f9b24ee7,TASS,На Земле днем наблюдалась слабая магнитная буря,allow,NON_TOPICAL,green,True
+27703,ced679088b0f7020928c22b0ebc1784f,TASS,В Махачкале при падении лифта пострадали четыре человека,allow,NON_TOPICAL,green,True
+28001,9faf3941adc63b2476bf0bf36ad6eadc,TASS,СК начал проверку после падения лифта в Махачкале,allow,NON_TOPICAL,green,True
+28502,3160ae88afbd003ecd72ddb144217b4a,TASS,"Зеленский: Киеву понадобится не менее года, чтобы начать производство Patriot",allow,NON_TOPICAL,green,True
+28601,44a891a6d97045751f5665903d29f5bc,TASS,"Путин отметил мужество строителей, работающих в Донбассе и Новороссии",allow,NON_TOPICAL,green,True
+28602,94ea4e4946d2279e0b27d9d384945dbf,TASS,Сорвавшийся в Махачкале пассажирский лифт был перегружен,allow,NON_TOPICAL,green,True
+28603,cfd24750521538a570c9ed5259bf4ea2,TASS,Путин: в России за 10 лет введено более 955 млн кв. м жилья,allow,NON_TOPICAL,green,True
+28606,721b0e2a13ecca255344d1b2d3a3818a,TASS,В Санкт-Петербурге почтят память героев Ленинградской битвы,allow,NON_TOPICAL,green,True

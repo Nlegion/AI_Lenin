@@ -148,9 +148,9 @@ def apply_pre_llm_gate(*, guard: NewsGuard, item: QaItem, row: dict[str, Any]) -
         content=item.content,
         source=item.source or "unknown",
     )
-    if gate.decision not in {"deny", "quarantine", "skip"}:
+    if gate.decision not in {"deny", "quarantine", "skip", "hard_block", "review"}:
         return None
-    if gate.decision == "deny":
+    if gate.decision in {"deny", "hard_block"}:
         reason = "pre_deny"
     elif gate.decision == "skip":
         reason = "out_of_scope_skip"

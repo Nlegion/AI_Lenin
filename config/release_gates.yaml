@@ -16,6 +16,31 @@ rag_quality:
 news_guard:
   enabled: true
 
+censorship_quality_gates:
+  enabled: true
+  fpr_diplomacy_max: 0.01
+  block_recall_min: 0.95
+  review_rate_max: 0.20
+  reason_coverage_min: 0.99
+  fp_growth_non_dangerous_max_delta: 0.05
+  review_backlog_max: 500
+  review_resolution_time_p95_seconds_max: 3600
+  canary_min_hours: 24
+  shadow_agreement_min: 0.99
+
+censorship_latency_gates:
+  enabled: true
+  p95_without_l3_delta_max_ms: 10
+  p95_with_l3_delta_max_ms: 40
+  p95_ratio_vs_baseline_max: 1.10
+  timeout_rate_max: 0.001
+  throughput_min_ratio_vs_baseline: 0.8
+
+censorship_rollback:
+  enabled: true
+  auto_rollback_on_error_rate: 0.05
+  observation_window_minutes: 30
+
 anti_cliche:
   enabled: false
 

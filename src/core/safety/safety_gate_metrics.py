@@ -32,11 +32,14 @@ def aggregate_gate_shares(rows: list[dict[str, Any]]) -> dict[str, float]:
     total = max(len(rows), 1)
     decisions = Counter(str(r.get("decision") or r.get("enforced_decision") or "") for r in rows)
     tiers = Counter(str(r.get("risk_tier") or "") for r in rows)
+    deny_like = decisions.get("deny", 0) + decisions.get("hard_block", 0)
+    review_like = decisions.get("quarantine", 0) + decisions.get("review", 0)
     return {
         "gate_allow_share": decisions.get("allow", 0) / total,
-        "gate_deny_share": decisions.get("deny", 0) / total,
+        "gate_deny_share": deny_like / total,
+        "gate_review_share": review_like / total,
         "gate_skip_share": decisions.get("skip", 0) / total,
-        "gate_quarantine_share": decisions.get("quarantine", 0) / total,
+        "gate_quarantine_share": review_like / total,
         "gate_yellow_share": tiers.get("yellow", 0) / total,
         "n": float(len(rows)),
     }

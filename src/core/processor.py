@@ -1,6 +1,7 @@
 import asyncio
 import time
 import logging
+import re
 from pathlib import Path
 from src.core.database.repositories.news_repository import NewsRepository
 from src.modules.news_system.fetcher import NewsFetcher
@@ -14,11 +15,17 @@ from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
 from src.core.safety.news_guard import NewsGuard
 from src.core.safety.safety_gate import SafetyGate
-from src.core.safety.safety_gate_types import GateContext
+from src.core.safety.pre_rag_censor import PreRagCensor
+from src.core.safety.pre_rag_censor_types import CensorInput
+from src.core.settings.censorship_runtime_config import (
+    default_censorship_runtime_config_path,
+    load_censorship_runtime_config,
+)
 from src.core.settings.analysis_defaults import REFUSAL_PHRASES
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
+_WS_RE = re.compile(r"\s+")
 
 class NewsProcessor:
     def __init__(self):
@@ -32,6 +39,7 @@ class NewsProcessor:
         self.validator = AnalysisValidator()
         self.news_guard = self._init_news_guard()
         self.safety_gate = self._init_safety_gate()
+        self.pre_rag_censor = self._init_pre_rag_censor()
         self.analyzer_ready = asyncio.Event()
 
         asyncio.create_task(self.initialize_components())
@@ -73,6 +81,36 @@ class NewsProcessor:
         except Exception as error:  # noqa: BLE001
             logger.exception("Failed to initialize SafetyGate: %s", error)
             return None
+
+    def _init_pre_rag_censor(self) -> PreRagCensor | None:
+        try:
+            cfg_path = default_censorship_runtime_config_path(Path(self.config.BASE_DIR))
+            runtime_cfg = load_censorship_runtime_config(cfg_path)
+            return PreRagCensor(
+                safety_gate=self.safety_gate,
+                news_guard=self.news_guard,
+                config=runtime_cfg,
+                config_path=str(cfg_path),
+            )
+        except Exception as error:  # noqa: BLE001
+            logger.exception("Failed to initialize pre-RAG censor: %s", error)
+            return None
+
+    def _deduplicate_news_batch(self, news_items: list[dict]) -> list[dict]:
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for item in news_items:
+            title = str(item.get("title") or "")
+            body = str(item.get("content") or "")
+            key = _WS_RE.sub(" ", f"{title}\n{body}".strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        dropped = len(news_items) - len(deduped)
+        if dropped > 0:
+            logger.info("Pre-censor batch dedup dropped=%s kept=%s", dropped, len(deduped))
+        return deduped
 
     async def initialize_components(self):
         """Параллельная инициализация компонентов с запуском сервера"""
@@ -123,6 +161,7 @@ class NewsProcessor:
                     await self.publisher.send_admin_notification("📡 Начало сбора новостей...")
 
                     news_items = self.fetcher.fetch_all()
+                    news_items = self._deduplicate_news_batch(news_items)
 
                     if news_items:
                         await self.publisher.send_admin_notification(
@@ -196,75 +235,64 @@ class NewsProcessor:
         async with semaphore:
             # Логируем информацию о новости
             logger.info(f"Обработка новости: {news.title[:50]}...")
+            censor_result = None
+            if self.pre_rag_censor is not None:
+                async def _load_cached(content_hash: str, config_hash: str):
+                    return await repo.get_censor_cached_decision(
+                        content_hash=content_hash,
+                        config_version_hash=config_hash,
+                    )
 
-            gate_decision = None
-            if self.safety_gate is not None and self.safety_gate.config.flags.enabled:
-                ctx = GateContext(
-                    title=news.title,
-                    content=news.content,
-                    source=news.source,
-                    item_id=str(news.id),
-                    config_version_hash=self.safety_gate.config_version_hash,
-                )
-                shadow = self.safety_gate.evaluate_with_shadow(
-                    ctx,
-                    legacy_guard=self.news_guard,
-                )
-                gate_decision = shadow.enforced
-                logger.info(
-                    "SafetyGate decision news_id=%s decision=%s risk_tier=%s "
-                    "match=%s old=%s new=%s codes=%s",
-                    news.id,
-                    gate_decision.decision,
-                    gate_decision.risk_tier,
-                    shadow.decision_match,
-                    shadow.old_decision.decision if shadow.old_decision else None,
-                    shadow.new_decision.decision if shadow.new_decision else None,
-                    ",".join(gate_decision.reason_codes),
-                )
-            elif self.news_guard is not None:
-                legacy = self.news_guard.evaluate_input(
-                    news.title, news.content, source=news.source
-                )
-                from src.core.safety.safety_gate_types import GateDecision, SafetyHint
+                async def _save_cached(content_hash: str, config_hash: str, model_hash: str, result):
+                    await repo.upsert_censor_cached_decision(
+                        content_hash=content_hash,
+                        config_version_hash=config_hash,
+                        model_version_hash=model_hash,
+                        decision=result.decision,
+                        category=result.category,
+                        risk_tier=result.risk_tier,
+                        reason_codes=list(result.reason_codes),
+                        confidence=dict(result.confidence),
+                    )
 
-                hints = []
-                if legacy.risk_tier == "yellow":
-                    hints = [
-                        SafetyHint.YELLOW_CONSTRAINED_ANALYSIS,
-                        SafetyHint.AVOID_COMBAT_ESTIMATES,
-                    ]
-                gate_decision = GateDecision(
-                    decision=legacy.decision,
-                    risk_tier=legacy.risk_tier,
-                    reason=legacy.reason,
-                    reason_codes=list(legacy.reason_codes),
-                    message=legacy.message,
-                    context_hints=hints,
-                    needs_yellow_warning=legacy.risk_tier == "yellow"
-                    and legacy.decision == "allow",
+                async def _cleanup_cache(max_age_seconds: int):
+                    return await repo.cleanup_censor_cache(max_age_seconds=max_age_seconds)
+
+                self.pre_rag_censor._load_cached_decision = _load_cached  # type: ignore[attr-defined]
+                self.pre_rag_censor._save_cached_decision = _save_cached  # type: ignore[attr-defined]
+                self.pre_rag_censor._cleanup_cached_decisions = _cleanup_cache  # type: ignore[attr-defined]
+                censor_result = await self.pre_rag_censor.evaluate(
+                    CensorInput(
+                        news_id=str(news.id),
+                        title=news.title,
+                        body=news.content,
+                        source=news.source,
+                        metadata={"url": getattr(news, "url", "")},
+                    )
                 )
                 logger.info(
-                    "NewsGate decision news_id=%s decision=%s risk_tier=%s reason=%s codes=%s",
+                    "PreRagCensor decision news_id=%s decision=%s category=%s tier=%s codes=%s",
                     news.id,
-                    gate_decision.decision,
-                    gate_decision.risk_tier,
-                    gate_decision.reason,
-                    ",".join(gate_decision.reason_codes),
+                    censor_result.decision,
+                    censor_result.category,
+                    censor_result.risk_tier,
+                    ",".join(censor_result.reason_codes),
                 )
-            if gate_decision is not None:
-                if gate_decision.decision in {"deny", "quarantine", "skip"}:
-                    await repo.mark_as_processed_without_analysis(news.id)
-                    self.stats["news_skipped"] += 1
-                    return
-                setattr(news, "_risk_tier", gate_decision.risk_tier)
-                setattr(
-                    news,
-                    "_context_hints",
-                    [h.value if hasattr(h, "value") else str(h) for h in gate_decision.context_hints],
-                )
-                setattr(news, "_needs_yellow_warning", gate_decision.needs_yellow_warning)
-                if gate_decision.risk_tier == "yellow":
+                if censor_result.decision != "allow":
+                    if censor_result.decision in {"hard_block", "skip"}:
+                        await repo.mark_as_processed_without_analysis(news.id)
+                        self.stats["news_skipped"] += 1
+                        return
+                    if censor_result.decision == "review":
+                        logger.info(
+                            "Yellow risk publish mode enabled news_id=%s category=%s",
+                            news.id,
+                            censor_result.category,
+                        )
+                setattr(news, "_risk_tier", censor_result.risk_tier)
+                setattr(news, "_context_hints", [h.value for h in censor_result.context_hints])
+                setattr(news, "_needs_yellow_warning", censor_result.needs_yellow_warning)
+                if censor_result.risk_tier == "yellow":
                     from src.core.safety.yellow_audit import append_yellow_audit
 
                     append_yellow_audit(
@@ -272,20 +300,18 @@ class NewsProcessor:
                         item_id=str(news.id),
                         title=news.title,
                         content=news.content,
-                        risk_tier=gate_decision.risk_tier,
-                        reason_codes=list(gate_decision.reason_codes),
-                        decision=gate_decision.decision,
+                        risk_tier=censor_result.risk_tier,
+                        reason_codes=list(censor_result.reason_codes),
+                        decision=censor_result.decision,
                     )
-
-            # Проверяем, нужно ли анализировать новость
-            should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
-            logger.info(f"Решение по новости {news.id}: {reason}")
-
-            if not should_analyze:
-                logger.info(f"Пропуск новости {news.id}: {reason}")
-                await repo.mark_as_processed_without_analysis(news.id)
-                self.stats["news_skipped"] += 1
-                return
+                # Keep classifier as shadow-only telemetry while migrating to pre-RAG censor.
+                should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
+                logger.info(
+                    "Classifier shadow news_id=%s should_analyze=%s reason=%s",
+                    news.id,
+                    should_analyze,
+                    reason,
+                )
 
             try:
                 # Генерируем анализ
