@@ -23,7 +23,7 @@ generation:
       repetition_penalty: 1.25
       max_tokens: 512
       seed: 42
-      max_context_chars: 5500
+      max_context_chars: 3000
     fine_tuned:
       model_name: "saiga-lenin-q4"
       model_path: "models/saiga/lenin_model.q4_k.gguf"
@@ -36,4 +36,4 @@ generation:
       repetition_penalty: 1.5
       max_tokens: 512
       seed: 42
-      max_context_chars: 5500
+      max_context_chars: 3000

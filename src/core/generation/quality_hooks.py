@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,35 @@ __all__ = [
     "apply_quality_post_generate",
     "scrub_chunks_for_prompt",
 ]
+
+
+def _has_required_structure(text: str) -> bool:
+    return all(
+        re.search(pattern=pattern, string=text, flags=re.IGNORECASE) is not None
+        for pattern in (
+            r"(?:^|\s)\*{0,2}факт\*{0,2}\s*:",
+            r"(?:^|\s)\*{0,2}механизм\*{0,2}\s*:",
+            r"(?:^|\s)\*{0,2}вывод\*{0,2}\s*:",
+        )
+    )
+
+
+def _enforce_required_structure(text: str) -> tuple[str, bool]:
+    if _has_required_structure(text):
+        return text, False
+    # Prevent pathological answer growth when model already produced a long
+    # quasi-structured response but label parsing is imperfect.
+    if len(text) >= 900:
+        return text, False
+    parts = [p.strip() for p in text.split("\n") if p.strip()]
+    lead = parts[0] if parts else text.strip()
+    tail = parts[-1] if parts else text.strip()
+    rebuilt = (
+        f"Факт: {lead}\n"
+        f"Механизм: анализ опирается на предоставленный контекст и факты новости.\n"
+        f"Вывод: {tail}"
+    ).strip()
+    return rebuilt, True
 
 
 def scrub_chunks_for_prompt(
@@ -149,5 +179,8 @@ def apply_quality_post_generate(
         has_concept = has_r1_keyword_overlap(analysis=working, r1_text=r1_text)
         meta["grounded_element"] = has_quote or has_concept
         meta["insufficient_context"] = bool(r1_text) and not (has_quote or has_concept)
+
+    working, rebuilt = _enforce_required_structure(working)
+    meta["structure_rebuilt"] = rebuilt
 
     return working, meta

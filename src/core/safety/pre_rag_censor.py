@@ -84,6 +84,27 @@ _MANUAL_FIRE_TERMS = ("пожар", "пожары")
 _MANUAL_AIRPORT_TERMS = ("аэропорт",)
 _MANUAL_RELIGION_TERMS = ("храм",)
 _MANUAL_DEATH_TERMS = ("останк", "труп")
+_ETHNO_HATE_HARD_TERMS = (
+    "русопет",
+    "чурк",
+    "хач",
+    "черножоп",
+    "узкоглаз",
+    "инородц",
+    "нацмен",
+    "малоросс",
+)
+_ETHNO_HATE_ACTION_TERMS = (
+    "ненав",
+    "убива",
+    "изгна",
+    "депорт",
+    "очист",
+    "запрет",
+    "уничтож",
+)
+_SEPARATOR_RE = re.compile(r"[\s\-\._:,;!?/\\|()\[\]{}\"'`~]+")
+_ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\uFEFF]")
 _MANUAL_WAR_GENERIC_TERMS = (
     "бомб",
     "война",
@@ -160,6 +181,7 @@ class CensorRuntimeConfig:
     sanctions_allow_l2_min: float = 0.60
     require_l3_for_sanctions_allow: bool = False
     sensitive_topic_guard_enabled: bool = True
+    ethno_hate_containment_enabled: bool = True
     war_review_threshold: float = 0.50
     war_hard_block_threshold: float = 0.80
     l2_model_version: str = "l2-default"
@@ -262,6 +284,7 @@ class PreRagCensor:
             "sanctions_allow_l2_min": self._config.sanctions_allow_l2_min,
             "require_l3_for_sanctions_allow": self._config.require_l3_for_sanctions_allow,
             "sensitive_topic_guard_enabled": self._config.sensitive_topic_guard_enabled,
+            "ethno_hate_containment_enabled": self._config.ethno_hate_containment_enabled,
             "war_review_threshold": self._config.war_review_threshold,
             "war_hard_block_threshold": self._config.war_hard_block_threshold,
         }
@@ -431,6 +454,7 @@ class PreRagCensor:
             needs_yellow_warning=l1_result.needs_yellow_warning,
             audit={
                 **l1_result.audit,
+                "l1_decision": l1_result.decision,
                 "normalization": {
                     "ru_ratio": normalization.ru_ratio,
                     "duplicate_hit": normalization.duplicate_hit,
@@ -761,6 +785,13 @@ class PreRagCensor:
         self,
         text_lower: str,
     ) -> tuple[CensorDecision, str, str, str] | None:
+        if self._config.ethno_hate_containment_enabled and self._has_ethno_hate_markers(text_lower):
+            return (
+                "hard_block",
+                "ETHNIC_RELIGIOUS",
+                "manual_ethno_hate_containment",
+                "Manual rule: ethno-hate containment hard block",
+            )
         if "воздушн" in text_lower and "тревог" in text_lower:
             return (
                 "hard_block",
@@ -795,6 +826,16 @@ class PreRagCensor:
         if any(token in text_lower for token in _MANUAL_FIRE_TERMS):
             return ("hard_block", "FIRE", "manual_fire_hard_block", "Manual rule: fire hard block")
         return None
+
+    def _has_ethno_hate_markers(self, text_lower: str) -> bool:
+        cleaned = _ZERO_WIDTH_RE.sub("", text_lower)
+        compact = _SEPARATOR_RE.sub("", cleaned)
+        hard_hit = any(term in cleaned or term in compact for term in _ETHNO_HATE_HARD_TERMS)
+        if not hard_hit:
+            return False
+        action_hit = any(term in cleaned or term in compact for term in _ETHNO_HATE_ACTION_TERMS)
+        # Keep containment strict but avoid broad false positives for neutral mentions.
+        return action_hit or any(term in cleaned for term in ("нужно", "должны", "пора", "против"))
 
     def _war_signal_score(self, text_lower: str) -> float:
         terms = (
@@ -867,7 +908,10 @@ class PreRagCensor:
         ):
             current_decision = "allow"
             current_category = "NON_TOPICAL"
-            codes = ["unknown_topic_low_signal_allow_forward"]
+            codes = [
+                "unknown_topic_low_signal_allow_forward",
+                "override:unknown_topic_forward_trusted_source",
+            ]
 
         if war_score >= cfg.war_hard_block_threshold and current_decision != "hard_block":
             current_decision = "hard_block"

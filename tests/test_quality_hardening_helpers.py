@@ -9,7 +9,9 @@ from src.core.generation.context_budget import (
     shrink_budget,
 )
 from src.core.generation.prompt_adapter import FALLBACK_LEGACY_MARKER, build_chat_request
+from src.core.generation.quality_hooks import _enforce_required_structure, _has_required_structure
 from src.core.generation.text_postprocess import (
+    clamp_answer_length,
     dedupe_consecutive_sentences,
     finalize_generated_text,
     strip_truncation_markers,
@@ -32,6 +34,13 @@ def test_finalize_strips_and_trims() -> None:
     text, meta = finalize_generated_text("Первое. Первое. Обрыв без точки")
     assert meta["consecutive_repeat_removed"] == 1
     assert text.endswith(".")
+
+
+def test_clamp_answer_length_trims_very_long_text() -> None:
+    long_text = ("Факт. " * 400).strip()
+    clamped, changed = clamp_answer_length(long_text, max_chars=500)
+    assert changed is True
+    assert len(clamped) <= 500
 
 
 def test_shrink_budget_chunks_first() -> None:
@@ -69,3 +78,19 @@ def test_news_groundedness_keyterm() -> None:
     )
     assert result.grounded
     assert result.matched_keyterms
+
+
+def test_has_required_structure_accepts_spaced_and_bold_labels() -> None:
+    text = (
+        "**Факт:** В новости указан конкретный шаг.\n"
+        "Механизм : Связь с теоретическим принципом.\n"
+        "Вывод: Практическое следствие для оценки события."
+    )
+    assert _has_required_structure(text)
+
+
+def test_enforce_required_structure_skips_long_nonstructured_text() -> None:
+    long_text = "Это длинный анализ без явных меток. " * 80
+    rebuilt, changed = _enforce_required_structure(long_text)
+    assert changed is False
+    assert rebuilt == long_text

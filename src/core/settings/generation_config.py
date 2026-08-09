@@ -38,7 +38,7 @@ class BackendConfig(BaseModel):
     repetition_penalty: float = 1.15
     max_tokens: int = 300
     seed: int = 42
-    max_context_chars: int = 5500
+    max_context_chars: int = 3000
 
 
 class GenerationConfig(BaseModel):

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 _TRUNCATION_LEAK = re.compile(r"\n?\.\.\.\[truncated\]", re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
+_MAX_FINAL_ANSWER_CHARS = 1000
 
 
 def strip_truncation_markers(text: str) -> str:
@@ -25,6 +26,16 @@ def truncate_to_last_complete_sentence(text: str) -> str:
         if text[index] in ".!?…":
             return text[: index + 1]
     return text
+
+
+def clamp_answer_length(text: str, *, max_chars: int = _MAX_FINAL_ANSWER_CHARS) -> tuple[str, bool]:
+    if not text or len(text) <= max_chars:
+        return text, False
+    candidate = text[:max_chars].rstrip()
+    last_punct = max(candidate.rfind("."), candidate.rfind("!"), candidate.rfind("?"), candidate.rfind("…"))
+    if last_punct >= int(max_chars * 0.6):
+        return candidate[: last_punct + 1], True
+    return candidate, True
 
 
 def dedupe_consecutive_sentences(text: str) -> tuple[str, dict[str, Any]]:
@@ -55,4 +66,6 @@ def finalize_generated_text(text: str) -> tuple[str, dict[str, Any]]:
     cleaned = strip_truncation_markers(text)
     cleaned, dedupe_meta = dedupe_consecutive_sentences(cleaned)
     cleaned = truncate_to_last_complete_sentence(cleaned)
+    cleaned, clamped = clamp_answer_length(cleaned)
+    dedupe_meta["answer_len_clamped"] = clamped
     return cleaned, dedupe_meta

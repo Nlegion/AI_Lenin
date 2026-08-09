@@ -37,7 +37,7 @@ from src.core.generation.quote_mode import (
     has_quote_span,
     select_quote_mode,
 )
-from src.core.generation.text_postprocess import finalize_generated_text
+from src.core.generation.text_postprocess import clamp_answer_length, finalize_generated_text
 from src.core.safety.fact_opinion import needs_fact_opinion_extra
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 from src.core.safety.post_generate_gates import apply_post_generate_gates
@@ -404,6 +404,9 @@ class AnalysisGenerationPipeline:
             # combat_sensitive no longer triggers policy deny in quality path.
             combat_sensitive=False,
         )
+        text, post_quality_clamped = clamp_answer_length(text)
+        if post_quality_clamped:
+            quality_meta["answer_len_clamped_post_quality"] = True
         if chunk_artifact_codes:
             quality_meta["rag_artifact_codes"] = chunk_artifact_codes
 

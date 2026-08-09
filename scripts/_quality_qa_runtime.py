@@ -138,6 +138,17 @@ def base_row(item: QaItem, *, persona_model: str, input_hash: str) -> dict[str, 
         "orchestration_mode": None,
         "latency_ms": 0,
         "attempts": 0,
+        "llm_attempted": False,
+        "llm_generated": False,
+        "llm_final_used": False,
+        "fallback_used": False,
+        "post_safety_modified": False,
+        "post_safety_rejected": False,
+        "quote_candidate_found": False,
+        "quote_required": False,
+        "quote_fulfilled": False,
+        "quote_missing_reason": None,
+        "quote_verification_failed": False,
     }
 
 
@@ -161,6 +172,7 @@ def apply_pre_llm_gate(*, guard: NewsGuard, item: QaItem, row: dict[str, Any]) -
     row["blocked"] = True
     row["skipped_llm"] = True
     row["skipped_llm_reason"] = reason
+    row["route_block_reason"] = reason
     row["answer"] = message
     row["reason_codes"] = list(gate.reason_codes)
     row["prompt_builder"] = "pre_llm_gate"
@@ -201,6 +213,7 @@ async def generate_one(
     while attempts < max_tries:
         attempts += 1
         row["attempts"] = attempts
+        row["llm_attempted"] = True
         try:
             result = await pipeline.generate(
                 news_title=item.title,
@@ -227,10 +240,22 @@ async def generate_one(
                 "news_groundedness",
                 "cliche_gate",
                 "consecutive_repeat_removed",
+                "quote_mode",
+                "quote_allowlist_present",
+                "allowlist_size",
+                "quote_removed",
+                "quote_repair_applied",
+                "repair_success",
+                "artifact_fallback",
+                "artifact_deny",
+                "artifact_codes",
+                "paragraph_loop_detected",
+                "structure_rebuilt",
             ):
                 if key in result.metadata:
                     row[key] = result.metadata.get(key)
             row["skipped_llm"] = False
+            row["llm_generated"] = True
             if not answer:
                 row["status"] = "error"
                 row["error"] = "empty model content"
@@ -240,6 +265,24 @@ async def generate_one(
             row["blocked"] = bool(result.guard_result.blocked)
             row["answer"] = answer
             row["status"] = "done"
+            row["llm_final_used"] = not bool(result.guard_result.blocked)
+            row["fallback_used"] = bool(result.metadata.get("artifact_fallback"))
+            row["post_safety_modified"] = bool(result.metadata.get("artifact_codes")) or bool(
+                result.guard_result.reason_codes
+            )
+            row["post_safety_rejected"] = bool(result.metadata.get("artifact_deny")) or bool(
+                result.guard_result.blocked
+            )
+            row["quote_candidate_found"] = bool(result.metadata.get("allowlist_size", 0))
+            row["quote_required"] = str(result.metadata.get("quote_mode") or "") == "quote"
+            row["quote_fulfilled"] = bool(result.metadata.get("allowlist_size", 0)) and "«" in answer
+            if row["quote_required"] and not row["quote_fulfilled"]:
+                row["quote_missing_reason"] = "quote_required_but_absent"
+            elif not row["quote_candidate_found"]:
+                row["quote_missing_reason"] = "no_quote_candidate"
+            else:
+                row["quote_missing_reason"] = None
+            row["quote_verification_failed"] = bool(result.metadata.get("quote_removed"))
             return row
         except Exception as error:  # noqa: BLE001
             last_error = error

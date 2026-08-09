@@ -42,6 +42,9 @@ _BROKEN = (
     re.compile(r"утверждение\s+о\s+и\b", re.IGNORECASE),
     re.compile(r"\bи\s+и\b", re.IGNORECASE),
 )
+_CHATML_TOKEN = re.compile(r"<\|im_(?:start|end)\|>\s*(?:assistant|user|system)?", re.IGNORECASE)
+_MULTI_STANCE_TAG = re.compile(r"(\[multi-stance\]\s*){2,}", re.IGNORECASE)
+_ORCHESTRATOR_LABEL = re.compile(r"\bR[123]\b\s*(?:нет|содержит|упоминает|подтверждает)?", re.IGNORECASE)
 LONG_DISCLAIMER_RE = re.compile(
     r"Ответ сгенерирован искусственным интеллектом.{0,200}призывом к действию\.?",
     re.IGNORECASE | re.DOTALL,
@@ -162,6 +165,15 @@ def apply_artifact_pass(
         if _REDACT.search(working):
             working = _REDACT.sub("«[место]»", working)
             codes.append("strip:redact_placeholder")
+        if _CHATML_TOKEN.search(working):
+            working = _CHATML_TOKEN.sub("", working)
+            codes.append("strip:chatml_token")
+        if _MULTI_STANCE_TAG.search(working):
+            working = _MULTI_STANCE_TAG.sub("[multi-stance] ", working)
+            codes.append("strip:multi_stance_repeat")
+        if _ORCHESTRATOR_LABEL.search(working):
+            working = _ORCHESTRATOR_LABEL.sub("контекст ", working)
+            codes.append("strip:orchestrator_label")
         if LONG_DISCLAIMER_RE.search(working):
             working = LONG_DISCLAIMER_RE.sub("", working)
             codes.append("strip:long_disclaimer_header")

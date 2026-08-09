@@ -1,4 +1,4 @@
-"""Run isolated 24h censorship experiment without RAG/generation/publish."""
+"""Run isolated censorship experiment without RAG/generation/publish."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ import csv
 import json
 import logging
 import random
+import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +80,100 @@ def _export_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             writer.writerow({k: row.get(k) for k in keys})
 
 
+def _safe_git_head(*, base_dir: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=base_dir,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:  # noqa: BLE001
+        return "unknown"
+    return result.stdout.strip() or "unknown"
+
+
+def _validate_control_rows(*, rows: list[dict[str, Any]], min_rows: int) -> None:
+    if len(rows) < min_rows:
+        raise ValueError(f"control set too small: len={len(rows)} required={min_rows}")
+    required = ("id", "title", "content")
+    for idx, row in enumerate(rows, start=1):
+        for field in required:
+            value = str(row.get(field) or "").strip()
+            if not value:
+                raise ValueError(f"control row {idx} missing required field '{field}'")
+
+
+def _build_payload(
+    *,
+    item: dict[str, Any],
+    result: Any,
+    source_trust_tier: str,
+    dataset: str | None = None,
+) -> dict[str, Any]:
+    audit = result.audit if isinstance(result.audit, dict) else {}
+    payload = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "news_id": str(item.get("id")),
+        "source": str(item.get("source") or "unknown"),
+        "source_trust_tier": source_trust_tier,
+        "language": str(item.get("language") or "ru"),
+        "title": str(item.get("title") or ""),
+        "body_hash": compute_content_hash(
+            title=str(item.get("title") or ""),
+            body=str(item.get("content") or ""),
+            url=str(item.get("url") or ""),
+        )[0],
+        "decision": result.decision,
+        "category": result.category,
+        "risk_tier": result.risk_tier,
+        "reason_codes": result.reason_codes,
+        "l1_decision": audit.get("l1_decision"),
+        "l2_similarity": result.confidence.get("l2_similarity"),
+        "l3_used": bool(result.confidence.get("l3_used")),
+        "normalization_flags": audit.get("normalization", {}),
+        "latency_ms": float(audit.get("latency_ms", 0.0)),
+        "config_version_hash": (
+            audit.get("config_version_hash")
+            or audit.get("shadow", {}).get("config_version_hash")
+            or audit.get("runtime_config_hash")
+            or ""
+        ),
+        "dataset": dataset or "live",
+    }
+    return payload
+
+
+def _append_sidecar_if_needed(
+    *,
+    sidecar_path: Path | None,
+    item: dict[str, Any],
+    payload: dict[str, Any],
+) -> None:
+    if sidecar_path is None:
+        return
+    if payload.get("decision") not in {"allow", "review"}:
+        return
+    sidecar = {
+        "timestamp_utc": payload.get("timestamp_utc"),
+        "news_id": payload.get("news_id"),
+        "source": payload.get("source"),
+        "language": payload.get("language"),
+        "title": payload.get("title"),
+        "content": str(item.get("content") or ""),
+        "decision": payload.get("decision"),
+        "category": payload.get("category"),
+        "risk_tier": payload.get("risk_tier"),
+        "l1_decision": payload.get("l1_decision"),
+        "reason_codes": payload.get("reason_codes"),
+        "l2_similarity": payload.get("l2_similarity"),
+        "config_version_hash": payload.get("config_version_hash"),
+        "dataset": payload.get("dataset", "live"),
+    }
+    _append_jsonl(sidecar_path, sidecar)
+
+
 def _summary(rows: list[dict[str, Any]], *, elapsed_seconds: float) -> dict[str, Any]:
     def _rates(items: list[dict[str, Any]]) -> dict[str, float]:
         total = max(len(items), 1)
@@ -127,7 +223,13 @@ def _summary(rows: list[dict[str, Any]], *, elapsed_seconds: float) -> dict[str,
     return summary
 
 
-def _run_once(*, censor: PreRagCensor, fetcher: NewsFetcher, jsonl_path: Path) -> int:
+def _run_once(
+    *,
+    censor: PreRagCensor,
+    fetcher: NewsFetcher,
+    jsonl_path: Path,
+    sidecar_path: Path | None,
+) -> int:
     items = fetcher.fetch_all()
     for item in items:
         result = asyncio_run(
@@ -141,34 +243,16 @@ def _run_once(*, censor: PreRagCensor, fetcher: NewsFetcher, jsonl_path: Path) -
                 )
             )
         )
-        payload = {
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "news_id": str(item.get("id")),
-            "source": str(item.get("source") or "unknown"),
-            "source_trust_tier": "trusted" if str(item.get("source") or "").upper() == "TASS" else "unknown",
-            "language": "ru",
-            "title": str(item.get("title") or ""),
-            "body_hash": compute_content_hash(
-                title=str(item.get("title") or ""),
-                body=str(item.get("content") or ""),
-                url=str(item.get("url") or ""),
-            )[0],
-            "decision": result.decision,
-            "category": result.category,
-            "risk_tier": result.risk_tier,
-            "reason_codes": result.reason_codes,
-            "l2_similarity": result.confidence.get("l2_similarity"),
-            "l3_used": bool(result.confidence.get("l3_used")),
-            "normalization_flags": result.audit.get("normalization", {}),
-            "latency_ms": float(result.audit.get("latency_ms", 0.0)),
-            "config_version_hash": (
-                result.audit.get("config_version_hash")
-                or result.audit.get("shadow", {}).get("config_version_hash")
-                or result.audit.get("runtime_config_hash")
-                or ""
-            ),
-        }
+        payload = _build_payload(
+            item=item,
+            result=result,
+            source_trust_tier="trusted"
+            if str(item.get("source") or "").upper() == "TASS"
+            else "unknown",
+            dataset="live",
+        )
         _append_jsonl(jsonl_path, payload)
+        _append_sidecar_if_needed(sidecar_path=sidecar_path, item=item, payload=payload)
     return len(items)
 
 
@@ -178,11 +262,15 @@ def _run_control_once(
     control_rows: list[dict[str, Any]],
     jsonl_path: Path,
     take: int,
-) -> int:
-    if not control_rows or take <= 0:
-        return 0
+    cursor: int,
+    sidecar_path: Path | None,
+) -> tuple[int, int]:
+    if not control_rows or take <= 0 or cursor >= len(control_rows):
+        return 0, cursor
+    end = min(cursor + max(take, 0), len(control_rows))
+    rows = control_rows[cursor:end]
     count = 0
-    for item in control_rows[:take]:
+    for item in rows:
         result = asyncio_run(
             censor.evaluate(
                 CensorInput(
@@ -194,37 +282,16 @@ def _run_control_once(
                 )
             )
         )
-        payload = {
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "news_id": str(item.get("id") or f"ctrl-{count}"),
-            "source": str(item.get("source") or "CONTROL"),
-            "source_trust_tier": "control",
-            "language": str(item.get("language") or "ru"),
-            "title": str(item.get("title") or ""),
-            "body_hash": compute_content_hash(
-                title=str(item.get("title") or ""),
-                body=str(item.get("content") or ""),
-                url=str(item.get("url") or ""),
-            )[0],
-            "decision": result.decision,
-            "category": result.category,
-            "risk_tier": result.risk_tier,
-            "reason_codes": result.reason_codes,
-            "l2_similarity": result.confidence.get("l2_similarity"),
-            "l3_used": bool(result.confidence.get("l3_used")),
-            "normalization_flags": result.audit.get("normalization", {}),
-            "latency_ms": float(result.audit.get("latency_ms", 0.0)),
-            "config_version_hash": (
-                result.audit.get("config_version_hash")
-                or result.audit.get("shadow", {}).get("config_version_hash")
-                or result.audit.get("runtime_config_hash")
-                or ""
-            ),
-            "dataset": "control",
-        }
+        payload = _build_payload(
+            item=item,
+            result=result,
+            source_trust_tier="control",
+            dataset="control",
+        )
         _append_jsonl(jsonl_path, payload)
+        _append_sidecar_if_needed(sidecar_path=sidecar_path, item=item, payload=payload)
         count += 1
-    return count
+    return count, end
 
 
 def asyncio_run(awaitable):
@@ -287,32 +354,63 @@ def main() -> int:
             random.shuffle(control_rows)
             logger.info("loaded_control_rows=%s path=%s", len(control_rows), cp)
     control_batch_size = int(args.control_batch_size or cfg.get("control_batch_size", 0))
+    if control_batch_size > 0 and not control_rows:
+        logger.error("control_batch_size=%s but control set is empty/missing", control_batch_size)
+        return 1
+    if control_batch_size > 0:
+        try:
+            _validate_control_rows(rows=control_rows, min_rows=control_batch_size)
+        except ValueError as error:
+            logger.error("invalid control set: %s", error)
+            return 1
     started = time.time()
     deadline = started + duration_hours * 3600
     jsonl_path = out_dir / str(cfg.get("jsonl_filename", "censorship_24h_latest.jsonl"))
     csv_path = out_dir / str(cfg.get("csv_filename", "censorship_24h_latest.csv"))
     metrics_path = out_dir / str(cfg.get("metrics_filename", "censorship_24h_latest.metrics.json"))
     notes_path = out_dir / str(cfg.get("notes_filename", "censorship_24h_latest.notes.md"))
+    persist_allow_bodies = bool(cfg.get("persist_allow_bodies", False))
+    sidecar_path = (
+        out_dir / str(cfg.get("allow_bodies_filename", "censorship_allow_bodies.jsonl"))
+        if persist_allow_bodies
+        else None
+    )
     if args.fresh:
-        for path in (jsonl_path, csv_path, metrics_path, notes_path):
+        for path in (jsonl_path, csv_path, metrics_path, notes_path, sidecar_path):
+            if path is None:
+                continue
             if path.exists():
                 path.unlink()
 
     total = 0
+    control_cursor = 0
+    control_exhausted = False
+    last_config_hash = ""
     while time.time() < deadline:
-        processed = _run_once(censor=censor, fetcher=fetcher, jsonl_path=jsonl_path)
-        control_processed = _run_control_once(
+        processed = _run_once(
+            censor=censor,
+            fetcher=fetcher,
+            jsonl_path=jsonl_path,
+            sidecar_path=sidecar_path,
+        )
+        control_processed, control_cursor = _run_control_once(
             censor=censor,
             control_rows=control_rows,
             jsonl_path=jsonl_path,
             take=control_batch_size,
+            cursor=control_cursor,
+            sidecar_path=sidecar_path,
         )
         total += processed + control_processed
+        if control_processed == 0 and control_batch_size > 0 and control_cursor >= len(control_rows):
+            control_exhausted = True
         logger.info(
-            "processed batch news=%s control=%s total=%s",
+            "processed batch news=%s control=%s total=%s control_cursor=%s/%s",
             processed,
             control_processed,
             total,
+            control_cursor,
+            len(control_rows),
         )
         remaining = max(deadline - time.time(), 0.0)
         if remaining <= 0:
@@ -323,11 +421,14 @@ def main() -> int:
     _export_csv(csv_path, rows)
     elapsed_seconds = max(time.time() - started, 0.001)
     summary = _summary(rows, elapsed_seconds=elapsed_seconds)
+    if rows:
+        last_config_hash = str(rows[-1].get("config_version_hash") or "")
     metrics_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    git_head = _safe_git_head(base_dir=base_dir)
     notes_path.write_text(
         "\n".join(
             [
-                f"# Censorship 24h Run",
+                "# Censorship Isolated Run",
                 f"- started_utc: {datetime.fromtimestamp(started, tz=timezone.utc).isoformat()}",
                 f"- duration_hours: {duration_hours}",
                 f"- rows: {len(rows)}",
@@ -335,6 +436,15 @@ def main() -> int:
                 f"- jsonl: {jsonl_path.name}",
                 f"- csv: {csv_path.name}",
                 f"- metrics: {metrics_path.name}",
+                f"- control_path: {control_path_value or ''}",
+                f"- control_rows_total: {len(control_rows)}",
+                f"- control_batch_size: {control_batch_size}",
+                f"- control_cursor_final: {control_cursor}",
+                f"- control_exhausted: {control_exhausted}",
+                f"- sidecar: {(sidecar_path.name if sidecar_path else 'disabled')}",
+                f"- config_version_hash_last: {last_config_hash}",
+                f"- git_head: {git_head}",
+                f"- python_version: {sys.version.split()[0]}",
             ]
         ),
         encoding="utf-8",

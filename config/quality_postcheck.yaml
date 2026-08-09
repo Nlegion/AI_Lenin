@@ -6,7 +6,7 @@ quality_postcheck:
   quote_rewrite_enabled: false  # off by default: strip + template (no extra LLM)
   # Stage 0 hotfix: disable template-escalation paths; keep cleanup children on.
   yellow_output_filter_enabled: false
-  loop_fix_enabled: false
+  loop_fix_enabled: true
   loop_regen_enabled: false  # shares global LLM budget; off until rewrite path wired
   path_scrubber_enabled: true
   principles_fallback_enabled: true

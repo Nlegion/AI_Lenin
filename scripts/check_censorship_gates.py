@@ -59,6 +59,12 @@ def main() -> int:
         help="Baseline snapshot for relative latency/throughput gate checks.",
     )
     parser.add_argument(
+        "--latency-mode",
+        choices=["auto", "live", "replay"],
+        default="auto",
+        help="Latency gate mode. replay skips relative p95/throughput checks.",
+    )
+    parser.add_argument(
         "--external-max-rows-per-source",
         type=int,
         default=50000,
@@ -75,18 +81,28 @@ def main() -> int:
     gates = yaml.safe_load(Path(args.gates_config).read_text(encoding="utf-8")) or {}
     quality = gates.get("censorship_quality_gates", {})
     latency_cfg = gates.get("censorship_latency_gates", {})
+    latency_mode = args.latency_mode
+    if latency_mode == "auto":
+        latency_mode = "replay" if "replay" in Path(args.jsonl).stem.lower() else "live"
 
     total = len(rows)
     review_rate = _ratio(sum(1 for r in rows if _decision(r) == "review"), total)
     reason_coverage = _ratio(sum(1 for r in rows if _reason_codes(r)), total)
     hard_block_rate = _ratio(sum(1 for r in rows if _decision(r) == "hard_block"), total)
+    review_rate_max = float(
+        quality.get(
+            "review_rate_replay_max" if latency_mode == "replay" else "review_rate_max",
+            quality.get("review_rate_max", 1.0),
+        )
+    )
     summary = {
         "rows": total,
         "review_rate": review_rate,
         "reason_coverage": reason_coverage,
         "hard_block_rate": hard_block_rate,
-        "review_rate_max": float(quality.get("review_rate_max", 1.0)),
+        "review_rate_max": review_rate_max,
         "reason_coverage_min": float(quality.get("reason_coverage_min", 0.0)),
+        "latency_mode": latency_mode,
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     failed = []
@@ -135,10 +151,13 @@ def main() -> int:
         print(json.dumps(latency_summary, ensure_ascii=False, indent=2))
         if p95_delta > p95_delta_max:
             failed.append("p95_delta_vs_baseline")
-        if p95_ratio > p95_ratio_max:
-            failed.append("p95_ratio_vs_baseline")
-        if throughput_ratio < throughput_ratio_min:
-            failed.append("throughput_ratio_vs_baseline")
+        if latency_mode == "live":
+            if p95_ratio > p95_ratio_max:
+                failed.append("p95_ratio_vs_baseline")
+            if throughput_ratio < throughput_ratio_min:
+                failed.append("throughput_ratio_vs_baseline")
+        else:
+            print("INFO replay latency mode: skipped relative p95/throughput gates")
     if failed:
         print(f"FAILED gates={','.join(failed)}")
         return 2

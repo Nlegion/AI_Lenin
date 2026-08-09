@@ -204,7 +204,8 @@ def test_unknown_topic_low_signal_is_forwarded_to_allow() -> None:
     )
     assert decision == "allow"
     assert category == "NON_TOPICAL"
-    assert codes == ["unknown_topic_low_signal_allow_forward"]
+    assert "unknown_topic_low_signal_allow_forward" in codes
+    assert "override:unknown_topic_forward_trusted_source" in codes
 
 
 @pytest.mark.parametrize(
@@ -311,3 +312,33 @@ async def test_model_version_hash_changes_config_hash() -> None:
     first = _censor(l2_model_version="model-v1")
     second = _censor(l2_model_version="model-v2")
     assert first.config_version_hash != second.config_version_hash
+
+
+@pytest.mark.asyncio
+async def test_ethno_hate_containment_blocks_obfuscated_phrase() -> None:
+    censor = _censor(ethno_hate_containment_enabled=True)
+    result = await censor.evaluate(
+        CensorInput(
+            news_id="ethno-1",
+            title="Комментатор призвал и-з-г-н-а-т-ь «и-н-о-р-о-д-ц-ев» из региона",
+            body="В посте звучит призыв: нужно изгнать инородцев любой ценой.",
+            source="TASS",
+        )
+    )
+    assert result.decision == "hard_block"
+    assert result.category == "ETHNIC_RELIGIOUS"
+    assert "manual_ethno_hate_containment" in result.reason_codes
+
+
+@pytest.mark.asyncio
+async def test_ethno_hate_containment_can_be_disabled_by_config() -> None:
+    censor = _censor(ethno_hate_containment_enabled=False)
+    result = await censor.evaluate(
+        CensorInput(
+            news_id="ethno-2",
+            title="Комментатор призвал изгнать инородцев",
+            body="В тексте есть этническая вражда и призыв к изгнанию.",
+            source="TASS",
+        )
+    )
+    assert "manual_ethno_hate_containment" not in result.reason_codes

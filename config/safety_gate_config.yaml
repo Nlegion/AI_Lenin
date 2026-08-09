@@ -140,6 +140,7 @@ safety_gate:
     sanctions_allow_l2_min: 0.60
     require_l3_for_sanctions_allow: false
     sensitive_topic_guard_enabled: true
+    ethno_hate_containment_enabled: true
     war_review_threshold: 0.50
     war_hard_block_threshold: 0.80
     l2_model_version: rubert-tiny2-v1
