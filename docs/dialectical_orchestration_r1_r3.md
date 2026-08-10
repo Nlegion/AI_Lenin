@@ -398,3 +398,5 @@ AnalysisGenerationPipeline(
 - Ops: `scripts/ensure_qdrant_stance_index.py` (one-shot per DB; see README).
 - Dry-run: `scripts/run_dialectical_dryrun.py`.
 - Anti-cliché (Phase 4 helper): `src/core/safety/cliche_gate.py`.
+
+**Reasoning layer (separate):** see [`dialectical_reasoning_engine.md`](dialectical_reasoning_engine.md) — `dialectical_reasoning.mode` in the same YAML. Orchestration builds EvidenceBrief; reasoning synthesizes grounded analysis.

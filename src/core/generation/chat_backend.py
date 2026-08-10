@@ -64,10 +64,22 @@ class ChatCompletionsBackend:
         choices = result.get("choices") or []
         if not choices:
             raise RuntimeError("chat completions response has empty choices")
-        text = str(choices[0].get("message", {}).get("content", "")).strip()
+        choice = choices[0]
+        text = str(choice.get("message", {}).get("content", "")).strip()
+        finish_reason = choice.get("finish_reason")
+        usage_raw = result.get("usage") or {}
+        usage: dict[str, int] | None = None
+        if isinstance(usage_raw, dict) and usage_raw:
+            usage = {
+                str(key): int(value)
+                for key, value in usage_raw.items()
+                if isinstance(value, (int, float))
+            }
         return GenerationResponse(
             text=text,
             backend=self.persona_model,
             model_name=self.backend_config.model_name,
             latency_ms=latency_ms,
+            finish_reason=str(finish_reason) if finish_reason is not None else None,
+            usage=usage,
         )

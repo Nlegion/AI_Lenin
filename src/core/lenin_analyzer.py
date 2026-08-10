@@ -168,7 +168,14 @@ class LeninAnalyzer:
     ) -> str:
         try:
             await self.initialize_session()
-            cache_key = f"{news_title}_{hash(news_content[:200])}"
+            from src.core.dialectics.config import load_dialectical_reasoning_config
+
+            reasoning_cfg = load_dialectical_reasoning_config(base_dir=self.base_dir)
+            # Cache key includes reasoning mode/schema; brief digest filled after pipeline.
+            cache_key = (
+                f"{news_title}_{hash(news_content[:200])}_"
+                f"{reasoning_cfg.mode.value}_{reasoning_cfg.schema_version}"
+            )
             if cache_key in self.analysis_cache and not feedback:
                 return self.analysis_cache[cache_key]
 
@@ -187,11 +194,16 @@ class LeninAnalyzer:
                 needs_yellow_warning=needs_yellow_warning,
             )
             cleaned_content = self.clean_analysis(result.analysis)
+            # Prefer pipeline-provided cache suffix when present.
+            suffix = result.metadata.get("cache_suffix")
+            if suffix:
+                cache_key = f"{news_title}_{hash(news_content[:200])}_{suffix}"
             # Caller-level cache skip: never store orchestration_mode=error responses.
             if not feedback and result.metadata.get("orchestration_mode") != "error":
-                self.analysis_cache[cache_key] = cleaned_content
-                if len(self.analysis_cache) > ANALYSIS_CACHE_LIMIT:
-                    self.analysis_cache.clear()
+                if result.metadata.get("dialectical_outcome") != "suppress":
+                    self.analysis_cache[cache_key] = cleaned_content
+                    if len(self.analysis_cache) > ANALYSIS_CACHE_LIMIT:
+                        self.analysis_cache.clear()
             return cleaned_content
         except Exception as error:  # noqa: BLE001
             logger.exception("Ошибка генерации: %s", error)

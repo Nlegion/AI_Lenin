@@ -91,6 +91,68 @@ def test_has_required_structure_accepts_spaced_and_bold_labels() -> None:
 
 def test_enforce_required_structure_skips_long_nonstructured_text() -> None:
     long_text = "Это длинный анализ без явных меток. " * 80
-    rebuilt, changed = _enforce_required_structure(long_text)
-    assert changed is False
+    rebuilt, structure_ok, structure_error = _enforce_required_structure(long_text)
     assert rebuilt == long_text
+    assert structure_ok is False
+    assert structure_error is True
+    assert "анализ опирается" not in rebuilt
+
+
+def test_enforce_required_structure_never_injects_stub() -> None:
+    text = "Короткий ответ без меток."
+    rebuilt, structure_ok, structure_error = _enforce_required_structure(text)
+    assert rebuilt == text
+    assert structure_ok is False
+    assert structure_error is True
+    assert "Механизм: анализ опирается" not in rebuilt
+
+
+def test_scaffold_preserves_fact_mechanism_conclusion_labels() -> None:
+    from src.core.generation.output_artifacts import apply_artifact_pass
+    from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
+
+    structured = (
+        "Факт: Правительство ввело регулирование.\n"
+        "Механизм: Госкапитализм обслуживает монополии.\n"
+        "Вывод: Нужен рабочий контроль."
+    )
+    result = apply_artifact_pass(text=structured, config=QualityPostcheckConfig())
+    assert "Факт:" in result.text
+    assert "Вывод:" in result.text
+    assert "Механизм:" in result.text
+
+
+def test_artifact_pass_strips_inline_context_tail() -> None:
+    from src.core.generation.output_artifacts import apply_artifact_pass
+    from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
+
+    text = (
+        "Факт: Рост цен.\n"
+        "Механизм: Давление капитала.\n"
+        "Вывод: Нужен контроль. --- контекст — Ленин (core_критика) "
+        "контекст — Ленин (core_согласие) --- Добавить краткий комментарий. "
+        "В стилизованной интерпретации: --- Доказательная база: [1] (intellectual/...) ---."
+    )
+    result = apply_artifact_pass(text=text, config=QualityPostcheckConfig())
+    lowered = result.text.lower()
+    assert "контекст — ленин" not in lowered
+    assert "добавить краткий комментарий" not in lowered
+    assert "в стилизованной интерпретации" not in lowered
+    assert "доказательная база" not in lowered
+
+
+def test_artifact_pass_repairs_ryo_without_artifact_flag() -> None:
+    from src.core.generation.output_artifacts import apply_artifact_pass
+    from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
+
+    text = "Рост цен ведёт к снижению Рё реальных доходов."
+    result = apply_artifact_pass(text=text, config=QualityPostcheckConfig(), item_id="ryo")
+    assert "её реальных доходов" in result.text
+    assert "artifact:mojibake_ryo" not in result.codes
+    assert "detect:encoding_artifact" not in result.codes
+
+
+def test_max_final_answer_chars_exported() -> None:
+    from src.core.generation.text_postprocess import MAX_FINAL_ANSWER_CHARS
+
+    assert MAX_FINAL_ANSWER_CHARS == 1000

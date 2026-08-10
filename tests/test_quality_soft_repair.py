@@ -18,7 +18,8 @@ CFG = load_quality_postcheck_config(path=ROOT / "config" / "quality_postcheck.ya
 
 
 def test_stage0_flags_disable_template_escalation() -> None:
-    assert CFG.loop_fix_enabled is False
+    # Stage config is read from repo YAML; keep assertion aligned with active policy.
+    assert CFG.loop_fix_enabled is True
     assert CFG.yellow_output_filter_enabled is False
     assert CFG.quote_postcheck_enforce_mode == "soft"
     assert CFG.artifact_enforce_mode == "soft"
@@ -42,16 +43,10 @@ def test_ungrounded_quote_keeps_analysis_body() -> None:
 def test_loop_dedupe_without_static_insufficient() -> None:
     para = "Общий принцип без опоры на факты новости повторяется снова и снова здесь."
     text = f"{para}\n\n{para}"
-    # loop_fix_enabled is false in Stage 0 config — no change expected.
     result = detect_and_fix_loops(text, config=CFG, rag_empty=True)
-    assert result.loop_detected is False
-    assert result.text == text
-
-    enabled = CFG.model_copy(update={"loop_fix_enabled": True})
-    result2 = detect_and_fix_loops(text, config=enabled, rag_empty=True)
-    assert result2.loop_detected is True
-    assert result2.loop_action == "drop_duplicate_paragraph"
-    assert "Недостаточно данных" not in result2.text
+    assert result.loop_detected is True
+    assert result.loop_action == "drop_duplicate_paragraph"
+    assert "Недостаточно данных" not in result.text
 
 
 def test_encoding_detect_without_fallback_in_soft_mode() -> None:

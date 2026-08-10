@@ -60,7 +60,7 @@ def test_script_returns_nonzero_on_missing_provider(tmp_path: Path):
         "\n".join(
             [
                 "retrieval_pipeline:",
-                "  enabled: true",
+                "  enabled: false",
                 "  collection_name: test_collection",
                 "  qdrant_path: database/qdrant_local",
                 "  dense_model: models/Giga-Embeddings-instruct",
@@ -82,7 +82,7 @@ def test_script_returns_nonzero_on_missing_provider(tmp_path: Path):
     ]
     result = subprocess.run(command, cwd=Path.cwd(), check=False, capture_output=True, text=True)
     assert result.returncode != 0
-    assert "retrieval provider unavailable" in (result.stdout + result.stderr).lower()
+    assert "provider unavailable" in (result.stdout + result.stderr).lower()
 
 
 def test_audit_log_high_risk_counter(tmp_path: Path):

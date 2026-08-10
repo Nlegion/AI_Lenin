@@ -19,6 +19,8 @@ class GenerationResponse:
     backend: str
     model_name: str
     latency_ms: int
+    finish_reason: str | None = None
+    usage: dict[str, int] | None = None
 
 
 class GenerationBackend(Protocol):

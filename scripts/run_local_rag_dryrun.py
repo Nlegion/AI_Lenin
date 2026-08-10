@@ -23,7 +23,6 @@ if str(REPO_ROOT) not in sys.path:
 from src.core.generation.fallback import recommend_persona_model  # noqa: E402
 from src.core.generation.pipeline import AnalysisGenerationPipeline  # noqa: E402
 from src.core.lenin_analyzer import LeninAnalyzer  # noqa: E402
-from src.core.retrieval.migration_provider import MigrationRetrievalProvider  # noqa: E402
 from src.core.retrieval.provider_factory import load_retrieval_pipeline_config  # noqa: E402
 from src.core.safety.news_guard import NewsGuard, load_news_guard_config  # noqa: E402
 from src.core.settings.device import hardware_report, resolve_torch_device  # noqa: E402
@@ -102,10 +101,20 @@ def _fetch_item(news_id: str | None) -> NewsItem | None:
 
 def _resolve_provider(analyzer: LeninAnalyzer):
     provider = analyzer.retrieval_provider
+    # Migration wrapper was removed; qdrant_only provider is used directly.
     qdrant_provider = provider
-    if isinstance(provider, MigrationRetrievalProvider):
-        qdrant_provider = provider.primary
     return provider, qdrant_provider
+
+
+def _provider_inputs_available(*, retrieval_config, repo_root: Path) -> tuple[bool, list[str]]:
+    missing: list[str] = []
+    sparse_state = (repo_root / retrieval_config.sparse_state_path).resolve()
+    ontology_tags = (repo_root / retrieval_config.ontology_tags_path).resolve()
+    if not sparse_state.exists():
+        missing.append(str(sparse_state))
+    if not ontology_tags.exists():
+        missing.append(str(ontology_tags))
+    return (len(missing) == 0), missing
 
 
 def _safe_print(text: str) -> None:
@@ -191,6 +200,17 @@ async def main() -> int:
     guard_config = load_news_guard_config(path=(REPO_ROOT / args.news_guard_config).resolve())
     guard = NewsGuard(config=guard_config)
     fixtures = _load_fixtures(path=(REPO_ROOT / args.fixtures_config).resolve())
+    inputs_ok, missing_inputs = _provider_inputs_available(
+        retrieval_config=retrieval_config,
+        repo_root=REPO_ROOT,
+    )
+    if retrieval_config.migration.mode == "qdrant_only" and not inputs_ok and not args.allow_legacy_fallback:
+        _render_section(
+            "SAFETY",
+            "retrieval provider unavailable in qdrant_only mode; missing inputs: "
+            + ", ".join(missing_inputs),
+        )
+        return 3
 
     item: NewsItem | None = None
     notice = ""

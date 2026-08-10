@@ -1,0 +1,7 @@
+{
+  "id": "neftegaz_regulation",
+  "news_title": "Правительство вводит меры регулирования нефтегазовой отрасли",
+  "news_content": "Кабинет министров объявил налоговые и ценовые меры для стабилизации нефтегазового сектора и защиты потребителей.",
+  "expected_reason_codes_any": ["r3_absent"],
+  "notes": "Golden positive: state regulation vs monopoly capital."
+}

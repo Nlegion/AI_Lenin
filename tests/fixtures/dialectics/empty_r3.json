@@ -1,0 +1,7 @@
+{
+  "id": "empty_r3",
+  "news_title": "Центробанк повысил ключевую ставку",
+  "news_content": "Регулятор объяснил решение борьбой с инфляцией и стабильностью финансовой системы.",
+  "force_empty_r3": true,
+  "expected_reason_codes_any": ["r3_absent"]
+}

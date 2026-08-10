@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -13,6 +14,14 @@ from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.analysis.semantic_core_config import load_semantic_core_config
 from src.core.analysis.semantic_integration import maybe_route
 from src.core.analysis.semantic_query import compose_legacy_enriched_query
+from src.core.dialectics.config import DialecticalMode, load_dialectical_reasoning_config
+from src.core.dialectics.pipeline_bridge import (
+    apply_post_qc_for_reasoning,
+    build_cache_suffix,
+    emit_shadow_if_sampled,
+    maybe_attach_judge,
+    run_reasoning_engine,
+)
 from src.core.generation.context_budget import (
     BudgetState,
     budget_over_limit,
@@ -179,7 +188,8 @@ class AnalysisGenerationPipeline:
 
         # Flag wins — even if evidence_builder was wired by mistake.
         if self.dialectical_enabled and self.evidence_builder is not None:
-            brief = self.evidence_builder(
+            brief = await asyncio.to_thread(
+                self.evidence_builder,
                 news_title=news_title,
                 news_content=news_content,
                 key_concepts=concepts,
@@ -214,6 +224,18 @@ class AnalysisGenerationPipeline:
         else:
             context = self.context_builder(query_for_context)
 
+        reasoning_cfg = load_dialectical_reasoning_config(base_dir=self.base_dir)
+        if reasoning_cfg.mode in (
+            DialecticalMode.REASONING_SHADOW,
+            DialecticalMode.REASONING_PUBLISH,
+        ):
+            if reasoning_cfg.require_orchestration and not self.dialectical_enabled:
+                raise RuntimeError(
+                    "dialectical_reasoning mode requires dialectical_orchestration.enabled"
+                )
+            if brief is None and not reasoning_cfg.fixture_mode:
+                raise RuntimeError("dialectical_reasoning requires EvidenceBrief")
+
         hint_only = bool(route is not None and route.hint_only)
         # Exhausted / error already returned. Strip hints when no usable evidence path.
         use_hints = bool(synthesis_hints) and orchestration_mode != "error"
@@ -235,6 +257,7 @@ class AnalysisGenerationPipeline:
             risk_tier=risk_tier,
             context_hints=context_hints,
             needs_yellow_warning=needs_yellow_warning,
+            reasoning_cfg=reasoning_cfg,
         )
 
     def _error_result(
@@ -293,7 +316,12 @@ class AnalysisGenerationPipeline:
         risk_tier: str = "green",
         context_hints: list[str] | None = None,
         needs_yellow_warning: bool = False,
+        reasoning_cfg=None,
     ) -> PipelineResult:
+        from src.core.dialectics.config import DialecticalReasoningConfig
+
+        if reasoning_cfg is None:
+            reasoning_cfg = DialecticalReasoningConfig()
         backend_cfg = self.config.active_backend()
         budget = BudgetState(
             max_context_chars=int(backend_cfg.max_context_chars),
@@ -320,6 +348,151 @@ class AnalysisGenerationPipeline:
         fact_opinion = needs_fact_opinion_extra(title=news_title, content=news_content)
         context_has_quotes = has_quote_span(working_context)
         applied_hints = list(context_hints or [])
+
+        reasoning_meta: dict[str, Any] = {
+            "dialectical_reasoning_mode": reasoning_cfg.mode.value,
+            "cache_suffix": build_cache_suffix(
+                mode=reasoning_cfg.mode,
+                brief=brief,
+                config=reasoning_cfg,
+                model_name=str(getattr(backend_cfg, "model_name", "") or "unknown"),
+            ),
+        }
+        use_reasoning_publish = reasoning_cfg.mode == DialecticalMode.REASONING_PUBLISH
+        use_reasoning_shadow = reasoning_cfg.mode == DialecticalMode.REASONING_SHADOW
+        dialectical_applicable = primary not in {"sport"} and risk_tier != "red"
+
+        reasoning_result = None
+        if use_reasoning_publish or use_reasoning_shadow:
+            enable_repair = use_reasoning_publish
+            reasoning_result = await run_reasoning_engine(
+                backend=self.backend,
+                config=reasoning_cfg,
+                news_title=news_title,
+                news_content=news_content,
+                brief=brief,
+                enable_repair=enable_repair,
+                dialectical_applicable=dialectical_applicable,
+            )
+            reasoning_result = await maybe_attach_judge(
+                backend=self.backend,
+                config=reasoning_cfg,
+                result=reasoning_result,
+            )
+            reasoning_meta["dialectical_outcome"] = reasoning_result.outcome
+            reasoning_meta["dialectical_reason_codes"] = list(reasoning_result.reason_codes)
+            reasoning_meta["dialectical_timings_ms"] = dict(reasoning_result.pass_timings_ms)
+
+        if use_reasoning_publish and reasoning_result is not None:
+            if (
+                reasoning_result.outcome == "suppress"
+                and "timeout" in reasoning_result.reason_codes
+                and reasoning_cfg.fallback_to_legacy_on_timeout
+            ):
+                use_reasoning_publish = False
+            elif reasoning_result.outcome == "suppress":
+                return PipelineResult(
+                    analysis=CONTEXT_UNAVAILABLE_MESSAGE,
+                    context=working_context,
+                    backend=getattr(self.backend, "persona_model", "unknown"),
+                    model_name=backend_cfg.model_name,
+                    latency_ms=int(reasoning_result.pass_timings_ms.get("total_ms") or 0),
+                    guard_result=OutputGuardResult(
+                        blocked=False,
+                        moderated_text=CONTEXT_UNAVAILABLE_MESSAGE,
+                        reason_codes=list(reasoning_result.reason_codes),
+                    ),
+                    metadata={
+                        "persona_model": self.config.persona_model,
+                        "orchestration_mode": orchestration_mode,
+                        "pipeline_id": pipeline_id,
+                        **_rag_stats_from_brief(brief=brief),
+                        **reasoning_meta,
+                    },
+                    prompt_builder="dialectical_reasoning",
+                )
+            else:
+                text = reasoning_result.rendered_text
+                text, quality_meta = apply_post_qc_for_reasoning(
+                    text=text,
+                    chunks=chunks,
+                    candidates=quote_candidates,
+                    brief=brief,
+                    config=postcheck_cfg,
+                    news_text=news_blob,
+                )
+                if quality_meta.get("post_qc_structure_broken"):
+                    reasoning_result.outcome = "hold_review"
+                    reasoning_result.reason_codes = [
+                        *reasoning_result.reason_codes,
+                        "post_qc_modified",
+                    ]
+                if chunk_artifact_codes:
+                    quality_meta["rag_artifact_codes"] = chunk_artifact_codes
+                dedupe_meta: dict[str, Any] = {}
+                prompt_tokens = 0
+                prompt_builder = "dialectical_reasoning"
+                request_system = ""
+                request_user = ""
+                response_latency = int(reasoning_result.pass_timings_ms.get("total_ms") or 0)
+                response_finish = None
+                # Jump to shared post-gates below via local vars
+                working_context = working_context
+                hallucination_codes: list[str] = []
+                if self.news_guard is not None:
+                    text, hallucination_codes = self.news_guard.mark_unverified_facts(
+                        analysis=text,
+                        retrieval_context=working_context,
+                    )
+                guard_result, gate_metadata = apply_post_generate_gates(
+                    text=text,
+                    brief=brief,
+                    news_title=news_title,
+                    news_content=news_content,
+                    news_guard=self.news_guard,
+                    post_filter=bool(self.config.safety.post_filter),
+                    warn_only_guard=warn_only_guard,
+                    base_dir=self.base_dir,
+                    pipeline_id=pipeline_id,
+                    risk_tier=risk_tier,
+                    yellow_block_patterns=(
+                        list(postcheck_cfg.yellow_output_block_patterns)
+                        if postcheck_cfg.yellow_output_filter_enabled
+                        else None
+                    ),
+                )
+                rag_stats = _rag_stats_from_brief(brief=brief)
+                metadata: dict[str, Any] = {
+                    "persona_model": self.config.persona_model,
+                    "api_style": backend_cfg.api_style,
+                    "orchestration_mode": orchestration_mode,
+                    "pipeline_id": pipeline_id,
+                    "unverified_codes": list(hallucination_codes),
+                    "quote_mode": quote_mode,
+                    "empty_r1": empty_r1,
+                    "risk_tier": risk_tier,
+                    "finish_reason": response_finish,
+                    **rag_stats,
+                    **quality_meta,
+                    **gate_metadata,
+                    **reasoning_meta,
+                    **allowlist_flags,
+                    **dedupe_meta,
+                }
+                return PipelineResult(
+                    analysis=guard_result.moderated_text,
+                    context=working_context,
+                    backend=getattr(self.backend, "persona_model", "unknown"),
+                    model_name=backend_cfg.model_name,
+                    latency_ms=response_latency,
+                    guard_result=guard_result,
+                    hallucination_codes=hallucination_codes,
+                    metadata=metadata,
+                    prompt_builder=prompt_builder,
+                    system_prompt=request_system,
+                    user_prompt=request_user,
+                )
+
         request = None
         prompt_builder = "completion"
         for _ in range(6):
@@ -401,7 +574,6 @@ class AnalysisGenerationPipeline:
             config=postcheck_cfg,
             context_has_quotes=context_has_quotes,
             news_text=news_blob,
-            # combat_sensitive no longer triggers policy deny in quality path.
             combat_sensitive=False,
         )
         text, post_quality_clamped = clamp_answer_length(text)
@@ -409,6 +581,16 @@ class AnalysisGenerationPipeline:
             quality_meta["answer_len_clamped_post_quality"] = True
         if chunk_artifact_codes:
             quality_meta["rag_artifact_codes"] = chunk_artifact_codes
+
+        if use_reasoning_shadow and reasoning_result is not None:
+            emit_shadow_if_sampled(
+                base_dir=self.base_dir,
+                config=reasoning_cfg,
+                result=reasoning_result,
+                news_title=news_title,
+                live_text=text,
+            )
+            reasoning_meta["shadow_emitted"] = True
 
         hallucination_codes: list[str] = []
         if self.news_guard is not None:
@@ -485,11 +667,13 @@ class AnalysisGenerationPipeline:
             "needs_yellow_warning": needs_yellow_warning,
             "quote_repair_applied": bool(quality_meta.get("quote_repair_applied")),
             "repair_success": bool(quality_meta.get("repair_success", True)),
+            "finish_reason": getattr(response, "finish_reason", None),
             **allowlist_flags,
             **dedupe_meta,
             **quality_meta,
             **rag_stats,
             **gate_metadata,
+            **reasoning_meta,
         }
         if brief is not None:
             metadata.update(

@@ -29,7 +29,7 @@ from src.core.safety.lacuna_hedge_gate import lacuna_hedge_gate
 
 def test_load_semantic_core_config_default():
     config = load_semantic_core_config()
-    assert config.enabled is False
+    assert config.enabled is True
     assert config.apply_to_legacy is False
     assert any(topic.topic_id == "technological_progress" for topic in config.topics)
 

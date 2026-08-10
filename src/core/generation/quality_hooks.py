@@ -44,22 +44,15 @@ def _has_required_structure(text: str) -> bool:
     )
 
 
-def _enforce_required_structure(text: str) -> tuple[str, bool]:
+def _enforce_required_structure(text: str) -> tuple[str, bool, bool]:
+    """Return (text, structure_ok, structure_error_flag).
+
+    Never injects a fake «Механизм: анализ опирается…» stub. Missing labels
+    are reported via structure_error so callers can hold/suppress publish.
+    """
     if _has_required_structure(text):
-        return text, False
-    # Prevent pathological answer growth when model already produced a long
-    # quasi-structured response but label parsing is imperfect.
-    if len(text) >= 900:
-        return text, False
-    parts = [p.strip() for p in text.split("\n") if p.strip()]
-    lead = parts[0] if parts else text.strip()
-    tail = parts[-1] if parts else text.strip()
-    rebuilt = (
-        f"Факт: {lead}\n"
-        f"Механизм: анализ опирается на предоставленный контекст и факты новости.\n"
-        f"Вывод: {tail}"
-    ).strip()
-    return rebuilt, True
+        return text, True, False
+    return text, False, True
 
 
 def scrub_chunks_for_prompt(
@@ -113,6 +106,7 @@ def apply_quality_post_generate(
     item_id: str | None = None,
     combat_sensitive: bool = False,
     news_text: str | None = None,
+    skip_structure_enforce: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     meta: dict[str, Any] = {}
     working = text
@@ -169,7 +163,13 @@ def apply_quality_post_generate(
         combat_sensitive=combat_sensitive,
     )
     working = art.text
-    meta["artifact_codes"] = list(art.codes)
+    meta["artifact_ops"] = list(art.codes)
+    meta["artifact_codes"] = [
+        code
+        for code in art.codes
+        if code.startswith(("artifact:", "detect:", "fallback:", "deny:"))
+        or code in {"broken_syntax", "too_short_after_strip"}
+    ]
     meta["artifact_fallback"] = art.used_fallback
     meta["artifact_deny"] = art.deny
 
@@ -180,7 +180,17 @@ def apply_quality_post_generate(
         meta["grounded_element"] = has_quote or has_concept
         meta["insufficient_context"] = bool(r1_text) and not (has_quote or has_concept)
 
-    working, rebuilt = _enforce_required_structure(working)
-    meta["structure_rebuilt"] = rebuilt
+    if skip_structure_enforce:
+        meta["structure_rebuilt"] = False
+        meta["structure_ok"] = _has_required_structure(working)
+        meta["structure_error"] = not bool(meta["structure_ok"])
+        meta["legacy_stub_rebuild"] = False
+    else:
+        working, structure_ok, structure_error = _enforce_required_structure(working)
+        # structure_rebuilt kept for metrics scripts; always False (no stub).
+        meta["structure_rebuilt"] = False
+        meta["structure_ok"] = structure_ok
+        meta["structure_error"] = structure_error
+        meta["legacy_stub_rebuild"] = False
 
     return working, meta

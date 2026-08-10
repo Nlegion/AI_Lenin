@@ -101,6 +101,7 @@ python scripts/run_quality_qa_batch.py --guard-check-only
 python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --allow-legacy-fallback
 python scripts/calibrate_semantic_core_query.py
 python scripts/evaluate_semantic_core.py
+python scripts/run_dialectical_reasoning_dryrun.py --fixture neftegaz
 
 # Version bump
 python scripts/version_update.py patch   # or major / minor
@@ -172,7 +173,8 @@ Project rules in `.cursor/rules/*.mdc` are adapted from an external baseline (`P
 | `log-incident-registry.mdc` | Optional incident triage workflow |
 | `swarm-collaboration.mdc` | Swarm output contract and handoff rules |
 
-Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off). 
+Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).
+Dialectical reasoning engine: `docs/dialectical_reasoning_engine.md` (`dialectical_reasoning.mode` in the same YAML).
 Semantic core (modern→Lenin abstract topics): `docs/semantic_core.md` (`config/semantic_core.yaml`, default off). Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
 
 ## Agent Collaboration Rules

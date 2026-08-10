@@ -62,9 +62,17 @@ class CompletionBackend:
             result = await response.json()
         latency_ms = int((perf_counter() - started) * 1000)
         text = str(result.get("content", "")).strip()
+        stopped = bool(result.get("stopped_limit") or result.get("truncated"))
+        finish_reason = "length" if stopped else "stop"
+        tokens_predicted = result.get("tokens_predicted")
+        usage = None
+        if isinstance(tokens_predicted, (int, float)):
+            usage = {"completion_tokens": int(tokens_predicted)}
         return GenerationResponse(
             text=text,
             backend=self.persona_model,
             model_name=self.backend_config.model_name,
             latency_ms=latency_ms,
+            finish_reason=finish_reason,
+            usage=usage,
         )

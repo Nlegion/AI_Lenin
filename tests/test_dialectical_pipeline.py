@@ -21,6 +21,8 @@ class _DummyBackend:
             backend="dummy",
             model_name="dummy",
             latency_ms=1,
+            finish_reason="stop",
+            usage=None,
         )
 
     async def close(self):
@@ -39,7 +41,13 @@ def _pipeline_with(*, dialectical_enabled: bool, evidence_builder, context_build
     pipe.config = SimpleNamespace(
         persona_model="test",
         safety=SimpleNamespace(post_filter=False, fallback=SimpleNamespace(enabled=False)),
-        active_backend=lambda: SimpleNamespace(api_style="chat_completions", max_context_chars=2000),
+        active_backend=lambda: SimpleNamespace(
+            api_style="chat_completions",
+            max_context_chars=2000,
+            ctx_size=4096,
+            max_tokens=512,
+            model_name="dummy",
+        ),
     )
     return pipe
 

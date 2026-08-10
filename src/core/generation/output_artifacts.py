@@ -22,8 +22,10 @@ _YEAR_ATTR = re.compile(
 )
 _VOLUME_OK = re.compile(r"(том|т\.)\s*\d+", re.IGNORECASE)
 _WORK_TITLE = re.compile(r"Ленин\s*,\s*[«\"]([^»\"]+)[»\"]", re.IGNORECASE)
+# Do NOT strip «Факт:» / «Вывод:» / «Механизм:» — those are required analysis
+# labels; stripping them triggered fake structure rebuild in quality_hooks.
 _SCAFFOLD = re.compile(
-    r"(?m)^\s*(Факт|Суть тезиса|Анализ|Вывод|Ожидаемый ответ)\s*:\s*",
+    r"(?m)^\s*(Суть тезиса|Анализ|Ожидаемый ответ)\s*:\s*",
     re.IGNORECASE,
 )
 _STYLE_LEAD = re.compile(
@@ -45,6 +47,27 @@ _BROKEN = (
 _CHATML_TOKEN = re.compile(r"<\|im_(?:start|end)\|>\s*(?:assistant|user|system)?", re.IGNORECASE)
 _MULTI_STANCE_TAG = re.compile(r"(\[multi-stance\]\s*){2,}", re.IGNORECASE)
 _ORCHESTRATOR_LABEL = re.compile(r"\bR[123]\b\s*(?:нет|содержит|упоминает|подтверждает)?", re.IGNORECASE)
+_CONTEXT_LABEL_LINE = re.compile(
+    r"(?mi)^\s*(?:[-#]+\s*)?контекст\s*[—-]\s*ленин\s*\([^)]*\).*$"
+)
+_INLINE_CONTEXT_CHUNK = re.compile(
+    r"\s*---\s*контекст\s*[—-]\s*ленин\s*\([^)]*\)\s*",
+    re.IGNORECASE,
+)
+_INLINE_CONTEXT_LABEL = re.compile(
+    r"\s*контекст\s*[—-]\s*ленин\s*\([^)]*\)\s*",
+    re.IGNORECASE,
+)
+_INLINE_CONTEXT_INSTRUCTION = re.compile(
+    r"(?i)\s*добавить\s+краткий\s+комментарий[^\n]*$",
+)
+_INLINE_STYLE_TAIL = re.compile(
+    r"(?i)\s*в\s+стилизованной\s+интерпретации\s*:\s*.*$",
+)
+_INLINE_EVIDENCE_BASE_TAIL = re.compile(
+    r"(?i)\s*---\s*доказательная\s+база\s*:.*$",
+)
+_TRAILING_DASHES = re.compile(r"\s*---\s*\.?\s*$")
 LONG_DISCLAIMER_RE = re.compile(
     r"Ответ сгенерирован искусственным интеллектом.{0,200}призывом к действию\.?",
     re.IGNORECASE | re.DOTALL,
@@ -136,6 +159,12 @@ def apply_artifact_pass(
 
     soft = str(getattr(config, "artifact_enforce_mode", "soft") or "soft") == "soft"
     hard_fallback = bool(getattr(config, "hard_fallback_on_broken_output", False))
+    # Conservative mojibake cleanup for isolated corrupted token that frequently
+    # appears in generated Russian text. Repair before detect to avoid false
+    # artifact flags for fully recovered output.
+    if _MOJIBAKE_RYO.search(working):
+        working = _MOJIBAKE_RYO.sub("её", working)
+        codes.append("fix:mojibake_ryo")
     enc = detect_encoding_artifacts(working)
     if enc and generation_flag_enabled("encoding_scrubber_enabled"):
         codes.extend(enc)
@@ -174,9 +203,53 @@ def apply_artifact_pass(
         if _ORCHESTRATOR_LABEL.search(working):
             working = _ORCHESTRATOR_LABEL.sub("контекст ", working)
             codes.append("strip:orchestrator_label")
+        if _CONTEXT_LABEL_LINE.search(working):
+            working = _CONTEXT_LABEL_LINE.sub("", working)
+            codes.append("strip:context_label_line")
+        if _INLINE_CONTEXT_CHUNK.search(working):
+            working = _INLINE_CONTEXT_CHUNK.sub(" ", working)
+            codes.append("strip:inline_context_chunk")
+        if _INLINE_CONTEXT_LABEL.search(working):
+            working = _INLINE_CONTEXT_LABEL.sub(" ", working)
+            codes.append("strip:inline_context_label")
+        if _INLINE_CONTEXT_INSTRUCTION.search(working):
+            working = _INLINE_CONTEXT_INSTRUCTION.sub("", working)
+            codes.append("strip:inline_context_instruction")
+        if _INLINE_STYLE_TAIL.search(working):
+            working = _INLINE_STYLE_TAIL.sub("", working)
+            codes.append("strip:inline_style_tail")
+        if _INLINE_EVIDENCE_BASE_TAIL.search(working):
+            working = _INLINE_EVIDENCE_BASE_TAIL.sub("", working)
+            codes.append("strip:inline_evidence_base_tail")
+        if _TRAILING_DASHES.search(working):
+            working = _TRAILING_DASHES.sub("", working)
+            codes.append("strip:trailing_dashes")
         if LONG_DISCLAIMER_RE.search(working):
             working = LONG_DISCLAIMER_RE.sub("", working)
             codes.append("strip:long_disclaimer_header")
+
+    # Always scrub prompt-tail artifacts, even when loop-strip hotfix is disabled.
+    if _CONTEXT_LABEL_LINE.search(working):
+        working = _CONTEXT_LABEL_LINE.sub("", working)
+        codes.append("strip:context_label_line")
+    if _INLINE_CONTEXT_CHUNK.search(working):
+        working = _INLINE_CONTEXT_CHUNK.sub(" ", working)
+        codes.append("strip:inline_context_chunk")
+    if _INLINE_CONTEXT_LABEL.search(working):
+        working = _INLINE_CONTEXT_LABEL.sub(" ", working)
+        codes.append("strip:inline_context_label")
+    if _INLINE_CONTEXT_INSTRUCTION.search(working):
+        working = _INLINE_CONTEXT_INSTRUCTION.sub("", working)
+        codes.append("strip:inline_context_instruction")
+    if _INLINE_STYLE_TAIL.search(working):
+        working = _INLINE_STYLE_TAIL.sub("", working)
+        codes.append("strip:inline_style_tail")
+    if _INLINE_EVIDENCE_BASE_TAIL.search(working):
+        working = _INLINE_EVIDENCE_BASE_TAIL.sub("", working)
+        codes.append("strip:inline_evidence_base_tail")
+    if _TRAILING_DASHES.search(working):
+        working = _TRAILING_DASHES.sub("", working)
+        codes.append("strip:trailing_dashes")
 
     working = re.sub(r"\n{3,}", "\n\n", working).strip()
     broken = any(p.search(working) for p in _BROKEN)

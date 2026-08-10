@@ -1,0 +1,18 @@
+{
+  "positive": {
+    "principle_id": "seed-gmc-001",
+    "title": "Государственно-монополистический капитализм",
+    "quote": "Монополии срастаются с государственным аппаратом",
+    "chunk_id": "seed-chunk-gmc",
+    "stance_type": "core_self",
+    "good": true
+  },
+  "negative": {
+    "principle_id": "seed-bad-001",
+    "title": "Общая фраза",
+    "quote": "анализ опирается на предоставленный контекст",
+    "chunk_id": "seed-chunk-bad",
+    "stance_type": "core_self",
+    "good": false
+  }
+}

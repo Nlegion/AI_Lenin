@@ -50,3 +50,27 @@ dialectical_orchestration:
   r2_modality_suffix: "поддержка"
   r3_modality_suffix: "критика"
   short_lead_chars: 200
+
+dialectical_reasoning:
+  # legacy | orchestration_single_pass | reasoning_shadow | reasoning_publish
+  mode: "orchestration_single_pass"
+  kill_switch: false
+  fixture_mode: false
+  require_orchestration: true
+  max_principles: 6
+  max_principles_per_slot: 3
+  max_quote_chars: 280
+  max_causal_links: 3
+  max_error_report_chars: 600
+  max_rendered_chars: 1000
+  max_tokens_out: 512
+  ctx_size: 4096
+  ctx_margin_ratio: 0.9
+  temperature: 0.35
+  repair_temperature: 0.1
+  repair_max_attempts: 2
+  per_pass_timeout_sec: 90.0
+  global_timeout_sec: 180.0
+  shadow_sample_rate: 0.1
+  fallback_to_legacy_on_timeout: false
+  judge_sample_rate: 0.0
