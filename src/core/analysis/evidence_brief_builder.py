@@ -255,7 +255,7 @@ def _finalize_empty(
         config=config,
         build_context_fn=build_context_fn,
         enhanced_query=enhanced_query,
-        default_error=reason,
+        _default_error=reason,
     )
 
 
@@ -265,7 +265,7 @@ def _apply_empty_policies(
     config: DialecticalOrchestrationConfig,
     build_context_fn,
     enhanced_query: str | None,
-    default_error: str,
+    _default_error: str,
 ) -> EvidenceBrief:
     r1_empty = not brief.r1_core_self
     all_empty = r1_empty and not brief.r2_influence_agree and not brief.r3_influence_critical
@@ -389,5 +389,5 @@ def _parallel_slots(
         config=config,
         build_context_fn=build_context_fn,
         enhanced_query=enhanced_query,
-        default_error="provider_error",
+        _default_error="provider_error",
     )

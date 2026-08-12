@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
-import aiohttp
-
 from scripts._quality_qa_io import QaItem, sha256_text
+from src.core.generation.errors import ErrorKind, classify_exception
 from src.core.generation.pipeline import AnalysisGenerationPipeline
 from src.core.lenin_analyzer import LeninAnalyzer
 from src.core.safety.news_guard import NewsGuard
@@ -24,27 +22,11 @@ REFUSAL_FALLBACK = "Анализ данной темы невозможен в �
 
 
 def is_transient(error: Exception) -> bool:
-    if isinstance(error, (asyncio.TimeoutError, TimeoutError, aiohttp.ClientConnectorError)):
-        return True
-    if isinstance(error, aiohttp.ServerDisconnectedError):
-        return True
-    text = str(error).lower()
-    if "429" in text or "http 5" in text:
-        return True
-    if "timeout" in text or "temporarily" in text:
-        return True
-    return False
+    return classify_exception(error) == ErrorKind.TRANSIENT
 
 
 def classify_error(error: Exception) -> str:
-    text = str(error).lower()
-    if "empty choices" in text or "empty_response" in text or "empty model content" in text:
-        return "empty_response"
-    if "invalid" in text and "json" in text:
-        return "invalid_response"
-    if is_transient(error):
-        return "transient"
-    return "runtime"
+    return classify_exception(error).value
 
 
 def probe_query(item: QaItem) -> str:
@@ -195,6 +177,9 @@ async def generate_one(
     save_full_prompts: bool,
     news_guard: NewsGuard | None = None,
     skip_input_gate: bool = False,
+    risk_tier: str = "green",
+    context_hints: list[str] | None = None,
+    needs_yellow_warning: bool = False,
 ) -> dict[str, Any]:
     input_hash = item.input_hash()
     row = base_row(item, persona_model=analyzer.generation_config.persona_model, input_hash=input_hash)
@@ -221,6 +206,9 @@ async def generate_one(
                 enhanced_query=enhanced_query,
                 key_concepts=key_concepts,
                 warn_only_guard=True,
+                risk_tier=risk_tier,
+                context_hints=context_hints,
+                needs_yellow_warning=needs_yellow_warning,
             )
             answer = (result.guard_result.moderated_text or result.analysis or "").strip()
             row["latency_ms"] = int(result.latency_ms)
@@ -273,6 +261,20 @@ async def generate_one(
             row["post_safety_rejected"] = bool(result.metadata.get("artifact_deny")) or bool(
                 result.guard_result.blocked
             )
+            row["structure_error"] = bool(result.metadata.get("structure_error"))
+            row["structure_ok"] = bool(result.metadata.get("structure_ok", True))
+            row["news_groundedness"] = result.metadata.get("news_groundedness")
+            row["dialectical_outcome"] = result.metadata.get("dialectical_outcome")
+            from src.core.generation.publishability import is_publishable_analysis
+
+            if not is_publishable_analysis(text=answer, metadata=result.metadata):
+                row["status"] = "blocked"
+                row["blocked"] = True
+                row["llm_final_used"] = False
+                row["skipped_llm_reason"] = "quality_hold_review"
+                row["publishable"] = False
+            else:
+                row["publishable"] = True
             row["quote_candidate_found"] = bool(result.metadata.get("allowlist_size", 0))
             row["quote_required"] = str(result.metadata.get("quote_mode") or "") == "quote"
             row["quote_fulfilled"] = bool(result.metadata.get("allowlist_size", 0)) and "«" in answer

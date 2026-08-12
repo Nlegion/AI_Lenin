@@ -20,7 +20,7 @@ class CommandResult:
 
 def _run(command: list[str], cwd: Path) -> CommandResult:
     started_at = time()
-    process = subprocess.run(command, cwd=cwd, check=False)
+    process = subprocess.run(command, cwd=cwd, check=False)  # nosec B603
     elapsed = time() - started_at
     return CommandResult(command=command, exit_code=process.returncode, elapsed_seconds=elapsed)
 

@@ -11,5 +11,6 @@
 | [trial50_hotfix_notes.md](trial50_hotfix_notes.md) | Trial50 safety/generation hotfix flags and verify |
 | [safety_gate.md](safety_gate.md) | SafetyGate rule-authoring, flags, yellow hints, migration |
 | [safety_gate_ops.md](safety_gate_ops.md) | Dual-run ops, rollback switches, dashboard metrics |
+| [config_ownership.md](config_ownership.md) | Config SoT / ownership for retrieval vs generation knobs |
 
 Also see root [`README.md`](../README.md), [`AGENTS.md`](../AGENTS.md), and [`CHANGELOG.md`](../CHANGELOG.md).

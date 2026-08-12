@@ -99,7 +99,7 @@ class LeninServer:
             if self.cudart_dir is not None and self.cudart_dir.exists():
                 path_parts.append(str(self.cudart_dir))
             env["PATH"] = ";".join(path_parts + [env.get("PATH", "")])
-            self.process = subprocess.Popen(
+            self.process = subprocess.Popen(  # nosec B603
                 cmd,
                 cwd=str(self.runtime_dir),
                 stdout=self._log_handle,

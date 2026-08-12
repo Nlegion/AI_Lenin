@@ -18,7 +18,7 @@ from src.core.settings.release_gates import load_release_gates  # noqa: E402
 
 
 def _run(command: list[str], *, cwd: Path) -> None:
-    result = subprocess.run(command, cwd=cwd, check=False)
+    result = subprocess.run(command, cwd=cwd, check=False)  # nosec B603
     if result.returncode != 0:
         raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(command)}")
 

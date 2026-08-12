@@ -52,7 +52,7 @@ class SemanticL2Classifier:
 
     def score(self, text: str) -> L2Score:
         prepared = self._prepare_text(text)
-        key = hashlib.sha1(prepared.encode("utf-8")).hexdigest()
+        key = hashlib.sha1(prepared.encode("utf-8"), usedforsecurity=False).hexdigest()
         cached = self._cache_get(key)
         if cached is not None:
             return cached

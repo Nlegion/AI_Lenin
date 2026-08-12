@@ -13,15 +13,18 @@ from src.core.database.db_core import session_scope
 from src.core.llama_server import LeninServer
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
+from src.core.news_item_pipeline import (
+    attach_censor_cache_callbacks,
+    evaluate_and_annotate_news,
+    generate_and_persist_analysis,
+)
 from src.core.safety.news_guard import NewsGuard
 from src.core.safety.safety_gate import SafetyGate
 from src.core.safety.pre_rag_censor import PreRagCensor
-from src.core.safety.pre_rag_censor_types import CensorInput
 from src.core.settings.censorship_runtime_config import (
     default_censorship_runtime_config_path,
     load_censorship_runtime_config,
 )
-from src.core.settings.analysis_defaults import REFUSAL_PHRASES
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
@@ -57,7 +60,10 @@ class NewsProcessor:
             "news_skipped": 0,
             "analyses_published": 0,
             "analyses_rejected": 0,
-            "errors": 0
+            "errors": 0,
+            "generation_timeouts": 0,
+            "circuit_opens": 0,
+            "degraded_held": 0,
         }
 
         # Словарь для хранения замечаний к анализам
@@ -194,8 +200,7 @@ class NewsProcessor:
             logger.info("Ожидание инициализации анализатора...")
             await self.analyzer_ready.wait()
 
-        # Семафор для ограничения параллельных обработок
-        processing_semaphore = asyncio.Semaphore(2)  # Максимум 2 одновременно
+        processing_semaphore = asyncio.Semaphore(2)
 
         while True:
             try:
@@ -203,166 +208,74 @@ class NewsProcessor:
                     async with session_scope() as session:
                         repo = NewsRepository(session)
                         unprocessed = await repo.get_unprocessed_news(limit=5)
+                        news_ids = [news.id for news in unprocessed]
+                        logger.info("Найдено %s необработанных новостей", len(news_ids))
 
-                        logger.info(f"Найдено {len(unprocessed)} необработанных новостей")
+                processing_tasks = []
+                for news_id in news_ids:
+                    if news_id in self.failed_attempts:
+                        del self.failed_attempts[news_id]
+                    task = asyncio.create_task(
+                        self.process_single_news_by_id(news_id, processing_semaphore)
+                    )
+                    processing_tasks.append(task)
+                if processing_tasks:
+                    await asyncio.gather(*processing_tasks)
 
-                        processing_tasks = []
-                        for news in unprocessed:
-                            # Сбрасываем счетчик попыток для новой новости
-                            if news.id in self.failed_attempts:
-                                del self.failed_attempts[news.id]
-
-                            # Создаем задачу с ограничением через семафор
-                            task = asyncio.create_task(
-                                self.process_single_news(news, repo, processing_semaphore)
-                            )
-                            processing_tasks.append(task)
-
-                        # Ждем завершения всех задач
-                        if processing_tasks:
-                            await asyncio.gather(*processing_tasks)
-
-                # Короткая пауза перед следующей проверкой новых новостей
                 await asyncio.sleep(10)
-
             except Exception as e:
                 logger.error(f"Ошибка в цикле обработки новостей: {str(e)}")
                 await self.publisher.send_admin_notification(f"❌ Ошибка обработки новостей: {str(e)[:200]}")
                 await asyncio.sleep(30)
 
-    async def process_single_news(self, news, repo, semaphore):
-        """Обработка одной новости с ограничением параллелизма"""
+    async def process_single_news_by_id(self, news_id: int, semaphore: asyncio.Semaphore) -> None:
+        """Process one news item with an isolated DB session/repository."""
         async with semaphore:
-            # Логируем информацию о новости
-            logger.info(f"Обработка новости: {news.title[:50]}...")
-            censor_result = None
-            if self.pre_rag_censor is not None:
-                async def _load_cached(content_hash: str, config_hash: str):
-                    return await repo.get_censor_cached_decision(
-                        content_hash=content_hash,
-                        config_version_hash=config_hash,
-                    )
-
-                async def _save_cached(content_hash: str, config_hash: str, model_hash: str, result):
-                    await repo.upsert_censor_cached_decision(
-                        content_hash=content_hash,
-                        config_version_hash=config_hash,
-                        model_version_hash=model_hash,
-                        decision=result.decision,
-                        category=result.category,
-                        risk_tier=result.risk_tier,
-                        reason_codes=list(result.reason_codes),
-                        confidence=dict(result.confidence),
-                    )
-
-                async def _cleanup_cache(max_age_seconds: int):
-                    return await repo.cleanup_censor_cache(max_age_seconds=max_age_seconds)
-
-                self.pre_rag_censor._load_cached_decision = _load_cached  # type: ignore[attr-defined]
-                self.pre_rag_censor._save_cached_decision = _save_cached  # type: ignore[attr-defined]
-                self.pre_rag_censor._cleanup_cached_decisions = _cleanup_cache  # type: ignore[attr-defined]
-                censor_result = await self.pre_rag_censor.evaluate(
-                    CensorInput(
-                        news_id=str(news.id),
-                        title=news.title,
-                        body=news.content,
-                        source=news.source,
-                        metadata={"url": getattr(news, "url", "")},
-                    )
-                )
-                logger.info(
-                    "PreRagCensor decision news_id=%s decision=%s category=%s tier=%s codes=%s",
-                    news.id,
-                    censor_result.decision,
-                    censor_result.category,
-                    censor_result.risk_tier,
-                    ",".join(censor_result.reason_codes),
-                )
-                if censor_result.decision != "allow":
-                    if censor_result.decision in {"hard_block", "skip"}:
-                        await repo.mark_as_processed_without_analysis(news.id)
-                        self.stats["news_skipped"] += 1
+            async with db_lock:
+                async with session_scope() as session:
+                    repo = NewsRepository(session)
+                    pending = await repo.get_unprocessed_news(limit=20)
+                    news = next((item for item in pending if item.id == news_id), None)
+                    if news is None:
+                        logger.warning("news_id=%s disappeared before processing", news_id)
                         return
-                    if censor_result.decision == "review":
-                        logger.info(
-                            "Yellow risk publish mode enabled news_id=%s category=%s",
-                            news.id,
-                            censor_result.category,
-                        )
-                setattr(news, "_risk_tier", censor_result.risk_tier)
-                setattr(news, "_context_hints", [h.value for h in censor_result.context_hints])
-                setattr(news, "_needs_yellow_warning", censor_result.needs_yellow_warning)
-                if censor_result.risk_tier == "yellow":
-                    from src.core.safety.yellow_audit import append_yellow_audit
+                    await self._process_loaded_news(news=news, repo=repo)
 
-                    append_yellow_audit(
-                        base_dir=Path(__file__).resolve().parents[2],
-                        item_id=str(news.id),
-                        title=news.title,
-                        content=news.content,
-                        risk_tier=censor_result.risk_tier,
-                        reason_codes=list(censor_result.reason_codes),
-                        decision=censor_result.decision,
-                    )
-                # Keep classifier as shadow-only telemetry while migrating to pre-RAG censor.
-                should_analyze, reason = self.classifier.should_analyze(news.title, news.content)
-                logger.info(
-                    "Classifier shadow news_id=%s should_analyze=%s reason=%s",
-                    news.id,
-                    should_analyze,
-                    reason,
-                )
+    async def _process_loaded_news(self, *, news, repo) -> None:
+        logger.info("Обработка новости: %s...", news.title[:50])
+        if self.pre_rag_censor is None:
+            logger.error("PreRagCensor unavailable; holding news_id=%s for review", news.id)
+            await repo.mark_as_processed_without_analysis(news.id)
+            self.stats["news_skipped"] += 1
+            return
+        try:
+            attach_censor_cache_callbacks(censor=self.pre_rag_censor, repo=repo)
+            stop = await evaluate_and_annotate_news(
+                news=news,
+                censor=self.pre_rag_censor,
+                classifier=self.classifier,
+                base_dir=Path(self.config.BASE_DIR),
+            )
+            if stop == "skip":
+                await repo.mark_as_processed_without_analysis(news.id)
+                self.stats["news_skipped"] += 1
+                return
+            await generate_and_persist_analysis(
+                news=news,
+                analyzer=self.analyzer,
+                news_guard=self.news_guard,
+                validator=self.validator,
+                repo=repo,
+                stats=self.stats,
+            )
+        except Exception as e:
+            logger.error("Ошибка обработки новости %s: %s", news.id, e)
+            self.stats["errors"] += 1
 
-            try:
-                # Генерируем анализ
-                logger.info(f"Генерация анализа для новости {news.id}")
-                analysis = await self.analyzer.generate_analysis(
-                    news.title,
-                    news.content,
-                    risk_tier=getattr(news, "_risk_tier", "green"),
-                    context_hints=getattr(news, "_context_hints", None),
-                    needs_yellow_warning=bool(getattr(news, "_needs_yellow_warning", False)),
-                )
-
-                # Проверяем, не отказалась ли модель от анализа
-                if any(phrase in analysis.lower() for phrase in REFUSAL_PHRASES):
-                    logger.info(f"Модель отказалась анализировать новость {news.id}")
-                    await repo.mark_as_processed_without_analysis(news.id)
-                    self.stats["news_skipped"] += 1
-                    return
-
-                logger.info(f"Сгенерирован анализ длиной {len(analysis)} символов")
-
-                if self.news_guard is not None:
-                    guard_result = self.news_guard.guard_output(
-                        analysis=analysis,
-                        source_text=f"{news.title}\n{news.content}",
-                        risk_tier=getattr(news, "_risk_tier", "green"),
-                    )
-                    logger.info(
-                        "NewsGuard output news_id=%s blocked=%s codes=%s",
-                        news.id,
-                        guard_result.blocked,
-                        ",".join(guard_result.reason_codes),
-                    )
-                    analysis = guard_result.moderated_text
-
-                # Валидируем анализ
-                validation = self.validator.validate_analysis(analysis, news.title)
-                logger.info(f"Результат валидации: {validation}")
-
-                if validation["is_valid"]:
-                    await repo.save_analysis(news.id, analysis)
-                    self.stats["news_processed"] += 1
-                    logger.info(f"Успешный анализ новости {news.id}. Оценка: {validation['score']:.2f}")
-                else:
-                    logger.warning(f"Анализ новости {news.id} отклонен: {', '.join(validation['reasons'])}")
-                    await repo.mark_as_processed_without_analysis(news.id)
-                    self.stats["analyses_rejected"] += 1
-
-            except Exception as e:
-                logger.error(f"Ошибка обработки новости {news.id}: {str(e)}")
-                self.stats["errors"] += 1
+    async def process_single_news(self, news, repo, semaphore):
+        """Backward-compatible wrapper used by older tests."""
+        async with semaphore:
+            await self._process_loaded_news(news=news, repo=repo)
 
     @handle_errors
     async def publish_cycle(self):

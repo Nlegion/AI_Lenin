@@ -62,7 +62,7 @@ dialectical_reasoning:
   max_quote_chars: 280
   max_causal_links: 3
   max_error_report_chars: 600
-  max_rendered_chars: 1000
+  max_rendered_chars: 1800
   max_tokens_out: 512
   ctx_size: 4096
   ctx_margin_ratio: 0.9

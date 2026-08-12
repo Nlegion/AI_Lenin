@@ -7,6 +7,7 @@ import csv
 import json
 import logging
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -81,9 +82,12 @@ def _export_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _safe_git_head(*, base_dir: Path) -> str:
+    git = shutil.which("git")
+    if not git:
+        return "unknown"
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+        result = subprocess.run(  # nosec B603
+            [git, "rev-parse", "HEAD"],
             cwd=base_dir,
             check=True,
             capture_output=True,

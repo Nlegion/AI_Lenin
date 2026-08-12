@@ -29,7 +29,7 @@ def brief_digest(brief: EvidenceBrief | None) -> str:
     for item in [*brief.r1_core_self, *brief.r2_influence_agree, *brief.r3_influence_critical]:
         parts.append(f"{item.chunk_id}:{item.score:.4f}")
     raw = "|".join(parts)
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
 def build_cache_suffix(

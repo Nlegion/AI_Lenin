@@ -15,9 +15,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.ontology.tagger import tag_document
-from src.core.ontology.taxonomy import load_taxonomy
-from src.core.ontology.worldview_graph import TaggedSource, build_worldview_graph
+from src.core.ontology.tagger import tag_document  # noqa: E402
+from src.core.ontology.taxonomy import load_taxonomy  # noqa: E402
+from src.core.ontology.worldview_graph import TaggedSource, build_worldview_graph  # noqa: E402
 
 
 def _load_registry(registry_path: Path) -> list[dict[str, str]]:

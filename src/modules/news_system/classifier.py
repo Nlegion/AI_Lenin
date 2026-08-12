@@ -1,7 +1,6 @@
 import re
 import logging
-from typing import Dict, List, Tuple
-import numpy as np
+from typing import Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import make_pipeline
@@ -95,8 +94,8 @@ class NewsClassifier:
             category = self.model.predict([processed_text])[0]
             probability = max(self.model.predict_proba([processed_text])[0])
             return category, probability
-        except:
-            # В случае ошибки возвращаем категорию по умолчанию
+        except Exception as error:
+            logger.warning("news_classify_failed", error=str(error))
             return "other", 0.5
 
     def should_analyze(self, title: str, content: str) -> Tuple[bool, str]:
@@ -111,7 +110,7 @@ class NewsClassifier:
         ]
 
         if any(keyword in text for keyword in exclude_keywords):
-            return False, f"Пропуск: тема не подходит для анализа"
+            return False, "Пропуск: тема не подходит для анализа"
 
         # Проверяем наличие экономических и политических терминов
         economic_terms = ["экономик", "финанс", "бизнес", "рынок", "компани", "банк"]

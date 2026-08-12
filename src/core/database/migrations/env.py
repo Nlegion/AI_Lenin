@@ -16,8 +16,7 @@ if sys.platform.startswith("win"):
 project_root = Path(__file__).resolve().parents[4]  # Поднимаемся на 5 уровней вверх
 sys.path.insert(0, str(project_root))
 
-from src.core.database.db_core import Base
-from src.core.database.models.models import News, Analysis
+from src.core.database.db_core import Base  # noqa: E402
 
 logger = structlog.get_logger()
 

@@ -292,6 +292,11 @@ def check_thresholds(*, metrics: dict[str, Any], suite: str) -> list[str]:
         failures.append(f"chatml_leak_rate={metrics['chatml_leak_rate']:.3f} want 0")
     if metrics.get("orchestrator_label_leak_rate", 0) > 0:
         failures.append(f"orchestrator_label_leak_rate={metrics['orchestrator_label_leak_rate']:.3f} want 0")
+    if metrics.get("multi_stance_echo_rate", 0) > 0:
+        failures.append(f"multi_stance_echo_rate={metrics['multi_stance_echo_rate']:.3f} want 0")
+    grounded = metrics.get("news_groundedness_rate")
+    if grounded is not None and metrics.get("n", 0) >= 20 and grounded < 0.55:
+        failures.append(f"news_groundedness_rate={grounded:.3f} want >=0.55")
     return failures
 
 

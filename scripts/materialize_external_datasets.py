@@ -6,12 +6,13 @@ import argparse
 import bz2
 import csv
 import hashlib
-import io
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 import zipfile
 
@@ -66,9 +67,11 @@ def _write_rows(path: Path, rows: Iterable[dict[str, Any]]) -> int:
 
 
 def _download(url: str, dst: Path) -> None:
+    if urlparse(url).scheme not in {"http", "https"}:
+        raise ValueError(f"unsupported URL scheme for download: {url!r}")
     dst.parent.mkdir(parents=True, exist_ok=True)
     req = Request(url=url, headers={"User-Agent": "ai-lenin-materializer/1.0"})
-    with urlopen(req, timeout=120) as response, dst.open("wb") as out:
+    with urlopen(req, timeout=120) as response, dst.open("wb") as out:  # nosec B310
         shutil.copyfileobj(response, out)
 
 
@@ -116,7 +119,13 @@ def _materialize_rus_news_classifier(
 ) -> int:
     parts = []
     for split in ("train", "test"):
-        parts.append(load_dataset(dataset_id, split=split))
+        parts.append(
+            load_dataset(
+                dataset_id,
+                split=split,
+                revision=os.getenv("HF_DATASET_REVISION", "main"),
+            )
+        )
 
     def _iter_rows():
         written = 0
@@ -145,9 +154,12 @@ def _materialize_rus_news_classifier(
 def _ensure_ru_ethno_repo(repo_dir: Path, repo_url: str) -> None:
     if repo_dir.is_dir():
         return
+    git = shutil.which("git")
+    if not git:
+        raise RuntimeError("git executable not found on PATH")
     repo_dir.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["git", "clone", "--depth", "1", repo_url, str(repo_dir)],
+    subprocess.run(  # nosec B603
+        [git, "clone", "--depth", "1", repo_url, str(repo_dir)],
         check=True,
     )
 

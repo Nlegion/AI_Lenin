@@ -1,7 +1,7 @@
 import feedparser
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from src.core.settings.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ class NewsFetcher:
         self.config = Settings()
 
     def _generate_id(self, url: str) -> str:
-        return hashlib.md5(url.encode()).hexdigest()
+        return hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()
 
     def fetch_tass(self) -> list:
         """Сбор новостей только из TASS"""

@@ -1,8 +1,9 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import logging
-from src.core.settings.config import Settings
+import os
 import time
+from src.core.settings.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +30,19 @@ class LeninAnalyzer:
                 bnb_4bit_use_double_quant=True,
             )
 
+            hf_revision = os.getenv("HF_MODEL_REVISION", "main")
             tokenizer = AutoTokenizer.from_pretrained(
                 self.config.MODEL_NAME,
-                use_fast=False
+                use_fast=False,
+                revision=hf_revision,
             )
 
             model = AutoModelForCausalLM.from_pretrained(
                 self.config.MODEL_NAME,
                 quantization_config=bnb_config,
                 device_map="auto",
-                torch_dtype=torch.bfloat16
+                torch_dtype=torch.bfloat16,
+                revision=hf_revision,
             )
 
             load_time = time.time() - start_time

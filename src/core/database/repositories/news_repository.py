@@ -83,7 +83,7 @@ class NewsRepository:
         time_threshold = datetime.utcnow() - timedelta(hours=24)
 
         stmt = select(News).where(
-            News.processed == False,
+            News.processed.is_(False),
             News.date >= time_threshold  # Только свежие новости
         ).order_by(
             News.date.desc()
@@ -121,7 +121,7 @@ class NewsRepository:
     @handle_db_errors
     async def get_unpublished_analysis(self, limit: int = 10):  # Увеличили лимит
         stmt = select(Analysis).join(News).where(
-            Analysis.published == False
+            Analysis.published.is_(False)
         ).options(
             selectinload(Analysis.news)
         ).order_by(
@@ -178,12 +178,17 @@ class NewsRepository:
             )
         )
         await self._execute_with_retry(touch)
+        confidence = json.loads(row.confidence_json) if row.confidence_json else {}
+        context_hints = list(confidence.pop("__context_hints__", []) or [])
+        needs_yellow_warning = bool(confidence.pop("__needs_yellow_warning__", False))
         return {
             "decision": row.decision,
             "category": row.category,
             "risk_tier": row.risk_tier,
             "reason_codes": json.loads(row.reason_codes_json),
-            "confidence": json.loads(row.confidence_json),
+            "confidence": confidence,
+            "context_hints": context_hints,
+            "needs_yellow_warning": needs_yellow_warning,
             "model_version_hash": row.model_version_hash,
         }
 

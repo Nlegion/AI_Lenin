@@ -9,6 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from scripts._quality_qa_txt import (  # noqa: F401 - re-export public API
+    format_answer_for_display,
+    format_txt_block,
+    format_txt_header,
+)
+
 
 REQUIRED_FIELDS = ("id", "title", "content", "question")
 
@@ -120,34 +126,6 @@ def resolve_artifact_paths(
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def format_txt_header() -> str:
-    return (
-        "# Примечание: поле «Вопрос» только для удобства чтения/разметки.\n"
-        "# LLM получила title+content (+ RAG), как в основном пайплайне; "
-        "question в промпт не входил.\n\n"
-    )
-
-
-def format_txt_block(
-    *,
-    index: int,
-    item: QaItem,
-    answer: str,
-    txt_max_chars: int = 0,
-) -> str:
-    body = answer
-    if txt_max_chars > 0 and len(body) > txt_max_chars:
-        body = body[:txt_max_chars].rstrip() + "\n...[truncated]"
-    topic = item.topic or "n/a"
-    return (
-        f"=== {index} / {item.id} [{topic}] ===\n"
-        f"Вопрос: {item.question}\n\n"
-        f"Контекст новости: {item.title}\n"
-        f"{item.content}\n\n"
-        f"Ответ:\n{body}\n\n"
-    )
 
 
 def should_skip_checkpoint_row(*, row: dict[str, Any] | None, input_hash: str, force: bool) -> bool:

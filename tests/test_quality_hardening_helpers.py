@@ -155,4 +155,4 @@ def test_artifact_pass_repairs_ryo_without_artifact_flag() -> None:
 def test_max_final_answer_chars_exported() -> None:
     from src.core.generation.text_postprocess import MAX_FINAL_ANSWER_CHARS
 
-    assert MAX_FINAL_ANSWER_CHARS == 1000
+    assert MAX_FINAL_ANSWER_CHARS == 1800

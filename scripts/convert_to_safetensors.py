@@ -1,23 +1,26 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import safetensors.torch
 from src.core.settings.config import Settings
-token = Settings().HUGGINGFACE_TOKEN
 
-# Явно укажем использовать safetensors
+token = Settings().HUGGINGFACE_TOKEN
+MODEL_ID = "IlyaGusev/saiga_mistral_7b"
+MODEL_REVISION = "main"
+
+# Explicitly request safetensors serialization on save.
 model = AutoModelForCausalLM.from_pretrained(
-    "IlyaGusev/saiga_mistral_7b",
+    MODEL_ID,
     device_map="cuda" if torch.cuda.is_available() else "cpu",
     torch_dtype=torch.float16,
-            token=token
+    token=token,
+    revision=MODEL_REVISION,
 )
 
 model.save_pretrained(
     "./models/saiga_mistral_7b_safe",
-    safe_serialization=True
+    safe_serialization=True,
 )
 
-tokenizer = AutoTokenizer.from_pretrained("IlyaGusev/saiga_mistral_7b")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
 
 input_text = "Пролетарии всех стран, соединяйтесь!"
 inputs = tokenizer(input_text, return_tensors="pt").to(model.device)

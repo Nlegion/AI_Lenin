@@ -27,6 +27,7 @@ from scripts._live_news_qa_artifacts import (  # noqa: E402
     rejected_paths,
     resolve_live_artifacts,
 )
+from scripts._live_news_qa_censor import build_live_pre_rag_censor  # noqa: E402
 from scripts._live_news_qa_fetch import fetch_live_qa_items  # noqa: E402
 from scripts._quality_qa_io import (  # noqa: E402
     format_txt_header,
@@ -92,6 +93,16 @@ async def async_main(args) -> int:
     deadline = time.monotonic() + duration_s
 
     guard = NewsGuard(config=load_news_guard_config(path=REPO_ROOT / args.news_guard_config))
+    try:
+        censor = build_live_pre_rag_censor(
+            base_dir=REPO_ROOT,
+            news_guard=guard,
+            disable_unknown_forward=True,
+            enable_memory_cache=True,
+        )
+    except Exception as error:  # noqa: BLE001
+        logger.error("Failed to initialize PreRagCensor: %s", error)
+        return 2
     generation_config = load_generation_config(path=REPO_ROOT / args.generation_config)
     try:
         if args.persona_model:
@@ -193,7 +204,7 @@ async def async_main(args) -> int:
                     continue
                 await process_live_item(
                     item=item,
-                    guard=guard,
+                    censor=censor,
                     analyzer=analyzer,
                     pipeline=pipeline,
                     args=args,

@@ -8,9 +8,9 @@ import json
 import logging
 import re
 import shutil
-import sys
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -21,16 +21,24 @@ USER_AGENT = "AI_Lenin-llama-updater"
 logger = logging.getLogger("update_llama_cpp_release")
 
 
+def _require_http_url(url: str) -> str:
+    if urlparse(url).scheme not in {"http", "https"}:
+        raise ValueError(f"unsupported URL scheme: {url!r}")
+    return url
+
+
 def _http_json(url: str) -> object:
+    url = _require_http_url(url)
     request = Request(url, headers={"User-Agent": USER_AGENT})
-    with urlopen(request, timeout=60) as response:  # noqa: S310
+    with urlopen(request, timeout=60) as response:  # nosec B310
         return json.loads(response.read().decode("utf-8"))
 
 
 def _http_download(url: str, dest: Path) -> None:
+    url = _require_http_url(url)
     dest.parent.mkdir(parents=True, exist_ok=True)
     request = Request(url, headers={"User-Agent": USER_AGENT})
-    with urlopen(request, timeout=600) as response, dest.open("wb") as handle:  # noqa: S310
+    with urlopen(request, timeout=600) as response, dest.open("wb") as handle:  # nosec B310
         shutil.copyfileobj(response, handle)
 
 

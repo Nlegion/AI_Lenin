@@ -69,7 +69,7 @@ def _split_theses(paragraph: str, markers: list[str]) -> list[str]:
 
 def _build_chunk_id(source_id: str, chunk_index: int, char_start: int, char_end: int) -> str:
     base = f"{source_id}:{chunk_index}:{char_start}:{char_end}"
-    digest = hashlib.sha1(base.encode("utf-8")).hexdigest()[:20]
+    digest = hashlib.sha1(base.encode("utf-8"), usedforsecurity=False).hexdigest()[:20]
     return f"chunk_{digest}"
 
 

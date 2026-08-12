@@ -21,7 +21,7 @@ class AsyncDBManager:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, _exc_val, _exc_tb):
         if exc_type:
             await self.rollback()
         else:
@@ -54,7 +54,7 @@ class AsyncDBManager:
                         setattr(existing, key, value)
             else:
                 self._session.add(instance)
-        except Exception as e:
+        except Exception:
             await self._session.rollback()
             raise
 

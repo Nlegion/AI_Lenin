@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 from src.core.retrieval.arbiter import RetrievalCandidate
 from src.core.retrieval.stance_retrieve import dedupe_by_chunk_id, merge_slot_candidates, stance_filter

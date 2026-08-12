@@ -37,10 +37,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--unknown-as-allow",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help=(
-            "Treat NewsGuard 'no explicit allow topic matched' quarantine as allow "
-            "(default: true). Explicit deny/quarantine topics still block."
+            "Legacy NewsGuard soft-pass (default: false). Ignored when PreRagCensor is active; "
+            "use --censor-strict-review to reject yellow/review items."
         ),
+    )
+    parser.add_argument(
+        "--censor-strict-review",
+        action="store_true",
+        default=False,
+        help="Reject PreRagCensor review/yellow decisions instead of yellow generation (parity off).",
     )
     return parser

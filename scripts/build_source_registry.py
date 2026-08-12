@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.utils.source_registry import (
+from src.core.utils.source_registry import (  # noqa: E402
     build_registry_summary,
     build_source_registry,
     export_source_registry_tsv,

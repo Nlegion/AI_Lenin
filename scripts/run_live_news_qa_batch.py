@@ -25,8 +25,11 @@ from scripts._live_news_qa_artifacts import (  # noqa: E402
     rejected_paths,
     resolve_live_artifacts,
 )
+from scripts._live_news_qa_censor import (  # noqa: E402
+    apply_live_pre_rag_gate,
+    build_live_pre_rag_censor,
+)
 from scripts._live_news_qa_fetch import fetch_live_qa_items  # noqa: E402
-from scripts._live_news_qa_gate import apply_live_pre_llm_gate  # noqa: E402
 from scripts._quality_qa_io import (  # noqa: E402
     append_jsonl,
     format_txt_block,
@@ -95,6 +98,16 @@ async def async_main(args) -> int:
     logger.info("fetched_live_news n=%s target_done=%s", len(items), target)
 
     guard = NewsGuard(config=load_news_guard_config(path=REPO_ROOT / args.news_guard_config))
+    try:
+        censor = build_live_pre_rag_censor(
+            base_dir=REPO_ROOT,
+            news_guard=guard,
+            disable_unknown_forward=True,
+            enable_memory_cache=True,
+        )
+    except Exception as error:  # noqa: BLE001
+        logger.error("Failed to initialize PreRagCensor: %s", error)
+        return 2
     generation_config = load_generation_config(path=REPO_ROOT / args.generation_config)
     try:
         if args.persona_model:
@@ -179,13 +192,15 @@ async def async_main(args) -> int:
                 logger.info("skip id=%s", item.id)
                 continue
 
-            row = apply_live_pre_llm_gate(
-                guard=guard,
+            seed_row = base_row(item, persona_model=generation_config.persona_model, input_hash=input_hash)
+            outcome = await apply_live_pre_rag_gate(
+                censor=censor,
                 item=item,
-                row=base_row(item, persona_model=generation_config.persona_model, input_hash=input_hash),
-                unknown_as_allow=bool(args.unknown_as_allow),
+                row=seed_row,
+                strict_review=bool(args.censor_strict_review),
             )
-            if row is not None:
+            if outcome.blocked_row is not None:
+                row = outcome.blocked_row
                 rejected_count += 1
                 append_jsonl(path=artifacts.checkpoint, row=row)
                 append_jsonl(path=artifacts.results, row=row)
@@ -209,6 +224,7 @@ async def async_main(args) -> int:
                 prior[item.id] = row
                 continue
 
+            gen_ctx = outcome.generation
             row = await generate_one(
                 analyzer=analyzer,
                 pipeline=pipeline,
@@ -216,7 +232,17 @@ async def async_main(args) -> int:
                 retries=int(args.retries),
                 save_full_prompts=bool(args.save_full_prompts),
                 skip_input_gate=True,
+                risk_tier=(gen_ctx.risk_tier if gen_ctx else "green"),
+                context_hints=(gen_ctx.context_hints if gen_ctx else None),
+                needs_yellow_warning=bool(gen_ctx.needs_yellow_warning) if gen_ctx else False,
             )
+            if gen_ctx is not None:
+                row["decision"] = gen_ctx.censor_decision
+                row["censor_decision"] = gen_ctx.censor_decision
+                row["censor_reason_codes"] = list(gen_ctx.censor_reason_codes)
+                row["risk_tier"] = gen_ctx.risk_tier
+                row["context_hints"] = list(gen_ctx.context_hints)
+                row["needs_yellow_warning"] = bool(gen_ctx.needs_yellow_warning)
             append_jsonl(path=artifacts.checkpoint, row=row)
             append_jsonl(path=artifacts.results, row=row)
             if row.get("status") == "done" and not row.get("blocked"):

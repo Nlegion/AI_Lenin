@@ -1,9 +1,7 @@
 import asyncio
 import logging
-import sys
 import os
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
+from datetime import datetime
 from src.modules.news_system.fetcher import NewsFetcher
 from src.core.settings.log import setup_logging
 
@@ -68,7 +66,7 @@ async def test_fetcher():
     oldest = min(item['date'] for item in news_items)
     newest = max(item['date'] for item in news_items)
 
-    print(f"\nВременной диапазон новостей:")
+    print("\nВременной диапазон новостей:")
     print(f"- Самая старая: {oldest.strftime('%Y-%m-%d %H:%M')}")
     print(f"- Самая новая: {newest.strftime('%Y-%m-%d %H:%M')}")
     print(f"- Разница: {(now - oldest).days} дней назад")
@@ -79,7 +77,7 @@ async def test_fetcher():
         text = f"{item['title']} {item['content']}"
         if not any('\u0400' <= char <= '\u04FF' for char in text):
             non_russian += 1
-            print(f"\n⚠️ Обнаружена не русскоязычная новость:")
+            print("\n⚠️ Обнаружена не русскоязычная новость:")
             print(f"Заголовок: {item['title']}")
             print(f"Источник: {item['source']}")
 

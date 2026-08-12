@@ -11,10 +11,7 @@ import time
 
 from qdrant_client import QdrantClient, models
 import torch
-
 import logging
-
-logger = logging.getLogger(__name__)
 
 from src.core.settings.device import (
     GIGA_EMBEDDING_DIM,
@@ -25,6 +22,8 @@ from src.core.settings.device import (
 )
 from src.core.vector.bm25_sparse import Bm25SparseEncoder
 from src.core.vector.ingest_fingerprint import validate_fingerprint_or_raise
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

@@ -33,7 +33,7 @@ def _run_dryrun(persona_model: str, fixture: str, allow_legacy: bool) -> dict:
     if allow_legacy:
         command.append("--allow-legacy-fallback")
     started = perf_counter()
-    result = subprocess.run(command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
+    result = subprocess.run(command, cwd=REPO_ROOT, check=False, capture_output=True, text=True)  # nosec B603
     latency_ms = int((perf_counter() - started) * 1000)
     stdout = result.stdout or ""
     analysis_match = re.search(r"## ANALYSIS\n(.*?)(?:\n## |\Z)", stdout, flags=re.S)

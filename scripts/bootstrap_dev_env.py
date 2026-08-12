@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 def _run(command: list[str], cwd: Path) -> None:
-    result = subprocess.run(command, cwd=cwd, check=False)
+    result = subprocess.run(command, cwd=cwd, check=False)  # nosec B603
     if result.returncode != 0:
         raise RuntimeError(f"Command failed: {' '.join(command)}")
 

@@ -80,7 +80,7 @@ def classify_stance_type(author: str, relative_path: str, rules: SourceRegistryR
 
 
 def _build_source_id(source_path: str) -> str:
-    digest = hashlib.sha1(source_path.encode("utf-8")).hexdigest()
+    digest = hashlib.sha1(source_path.encode("utf-8"), usedforsecurity=False).hexdigest()
     return f"src_{digest[:16]}"
 
 

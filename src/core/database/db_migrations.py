@@ -1,6 +1,5 @@
 import os
 import logging
-import structlog
 from alembic import command
 from alembic.config import Config
 from concurrent.futures import ThreadPoolExecutor

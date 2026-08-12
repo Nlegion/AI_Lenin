@@ -60,10 +60,37 @@ def test_artifact_paths_and_txt_format(tmp_path: Path) -> None:
     assert paths.txt.name == "batch_20260101.txt"
     item = QaItem(id="eco_01", title="T", content="C", question="Q?", topic="economy")
     header = format_txt_header()
-    assert "только для удобства" in header
-    block = format_txt_block(index=1, item=item, answer="A", txt_max_chars=0)
-    assert "Вопрос: Q?" in block
-    assert "Ответ:\nA" in block
+    assert header == ""
+    answer = (
+        "В стилизованной интерпретации: Факт : Один факт. "
+        "Механизм : Один механизм. Вывод : Один вывод.\n\n"
+        "Ответ сгенерирован ИИ в образовательных целях (симуляция на основе трудов "
+        "В.И. Ленина) и не является призывом к действию."
+    )
+    block = format_txt_block(index=1, item=item, answer=answer, txt_max_chars=0)
+    assert block.startswith("=== 1 / eco_01 [economy] ===\n")
+    assert "Вопрос:" not in block
+    assert "Контекст новости:" not in block
+    assert "Ответ:" not in block
+    assert "В стилизованной интерпретации" not in block
+    assert "Факт : Один факт." in block
+    assert "\n\nМеханизм : Один механизм.\n\n" in block
+    assert "\n\nВывод : Один вывод.\n\n" in block
+    assert "Ответ сгенерирован ИИ" in block
+
+
+def test_format_answer_for_display_keeps_only_sections() -> None:
+    from scripts._quality_qa_io import format_answer_for_display
+
+    raw = (
+        "В стилизованной интерпретации: Факт : A. Механизм : B. Вывод : C.\n\n"
+        "Ответ сгенерирован ИИ в образовательных целях."
+    )
+    rendered = format_answer_for_display(raw)
+    assert rendered == (
+        "Факт : A.\n\nМеханизм : B.\n\nВывод : C.\n\n"
+        "Ответ сгенерирован ИИ в образовательных целях."
+    )
 
 
 def test_dataset_file_has_fifty_unique_ids() -> None:

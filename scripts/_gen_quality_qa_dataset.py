@@ -72,7 +72,8 @@ ROWS: list[tuple[str, str, str, str, str]] = [
 
 
 def main() -> None:
-    assert len(ROWS) == 50
+    if len(ROWS) != 50:
+        raise RuntimeError(f"expected 50 quality QA rows, got {len(ROWS)}")
     out = REPO_ROOT / "data" / "eval" / "quality_qa_batch.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
     prepared: list[tuple[str, str, str, str, str]] = []

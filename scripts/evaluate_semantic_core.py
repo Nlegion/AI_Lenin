@@ -12,14 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.analysis.author_normalize import is_lenin_author
-from src.core.analysis.semantic_core_config import load_semantic_core_config
-from src.core.analysis.semantic_integration import (
+from src.core.analysis.author_normalize import is_lenin_author  # noqa: E402
+from src.core.analysis.semantic_core_config import load_semantic_core_config  # noqa: E402
+from src.core.analysis.semantic_integration import (  # noqa: E402
     cliche_gate_blocks_enable,
     legacy_enable_decision,
 )
-from src.core.analysis.topic_router import route_topics
-from src.core.safety.lacuna_hedge_gate import lacuna_hedge_gate
+from src.core.analysis.topic_router import route_topics  # noqa: E402
+from src.core.safety.lacuna_hedge_gate import lacuna_hedge_gate  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

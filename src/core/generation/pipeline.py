@@ -14,7 +14,8 @@ from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.analysis.semantic_core_config import load_semantic_core_config
 from src.core.analysis.semantic_integration import maybe_route
 from src.core.analysis.semantic_query import compose_legacy_enriched_query
-from src.core.dialectics.config import DialecticalMode, load_dialectical_reasoning_config
+from src.core.dialectics.config import DialecticalMode
+from src.core.settings.runtime_knobs import load_reasoning_config_with_generation_sot
 from src.core.dialectics.pipeline_bridge import (
     apply_post_qc_for_reasoning,
     build_cache_suffix,
@@ -22,6 +23,7 @@ from src.core.dialectics.pipeline_bridge import (
     maybe_attach_judge,
     run_reasoning_engine,
 )
+from src.core.generation.adaptive_context import adaptive_max_context_chars
 from src.core.generation.context_budget import (
     BudgetState,
     budget_over_limit,
@@ -30,6 +32,7 @@ from src.core.generation.context_budget import (
     shrink_budget,
 )
 from src.core.generation.factory import build_generation_backend
+from src.core.generation.output_artifacts import final_public_scrub
 from src.core.generation.prompt_adapter import (
     build_chat_request,
     build_completion_request,
@@ -224,7 +227,7 @@ class AnalysisGenerationPipeline:
         else:
             context = self.context_builder(query_for_context)
 
-        reasoning_cfg = load_dialectical_reasoning_config(base_dir=self.base_dir)
+        reasoning_cfg = load_reasoning_config_with_generation_sot(base_dir=self.base_dir)
         if reasoning_cfg.mode in (
             DialecticalMode.REASONING_SHADOW,
             DialecticalMode.REASONING_PUBLISH,
@@ -323,8 +326,17 @@ class AnalysisGenerationPipeline:
         if reasoning_cfg is None:
             reasoning_cfg = DialecticalReasoningConfig()
         backend_cfg = self.config.active_backend()
+        primary = classify_primary(title=news_title, content=news_content)
+        social_primary = primary == "social"
+        sport_primary = primary == "sport"
+        adapted_chars = adaptive_max_context_chars(
+            primary=primary,
+            base_chars=int(backend_cfg.max_context_chars),
+            ctx_size=int(backend_cfg.ctx_size),
+            max_tokens=int(backend_cfg.max_tokens),
+        )
         budget = BudgetState(
-            max_context_chars=int(backend_cfg.max_context_chars),
+            max_context_chars=adapted_chars,
             max_context_chunks=7,
             ctx_size=int(backend_cfg.ctx_size),
             max_tokens=int(backend_cfg.max_tokens),
@@ -342,9 +354,6 @@ class AnalysisGenerationPipeline:
             config=postcheck_cfg,
         )
         empty_r1 = brief is None or len(brief.r1_core_self) == 0
-        primary = classify_primary(title=news_title, content=news_content)
-        social_primary = primary == "social"
-        sport_primary = primary == "sport"
         fact_opinion = needs_fact_opinion_extra(title=news_title, content=news_content)
         context_has_quotes = has_quote_span(working_context)
         applied_hints = list(context_hints or [])
@@ -461,6 +470,39 @@ class AnalysisGenerationPipeline:
                         else None
                     ),
                 )
+                moderated = guard_result.moderated_text
+                if needs_yellow_warning:
+                    from src.core.settings.safety_gate_config import (
+                        default_safety_gate_config_path,
+                        load_safety_gate_config,
+                    )
+                    from src.core.safety.safety_gate import apply_yellow_warning
+                    from src.core.safety.safety_gate_types import GateDecision
+
+                    sg_cfg = load_safety_gate_config(
+                        path=default_safety_gate_config_path(self.base_dir),
+                        news_guard_path=self.base_dir / "config" / "news_guard.yaml",
+                    )
+                    warn_decision = GateDecision(
+                        decision="allow",
+                        risk_tier="yellow",
+                        reason="yellow_warning",
+                        reason_codes=["risk_tier:yellow"],
+                        needs_yellow_warning=True,
+                    )
+                    moderated = apply_yellow_warning(
+                        analysis=moderated,
+                        decision=warn_decision,
+                        warning_text=sg_cfg.policy.yellow_warning_text,
+                    )
+                moderated, final_codes = final_public_scrub(moderated)
+                if final_codes:
+                    quality_meta["final_public_scrub_codes"] = final_codes
+                guard_result = OutputGuardResult(
+                    blocked=guard_result.blocked,
+                    moderated_text=moderated,
+                    reason_codes=list(guard_result.reason_codes),
+                )
                 rag_stats = _rag_stats_from_brief(brief=brief)
                 metadata: dict[str, Any] = {
                     "persona_model": self.config.persona_model,
@@ -559,7 +601,8 @@ class AnalysisGenerationPipeline:
                 break
             working_context = clipped
 
-        assert request is not None
+        if request is None:
+            raise RuntimeError("generation request was not prepared")
         response = await self.backend.generate(request=request)
         text = response.text
         if self.text_cleaner is not None and hasattr(self.text_cleaner, "clean_text"):
@@ -647,6 +690,15 @@ class AnalysisGenerationPipeline:
                 moderated_text=moderated,
                 reason_codes=list(guard_result.reason_codes),
             )
+
+        moderated_final, final_codes = final_public_scrub(guard_result.moderated_text)
+        if final_codes:
+            quality_meta["final_public_scrub_codes"] = final_codes
+        guard_result = OutputGuardResult(
+            blocked=guard_result.blocked,
+            moderated_text=moderated_final,
+            reason_codes=list(guard_result.reason_codes),
+        )
 
         rag_stats = _rag_stats_from_brief(brief=brief)
         metadata: dict[str, Any] = {

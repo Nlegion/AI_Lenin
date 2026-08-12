@@ -19,12 +19,12 @@ class TelegramService(TelegramClient):
 
             # Проверка структуры ответа
             if not response or not isinstance(response, dict):
-                logger.error(f"Некорректный ответ Telegram: {response}")
+                self.logger.error("invalid_telegram_response", response=response)
                 return {}
 
             return response
         except Exception as e:
-            logger.error(f"Ошибка отправки сообщения: {str(e)}")
+            self.logger.error("telegram_send_message_failed", error=str(e))
             return {}
 
     async def get_webhook_info(self):

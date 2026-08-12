@@ -9,7 +9,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 import logging
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -17,17 +19,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.analysis.semantic_core_config import load_semantic_core_config
-from src.core.analysis.semantic_normalize import normalize_routing
-from src.core.analysis.semantic_query import join_terms_with_budget
+from src.core.analysis.semantic_core_config import load_semantic_core_config  # noqa: E402
+from src.core.analysis.semantic_normalize import normalize_routing  # noqa: E402
+from src.core.analysis.semantic_query import join_terms_with_budget  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
 def _git_head(root: Path) -> str | None:
+    git = shutil.which("git")
+    if not git:
+        return None
     try:
-        completed = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+        completed = subprocess.run(  # nosec B603
+            [git, "rev-parse", "HEAD"],
             cwd=root,
             check=False,
             capture_output=True,
@@ -53,13 +58,18 @@ def _worst_case_terms(config) -> list[str]:
 
 def _try_token_count(model_path: Path, text: str) -> tuple[int | None, str | None, int | None]:
     try:
-        from transformers import AutoTokenizer
+        from transformers import AutoTokenizer  # noqa: E402
     except ImportError:
         return None, None, None
     if not model_path.exists():
         return None, None, None
     try:
-        tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            str(model_path),
+            trust_remote_code=True,
+            local_files_only=True,
+            revision=os.getenv("HF_MODEL_REVISION", "main"),
+        )
         tokens = tokenizer.encode(text, add_special_tokens=False)
         model_max = getattr(tokenizer, "model_max_length", None)
         if isinstance(model_max, int) and model_max > 100_000:

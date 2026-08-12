@@ -10,4 +10,5 @@ def test_24h_cli_defaults() -> None:
     assert args.duration_hours == 24.0
     assert args.poll_seconds == 900.0
     assert args.stem == "live_news_qa_24h"
-    assert args.unknown_as_allow is True
+    assert args.unknown_as_allow is False
+    assert args.censor_strict_review is False

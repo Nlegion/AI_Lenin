@@ -6,6 +6,8 @@ from typing import List
 import aiohttp
 
 from src.core.analysis.context_orchestrator import AnalysisContextOrchestrator
+from src.core.generation.degrade_policy import CircuitBreaker, template_degrade
+from src.core.generation.errors import ErrorKind, classify_exception
 from src.core.generation.pipeline import AnalysisGenerationPipeline
 from src.core.retrieval.provider_factory import build_provider
 from src.core.safety.news_guard import NewsGuard
@@ -42,6 +44,8 @@ class LeninAnalyzer:
         )
         self.news_guard = self._init_news_guard()
         self._pipeline: AnalysisGenerationPipeline | None = None
+        self.last_pipeline_metadata: dict = {}
+        self.circuit_breaker = CircuitBreaker()
 
     def _init_news_guard(self) -> NewsGuard | None:
         config_path = self.base_dir / "config" / "news_guard.yaml"
@@ -168,10 +172,14 @@ class LeninAnalyzer:
     ) -> str:
         try:
             await self.initialize_session()
-            from src.core.dialectics.config import load_dialectical_reasoning_config
+            from src.core.settings.runtime_knobs import load_reasoning_config_with_generation_sot
 
-            reasoning_cfg = load_dialectical_reasoning_config(base_dir=self.base_dir)
-            # Cache key includes reasoning mode/schema; brief digest filled after pipeline.
+            if not self.circuit_breaker.allow_request():
+                degraded = template_degrade(reason="circuit_open")
+                self.last_pipeline_metadata = dict(degraded.metadata)
+                return degraded.text
+
+            reasoning_cfg = load_reasoning_config_with_generation_sot(base_dir=self.base_dir)
             cache_key = (
                 f"{news_title}_{hash(news_content[:200])}_"
                 f"{reasoning_cfg.mode.value}_{reasoning_cfg.schema_version}"
@@ -193,12 +201,12 @@ class LeninAnalyzer:
                 context_hints=context_hints,
                 needs_yellow_warning=needs_yellow_warning,
             )
+            self.circuit_breaker.record_success()
+            self.last_pipeline_metadata = dict(result.metadata or {})
             cleaned_content = self.clean_analysis(result.analysis)
-            # Prefer pipeline-provided cache suffix when present.
             suffix = result.metadata.get("cache_suffix")
             if suffix:
                 cache_key = f"{news_title}_{hash(news_content[:200])}_{suffix}"
-            # Caller-level cache skip: never store orchestration_mode=error responses.
             if not feedback and result.metadata.get("orchestration_mode") != "error":
                 if result.metadata.get("dialectical_outcome") != "suppress":
                     self.analysis_cache[cache_key] = cleaned_content
@@ -206,8 +214,18 @@ class LeninAnalyzer:
                         self.analysis_cache.clear()
             return cleaned_content
         except Exception as error:  # noqa: BLE001
-            logger.exception("Ошибка генерации: %s", error)
-            return "Ошибка анализа."
+            kind = classify_exception(error)
+            logger.exception("Ошибка генерации kind=%s: %s", kind.value, error)
+            if kind == ErrorKind.TRANSIENT:
+                self.circuit_breaker.record_timeout()
+            degraded = template_degrade(reason=f"generation_{kind.value}")
+            self.last_pipeline_metadata = {
+                **degraded.metadata,
+                "error_kind": kind.value,
+                "error": str(error)[:300],
+            }
+            # Do not raise: production cycle continues; result is non-publishable.
+            return degraded.text
 
     def clean_analysis(self, text: str) -> str:
         if not text or text in {

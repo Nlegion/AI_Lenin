@@ -1,0 +1,12 @@
+# Bandit CLI defaults for AI_Lenin application code only.
+# Usage: bandit --ini .bandit -r src scripts
+#
+# Do not scan virtualenvs, caches, models, or local data artifacts.
+
+[bandit]
+exclude = .venv,venv,env,.git,__pycache__,.pytest_cache,.ruff_cache,.mypy_cache,.cursor,models,database,data,llama.cpp,model_cache,node_modules,tests
+# Intentional / non-security patterns in this repo:
+# B404 — subprocess is required for llama-server and tooling wrappers
+# B105 — false positives on names containing "pass" (soft_pass, SINGLE_PASS)
+# B311 — PRNG used only for deterministic eval/sampling, not cryptography
+skips = B404,B105,B311

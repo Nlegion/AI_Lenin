@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 import yaml
@@ -20,12 +21,14 @@ def _load_sources(path: Path) -> dict[str, Any]:
 
 
 def _fetch_url_status(url: str, retries: int = 3) -> dict[str, Any]:
+    if urlparse(url).scheme not in {"http", "https"}:
+        return {"ok": False, "status": 0, "error": f"unsupported URL scheme for {url!r}"}
     delay = 1.0
     last_error = ""
     for _ in range(retries):
         try:
             req = Request(url=url, method="GET", headers={"User-Agent": "ai-lenin-dataset-builder/1.0"})
-            with urlopen(req, timeout=20) as response:
+            with urlopen(req, timeout=20) as response:  # nosec B310
                 return {"ok": True, "status": int(response.status), "error": ""}
         except Exception as error:  # noqa: BLE001
             last_error = str(error)

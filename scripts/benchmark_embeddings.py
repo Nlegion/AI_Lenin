@@ -20,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.embeddings.benchmark import BenchmarkResult, choose_best_model, compute_recall_at_k
+from src.core.embeddings.benchmark import BenchmarkResult, choose_best_model, compute_recall_at_k  # noqa: E402
 
 
 def _read_eval_rows(path: Path) -> list[dict[str, str]]:

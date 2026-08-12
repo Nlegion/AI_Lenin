@@ -2,7 +2,7 @@ import requests
 from src.core.settings.config import Settings
 
 model_id = Settings().MODEL_NAME
-response = requests.get(f"https://huggingface.co/api/models/{model_id}")
+response = requests.get(f"https://huggingface.co/api/models/{model_id}", timeout=30)
 
 if response.status_code == 401:
     print("Требуется согласие на использование модели")

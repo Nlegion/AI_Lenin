@@ -14,7 +14,7 @@ def ensure_external_dataset_prestep(*, repo_root: Path, max_rows_per_source: int
     unified_jsonl = repo_root / "data" / "external_datasets" / "external_unified.jsonl"
     schema_path = repo_root / "config" / "dataset_artifact_schema.json"
 
-    subprocess.run(
+    subprocess.run(  # nosec B603
         [
             sys.executable,
             str(materialize_script),
@@ -24,7 +24,7 @@ def ensure_external_dataset_prestep(*, repo_root: Path, max_rows_per_source: int
         cwd=repo_root,
         check=True,
     )
-    subprocess.run(
+    subprocess.run(  # nosec B603
         [
             sys.executable,
             str(validate_script),

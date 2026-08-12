@@ -322,7 +322,6 @@ class PreRagCensor:
         self._maybe_reload_runtime_config()
         await self._maybe_cleanup_cache()
         started = time.perf_counter()
-        cfg = self._config
         normalization = self._normalize(payload=payload)
         lock = self._hash_locks.setdefault(normalization.content_hash, asyncio.Lock())
         async with lock:
@@ -482,6 +481,16 @@ class PreRagCensor:
         cached = await self._load_cached_decision(normalization.content_hash, self._config_version_hash)
         if cached is None:
             return None
+        raw_hints = list(cached.get("context_hints") or [])
+        hints: list[SafetyHint] = []
+        for item in raw_hints:
+            if isinstance(item, SafetyHint):
+                hints.append(item)
+                continue
+            try:
+                hints.append(SafetyHint(str(item)))
+            except ValueError:
+                continue
         return CensorResult(
             decision=cached["decision"],
             category=_normalize_category(cached.get("category")),
@@ -489,6 +498,8 @@ class PreRagCensor:
             reason_codes=list(cached["reason_codes"]),
             reason="Duplicate decision cache hit",
             confidence=dict(cached.get("confidence") or {}),
+            context_hints=hints,
+            needs_yellow_warning=bool(cached.get("needs_yellow_warning", False)),
             audit={
                 "cache_hit": True,
                 "normalizer_version": NORMALIZER_VERSION,

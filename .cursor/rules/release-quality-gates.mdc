@@ -10,7 +10,7 @@ Before declaring a change release-ready, run applicable checks:
 - `alembic upgrade head`
 - `pytest tests -q`
 - `pytest tests -k "<pattern>" -q` for targeted validation when needed
-- Optional static/security checks if installed: `ruff check .`, `ruff format --check .`, `bandit -r src scripts`
+- Optional static/security checks if installed: `ruff check src scripts tests`, `ruff format --check .`, `bandit --ini .bandit -r src scripts`, `vulture src scripts --min-confidence 80 --exclude .venv`
 
 ## Expectations
 

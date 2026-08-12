@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 _TRUNCATION_LEAK = re.compile(r"\n?\.\.\.\[truncated\]", re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
-# Single source of truth for publishable analysis length (Telegram + quality).
-MAX_FINAL_ANSWER_CHARS = 1000
+# Single source of truth for publishable analysis length (Telegram framing ~4096).
+MAX_FINAL_ANSWER_CHARS = 1800
 _MAX_FINAL_ANSWER_CHARS = MAX_FINAL_ANSWER_CHARS  # backward-compatible alias
 
 

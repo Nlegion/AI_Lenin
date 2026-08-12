@@ -5,9 +5,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
-import pytest
 
 from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.generation.pipeline import AnalysisGenerationPipeline

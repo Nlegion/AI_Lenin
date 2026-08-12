@@ -10,7 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from src.core.safety.news_guard import NewsGuard, load_news_guard_config
+from src.core.safety.news_guard import NewsGuard, load_news_guard_config  # noqa: E402
 
 CASES = [
     # combat → deny
@@ -62,7 +62,7 @@ def main() -> int:
     # combat class: predict deny
     tp = fp = fn = 0
     # indirect: predict not deny
-    itp = ifp = ifn = 0
+    itp = ifp = 0
     for case in CASES:
         decision = guard.evaluate_input(
             title=case["title"],

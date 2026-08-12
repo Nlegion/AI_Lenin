@@ -331,7 +331,7 @@ if __name__ == "__main__":
     logger.info(f"Запуск тестовой системы анализа | Рабочая директория: {BASE_DIR}")
     logger.info(f"Логи сохраняются в: {os.path.join(UNIT_TEST_DIR, 'model_test.log')}")
 
-    print(f"Проверка окружения:")
+    print("Проверка окружения:")
     print(f"ОС: {platform.system()} {platform.release()}")
     print(f"Архитектура: {platform.machine()}")
     print(f"Процессор: {platform.processor()}")

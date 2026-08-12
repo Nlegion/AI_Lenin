@@ -15,9 +15,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.preprocessing.cleaning_config import load_cleaning_config
-from src.core.preprocessing.cleaning_quality import semantic_damage_ratio
-from src.core.preprocessing.text_cleaner import clean_document
+from src.core.preprocessing.cleaning_config import load_cleaning_config  # noqa: E402
+from src.core.preprocessing.cleaning_quality import semantic_damage_ratio  # noqa: E402
+from src.core.preprocessing.text_cleaner import clean_document  # noqa: E402
 
 
 def _read_registry(path: Path) -> list[dict[str, str]]:

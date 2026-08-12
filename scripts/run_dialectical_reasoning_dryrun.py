@@ -13,12 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.core.analysis.evidence_brief import EvidenceBrief, EvidenceItem
-from src.core.dialectics.config import DialecticalReasoningConfig
-from src.core.dialectics.engine import DialecticalEngine
-from src.core.dialectics.rag_brief import build_principle_cards
-from src.core.dialectics.schemas import DialecticalRequest
-from tests.helpers.dialectics_mocks import MockBackend
+from src.core.analysis.evidence_brief import EvidenceBrief, EvidenceItem  # noqa: E402
+from src.core.dialectics.config import DialecticalReasoningConfig  # noqa: E402
+from src.core.dialectics.engine import DialecticalEngine  # noqa: E402
+from src.core.dialectics.rag_brief import build_principle_cards  # noqa: E402
+from src.core.dialectics.schemas import DialecticalRequest  # noqa: E402
+from tests.helpers.dialectics_mocks import MockBackend  # noqa: E402
 
 QUOTE = (
     "Монополии срастаются с государственным аппаратом и перекладывают "

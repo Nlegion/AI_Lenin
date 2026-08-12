@@ -61,6 +61,11 @@ class _ValidatorStub:
 
 def _build_processor(censor_result: CensorResult) -> NewsProcessor:
     processor = NewsProcessor.__new__(NewsProcessor)
+
+    class _Cfg:
+        BASE_DIR = "."
+
+    processor.config = _Cfg()
     processor.pre_rag_censor = _CensorStub(censor_result)
     processor.classifier = _ClassifierStub()
     processor.analyzer = _AnalyzerStub()
@@ -73,6 +78,9 @@ def _build_processor(censor_result: CensorResult) -> NewsProcessor:
         "analyses_published": 0,
         "analyses_rejected": 0,
         "errors": 0,
+        "generation_timeouts": 0,
+        "circuit_opens": 0,
+        "degraded_held": 0,
     }
     return processor
 

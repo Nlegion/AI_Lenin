@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import logging
 
 from src.core.analysis.semantic_core_config import AbstractTopic, SemanticCoreConfig
-from src.core.analysis.semantic_normalize import normalize_routing, normalize_yo, title_hash
+from src.core.analysis.semantic_normalize import normalize_yo, title_hash
 
 logger = logging.getLogger(__name__)
 
