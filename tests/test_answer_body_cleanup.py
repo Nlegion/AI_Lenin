@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from src.core.generation.answer_body_cleanup import cleanup_answer_body
+from src.core.generation.output_artifacts import apply_artifact_pass
+from src.core.generation.publishability import is_publishable_analysis
+from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "answer_postprocess"
+
+
+def _load(name: str) -> str:
+    return (FIXTURES / name).read_text(encoding="utf-8")
+
+
+def test_scrub_stance_and_trailing_exact_fact() -> None:
+    body = _load("stance_trailing_fact_bsw.in.txt")
+    result = cleanup_answer_body(text=body)
+    assert "Ленин (agreement)" not in result.text
+    assert "Ленин (disagreement)" not in result.text
+    assert result.text.count("Факт:") == 1
+    assert "strip:inline_stance_lenin" in result.codes
+    assert any(
+        code in result.codes
+        for code in ("strip:trailing_exact_fact_dup", "strip:trailing_triad_restart")
+    )
+
+
+def test_scrub_instruction_dump_keeps_lenin_prose() -> None:
+    result = cleanup_answer_body(text=_load("stance_instruction_dump.in.txt"))
+    assert "Запрещено комментировать" not in result.text
+    assert "Запрещено выдумывать" not in result.text
+    assert "Ленин (core_approval)" not in result.text
+    assert "Ленин подчёркивал" in result.text
+    assert "strip:instruction_dump" in result.codes
+
+
+def test_normalize_star_junk_labels() -> None:
+    result = cleanup_answer_body(text=_load("star_junk_labels.in.txt"))
+    assert "Факт:" in result.text
+    assert "Механизм:" in result.text
+    assert "Вывод:" in result.text
+    assert "\n*\n" not in result.text
+    assert "Факт: **" not in result.text
+
+
+def test_trailing_triad_restart_cut() -> None:
+    result = cleanup_answer_body(text=_load("trailing_fact_en_restart.in.txt"))
+    assert "капиталistic" not in result.text
+    assert "Механism" not in result.text
+    assert result.text.count("Факт:") == 1
+
+
+def test_ru_core_stance_labels_stripped() -> None:
+    result = cleanup_answer_body(text=_load("stance_ru_core_labels.in.txt"))
+    assert "согласие (core_approval)" not in result.text
+    assert "критика (core_criticism)" not in result.text
+    assert "трудящихся" in result.text
+
+
+def test_yellow_and_disclaimer_preserved() -> None:
+    raw = _load("clean_with_yellow_disclaimer.in.txt")
+    result = cleanup_answer_body(text=raw)
+    assert "Ограниченный режим анализа" in result.text
+    assert "Ответ сгенерирован ИИ" in result.text
+    assert "Корнев" in result.text
+
+
+def test_idempotent_second_pass() -> None:
+    raw = _load("stance_instruction_dump.in.txt")
+    first = cleanup_answer_body(text=raw)
+    second = cleanup_answer_body(text=first.text)
+    assert second.text == first.text
+
+
+def test_soft_integrity_does_not_hard_fail() -> None:
+    cfg = QualityPostcheckConfig(integrity_enforce_mode="soft")
+    text = "Факт: заявление о может быть ложным.\nМеханизм: анализ.\nВывод: итог."
+    result = cleanup_answer_body(text=text, config=cfg)
+    assert result.metadata["integrity_error"] is True
+    assert result.metadata["postprocess_hard_fail"] is False
+    assert is_publishable_analysis(
+        text=result.text,
+        metadata={"structure_error": False, **result.metadata},
+    )
+
+
+def test_strict_integrity_sets_hard_fail() -> None:
+    cfg = QualityPostcheckConfig(integrity_enforce_mode="strict")
+    text = "Факт: заявление о может быть ложным.\nМеханизм: анализ.\nВывод: итог."
+    result = cleanup_answer_body(text=text, config=cfg)
+    assert result.metadata["postprocess_hard_fail"] is True
+    assert not is_publishable_analysis(
+        text=result.text,
+        metadata={"structure_error": False, **result.metadata},
+    )
+
+
+def test_artifact_pass_wires_body_cleanup() -> None:
+    cfg = QualityPostcheckConfig()
+    body = _load("stance_trailing_fact_bsw.in.txt")
+    result = apply_artifact_pass(text=body, config=cfg)
+    assert "Ленин (agreement)" not in result.text
+    assert result.text.count("Факт:") == 1
+    assert result.metadata.get("body_cleanup_codes")

@@ -40,6 +40,9 @@ class QualityPostcheckConfig(BaseModel):
     trial50_hotfixes: dict[str, bool] = Field(default_factory=dict)
     fallback_templates: list[str] = Field(default_factory=list)
     min_meaningful_chars: int = 40
+    answer_body_cleanup_enabled: bool = True
+    integrity_check_enabled: bool = True
+    integrity_enforce_mode: str = "soft"
     short_disclaimer: str = (
         "Ответ сгенерирован ИИ в образовательных целях "
         "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."

@@ -331,14 +331,68 @@ async def test_ethno_hate_containment_blocks_obfuscated_phrase() -> None:
 
 
 @pytest.mark.asyncio
-async def test_ethno_hate_containment_can_be_disabled_by_config() -> None:
-    censor = _censor(ethno_hate_containment_enabled=False)
+async def test_manual_lifestyle_fp_economic_text_not_hard_blocked() -> None:
+    censor = _censor()
     result = await censor.evaluate(
         CensorInput(
-            news_id="ethno-2",
-            title="Комментатор призвал изгнать инородцев",
-            body="В тексте есть этническая вражда и призыв к изгнанию.",
+            news_id="fp-econ",
+            title="Цены на золото и пост отчетности",
+            body="Рынок обсуждает игру ставок рефинансирования и бюджетный пост правительства.",
             source="TASS",
         )
     )
-    assert "manual_ethno_hate_containment" not in result.reason_codes
+    assert result.decision != "hard_block" or result.category not in {
+        "SHOWBIZ",
+        "SPORT_BLOCKED",
+        "GAMBLING",
+        "WELLNESS",
+        "FOOD",
+        "ASTROLOGY",
+    }
+
+
+@pytest.mark.asyncio
+async def test_sport_runtime_flag_skips_manual_sport_terms() -> None:
+    censor = _censor(sport_block_enabled=False)
+    result = await censor.evaluate(
+        CensorInput(
+            news_id="sport-off",
+            title="Биатлон и кхл обзор сезона",
+            body="Турнир по биатлону прошел без политических заявлений.",
+            source="TASS",
+        )
+    )
+    assert result.category != "SPORT_BLOCKED"
+    assert "manual_sport_hard_block" not in result.reason_codes
+    assert "sport_blocked" not in result.reason_codes
+
+
+@pytest.mark.asyncio
+async def test_manual_cinema_category_hard_block() -> None:
+    censor = _censor()
+    result = await censor.evaluate(
+        CensorInput(
+            news_id="cinema-1",
+            title="Новый блокбастер выходит в прокат",
+            body="Студия объявила дату кинопремьеры.",
+            source="TASS",
+        )
+    )
+    assert result.decision == "hard_block"
+    assert result.category == "CINEMA"
+    assert "manual_cinema_hard_block" in result.reason_codes
+
+
+@pytest.mark.asyncio
+async def test_war_beats_lifestyle_on_shared_priority() -> None:
+    censor = _censor()
+    result = await censor.evaluate(
+        CensorInput(
+            news_id="war-priority",
+            title="ВСУ применили БПЛА в районе фронта",
+            body="Сообщается о работе беспилотников.",
+            source="TASS",
+        )
+    )
+    assert result.decision == "hard_block"
+    assert result.category == "WAR_OPERATIONAL"

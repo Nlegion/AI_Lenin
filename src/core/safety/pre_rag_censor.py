@@ -12,14 +12,18 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
+from pathlib import Path
+
 from src.core.safety.news_guard import NewsGuard
 from src.core.safety.censor_hashing import NORMALIZER_VERSION, canonical_json_hash, compute_content_hash
+from src.core.safety.manual_terms_loader import ManualTermsLoader, default_censor_terms_dir
 from src.core.safety.semantic_l2_classifier import SemanticL2Classifier
 from src.core.safety.safety_gate import SafetyGate
 from src.core.safety.safety_gate_types import GateContext, SafetyHint
 from src.core.safety.pre_rag_censor_types import CensorDecision, CensorInput, CensorResult, NormalizationMeta
 
 logger = logging.getLogger(__name__)
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 _RU_CHAR_RE = re.compile(r"[а-яёА-ЯЁ]")
 _ALPHA_RE = re.compile(r"[A-Za-zА-Яа-яЁё]")
@@ -68,22 +72,6 @@ _CRISIS_TERMS = (
     "угроза",
     "тревог",
 )
-_MANUAL_WAR_TERMS = (
-    "бпла",
-    "взрыв",
-    "беспилотн",
-    "авиационн",
-    "опасност",
-    "бойцы",
-    "аэропорт приостановил",
-    "дрон",
-    "всу",
-)
-_MANUAL_TERRACT_TERMS = ("wildberries",)
-_MANUAL_FIRE_TERMS = ("пожар", "пожары")
-_MANUAL_AIRPORT_TERMS = ("аэропорт",)
-_MANUAL_RELIGION_TERMS = ("храм",)
-_MANUAL_DEATH_TERMS = ("останк", "труп")
 _ETHNO_HATE_HARD_TERMS = (
     "русопет",
     "чурк",
@@ -105,35 +93,6 @@ _ETHNO_HATE_ACTION_TERMS = (
 )
 _SEPARATOR_RE = re.compile(r"[\s\-\._:,;!?/\\|()\[\]{}\"'`~]+")
 _ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\uFEFF]")
-_MANUAL_WAR_GENERIC_TERMS = (
-    "бомб",
-    "война",
-    "вторая мировая",
-    "великой отечественной",
-    "великая отечественная",
-    "нацист",
-    "битв",
-    "сражен",
-    "фронт",
-    "боестолкнов",
-    "наступлен",
-    "контрнаступ",
-    "штурм",
-)
-_MANUAL_SPORT_TERMS = (
-    "гимнаст",
-    "фигурист",
-    "isu",
-    "роднин",
-    "спартак",
-    "цска",
-    "зенит",
-    "локомотив",
-    "динамо",
-    "первая лига",
-    "рпл",
-    "кхл",
-)
 _CATEGORY_ALIASES = {
     "airport": "AIRPORT",
     "religion": "RELIGION",
@@ -142,6 +101,22 @@ _CATEGORY_ALIASES = {
     "fire": "FIRE",
     "теракт": "TERRACT",
     "терракт": "TERRACT",
+    "cinema": "CINEMA",
+    "music": "MUSIC",
+    "showbiz": "SHOWBIZ",
+    "pop_culture": "POP_CULTURE",
+    "natural_disaster": "NATURAL_DISASTER",
+    "fashion": "FASHION",
+    "wellness": "WELLNESS",
+    "auto": "AUTO",
+    "gadgets": "GADGETS",
+    "travel": "TRAVEL",
+    "food": "FOOD",
+    "astrology": "ASTROLOGY",
+    "gambling": "GAMBLING",
+    "pets": "PETS",
+    "selfhelp": "SELFHELP",
+    "realestate": "REALESTATE",
 }
 
 _DEFAULT_L2_PROTOTYPES: dict[str, tuple[str, ...]] = {
@@ -230,6 +205,7 @@ class PreRagCensor:
         config: CensorRuntimeConfig | None = None,
         l3_reviewer: Callable[[str, str], Awaitable[dict[str, Any]]] | None = None,
         config_path: str | None = None,
+        terms_dir: str | Path | None = None,
         load_cached_decision: Callable[[str, str], Awaitable[dict[str, Any] | None]] | None = None,
         save_cached_decision: Callable[[str, str, str, CensorResult], Awaitable[None]] | None = None,
         cleanup_cached_decisions: Callable[[int], Awaitable[int]] | None = None,
@@ -243,6 +219,7 @@ class PreRagCensor:
         self._policy_hash = ""
         self._model_version_hash = ""
         self._config_version_hash = ""
+        self._manual_terms_hash = ""
         self._last_reload_check = 0.0
         self._last_cache_cleanup = 0.0
         self._seen: OrderedDict[str, float] = OrderedDict()
@@ -252,6 +229,10 @@ class PreRagCensor:
         self._load_cached_decision = load_cached_decision
         self._save_cached_decision = save_cached_decision
         self._cleanup_cached_decisions = cleanup_cached_decisions
+        resolved_terms_dir = Path(terms_dir) if terms_dir else default_censor_terms_dir(_PROJECT_ROOT)
+        self._manual_terms_loader = ManualTermsLoader(terms_dir=resolved_terms_dir)
+        self._manual_terms = self._manual_terms_loader.get_bundle()
+        self._manual_terms_hash = self._manual_terms.content_hash
         self._l2_classifier = SemanticL2Classifier(
             model_version=self._config.l2_model_version,
             prototypes=_DEFAULT_L2_PROTOTYPES,
@@ -303,6 +284,7 @@ class PreRagCensor:
                 "normalizer_version": NORMALIZER_VERSION,
                 "policy_hash": self._policy_hash,
                 "model_version_hash": self._model_version_hash,
+                "manual_terms_hash": self._manual_terms_hash,
             }
         )[:16]
 
@@ -796,6 +778,7 @@ class PreRagCensor:
         self,
         text_lower: str,
     ) -> tuple[CensorDecision, str, str, str] | None:
+        # Specials first (before YAML category loop).
         if self._config.ethno_hate_containment_enabled and self._has_ethno_hate_markers(text_lower):
             return (
                 "hard_block",
@@ -810,32 +793,20 @@ class PreRagCensor:
                 "manual_war_operational_hard_block",
                 "Manual rule: air alert hard block",
             )
-        if any(token in text_lower for token in _MANUAL_WAR_TERMS):
-            return (
-                "hard_block",
-                "WAR_OPERATIONAL",
-                "manual_war_operational_hard_block",
-                "Manual rule: war-related keyword hard block",
-            )
-        if any(token in text_lower for token in _MANUAL_SPORT_TERMS):
-            return (
-                "hard_block",
-                "SPORT_BLOCKED",
-                "manual_sport_hard_block",
-                "Manual rule: sport hard block",
-            )
-        if any(token in text_lower for token in _MANUAL_AIRPORT_TERMS):
-            return ("hard_block", "AIRPORT", "manual_airport_hard_block", "Manual rule: airport hard block")
-        if any(token in text_lower for token in _MANUAL_RELIGION_TERMS):
-            return ("hard_block", "RELIGION", "manual_religion_hard_block", "Manual rule: religion hard block")
-        if any(token in text_lower for token in _MANUAL_DEATH_TERMS):
-            return ("hard_block", "DEATH", "manual_death_hard_block", "Manual rule: death hard block")
-        if any(token in text_lower for token in _MANUAL_WAR_GENERIC_TERMS):
-            return ("hard_block", "WAR", "manual_war_hard_block", "Manual rule: war hard block")
-        if any(token in text_lower for token in _MANUAL_TERRACT_TERMS):
-            return ("hard_block", "TERRACT", "manual_wildberries_terract", "Manual rule: Wildberries hard block")
-        if any(token in text_lower for token in _MANUAL_FIRE_TERMS):
-            return ("hard_block", "FIRE", "manual_fire_hard_block", "Manual rule: fire hard block")
+
+        # Sport is the sole runtime category toggle (legacy CensorRuntimeConfig flag).
+        for rule in self._manual_terms.rules:
+            if not rule.enabled:
+                continue
+            if rule.category_id == "SPORT_BLOCKED" and not self._config.sport_block_enabled:
+                continue
+            if any(term in text_lower for term in rule.terms):
+                return (
+                    rule.decision,
+                    rule.category_id,
+                    rule.reason_code,
+                    f"Manual rule: {rule.category_id} {rule.decision}",
+                )
         return None
 
     def _has_ethno_hate_markers(self, text_lower: str) -> bool:
@@ -937,15 +908,24 @@ class PreRagCensor:
 
     def _maybe_reload_runtime_config(self) -> None:
         cfg = self._config
-        if not cfg.hot_reload_enabled or not self._config_path:
+        if not cfg.hot_reload_enabled:
             return
         now = time.time()
         if now - self._last_reload_check < max(cfg.hot_reload_poll_seconds, 1.0):
             return
         self._last_reload_check = now
         try:
-            from pathlib import Path
+            bundle = self._manual_terms_loader.reload_if_changed()
+            if bundle.content_hash != self._manual_terms_hash:
+                self._manual_terms = bundle
+                self._manual_terms_hash = bundle.content_hash
+                self._refresh_version_hashes()
+        except Exception as error:  # noqa: BLE001
+            logger.warning("pre_rag_censor_manual_terms_reload_failed err=%s", error)
 
+        if not self._config_path:
+            return
+        try:
             import yaml
 
             path = Path(self._config_path)

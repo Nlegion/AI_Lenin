@@ -436,6 +436,20 @@ class AnalysisGenerationPipeline:
                         *reasoning_result.reason_codes,
                         "post_qc_modified",
                     ]
+                    reasoning_meta["dialectical_outcome"] = reasoning_result.outcome
+                    reasoning_meta["dialectical_reason_codes"] = list(
+                        reasoning_result.reason_codes
+                    )
+                if quality_meta.get("postprocess_hard_fail"):
+                    reasoning_result.outcome = "hold_review"
+                    reasoning_result.reason_codes = [
+                        *reasoning_result.reason_codes,
+                        "postprocess_hard_fail",
+                    ]
+                    reasoning_meta["dialectical_outcome"] = reasoning_result.outcome
+                    reasoning_meta["dialectical_reason_codes"] = list(
+                        reasoning_result.reason_codes
+                    )
                 if chunk_artifact_codes:
                     quality_meta["rag_artifact_codes"] = chunk_artifact_codes
                 dedupe_meta: dict[str, Any] = {}

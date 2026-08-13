@@ -36,3 +36,18 @@ def test_publishability_blocks_structure_and_placeholders() -> None:
         text="Факт: x. Механизм: y. Вывод: z.",
         metadata={"structure_error": False, "dialectical_outcome": "ok"},
     )
+
+
+def test_publishability_blocks_postprocess_hard_fail() -> None:
+    assert not is_publishable_analysis(
+        text="Факт: x. Механизм: y. Вывод: z.",
+        metadata={"structure_error": False, "postprocess_hard_fail": True},
+    )
+
+
+def test_publishability_respects_refreshed_hold_outcome() -> None:
+    # Simulates pipeline resync after post-QC flipped publish → hold_review.
+    assert not is_publishable_analysis(
+        text="Факт: x. Механизм: y. Вывод: z.",
+        metadata={"dialectical_outcome": "hold_review", "structure_error": False},
+    )

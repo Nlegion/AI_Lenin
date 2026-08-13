@@ -32,6 +32,8 @@ def is_publishable_analysis(
         return False
     if bool(meta.get("structure_error")):
         return False
+    if bool(meta.get("postprocess_hard_fail")):
+        return False
     outcome = str(meta.get("dialectical_outcome") or "")
     if outcome in {"hold_review", "suppress"}:
         return False

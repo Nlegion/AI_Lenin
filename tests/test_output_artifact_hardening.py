@@ -34,3 +34,16 @@ def test_final_public_scrub_removes_prompt_echoes() -> None:
     assert "[1]" not in cleaned
     assert "контекст — согласие" not in cleaned
     assert codes
+
+
+def test_artifact_pass_strips_inline_stance_and_instruction() -> None:
+    cfg = QualityPostcheckConfig()
+    text = (
+        "Факт: событие. Механизм: анализ. Вывод: итог. "
+        "— Ленин (core_approval) — Ленин (core_criticism) "
+        "Запрещено выдумывать цитаты, кавычки и том/стр."
+    )
+    result = apply_artifact_pass(text=text, config=cfg)
+    assert "Ленин (core_approval)" not in result.text
+    assert "Запрещено выдумывать" not in result.text
+    assert "Факт: событие" in result.text

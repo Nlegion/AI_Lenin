@@ -16,6 +16,9 @@ quality_postcheck:
   quote_postcheck_enforce_mode: soft  # soft|strict — soft keeps analysis body after strip
   artifact_enforce_mode: soft  # soft|strict — soft skips short/encoding full replace
   min_recoverable_tokens: 8
+  answer_body_cleanup_enabled: true
+  integrity_check_enabled: true
+  integrity_enforce_mode: soft  # soft|strict — strict sets postprocess_hard_fail
 
   # Trial50 hotfixes: masters wrap children (see src/core/safety/hotfix_flags.py).
   # combat_adjacent_softpass_block also covers drone soft-pass path in live QA.

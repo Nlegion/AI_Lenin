@@ -172,6 +172,14 @@ def apply_quality_post_generate(
     ]
     meta["artifact_fallback"] = art.used_fallback
     meta["artifact_deny"] = art.deny
+    meta["body_cleanup_codes"] = list(art.metadata.get("body_cleanup_codes") or [])
+    meta["integrity_codes"] = list(art.metadata.get("integrity_codes") or [])
+    meta["integrity_error"] = bool(art.metadata.get("integrity_error"))
+    meta["postprocess_hard_fail"] = bool(art.metadata.get("postprocess_hard_fail"))
+    meta["integrity_enforce_mode"] = str(
+        art.metadata.get("integrity_enforce_mode")
+        or getattr(config, "integrity_enforce_mode", "soft")
+    )
 
     if config.grounded_element_check_enabled and brief is not None:
         r1_text = "\n".join(item.text for item in brief.r1_core_self)

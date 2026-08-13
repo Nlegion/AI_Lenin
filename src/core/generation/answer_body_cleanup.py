@@ -1,0 +1,265 @@
+"""Pre-guard answer body cleanup: stance/instruction scrub, triad truncate, soft integrity."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from typing import Any
+
+from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
+
+_MOJIBAKE_SG = "СЃ"
+_MOJIBAKE_RYO = re.compile(r"(?<![А-Яа-яЁёA-Za-z])Рё(?![А-Яа-яЁёA-Za-z])")
+_LATIN_ISLAND = re.compile(r"[а-яёА-ЯЁ]{2,}[a-zA-Z]{2,}|[a-zA-Z]{2,}[а-яёА-ЯЁ]{2,}")
+
+_STANCE_CORE = (
+    r"agreement|disagreement|core_approval|core_criticism|core_self|core_disapproval|"
+    r"core_согласие|core_критика"
+)
+_INLINE_STANCE_LENIN = re.compile(
+    rf"(?i)[ \t]*[-—*]+[ \t]*\**[ \t]*(?:ленин|lenin)[ \t]*"
+    rf"\((?:{_STANCE_CORE})[^)]*\)[ \t]*\**[ \t]*[).]*"
+)
+_INLINE_STANCE_RU_LABEL = re.compile(
+    r"(?i)[ \t]*[-—*]+[ \t]*\**[ \t]*(?:согласие|критика|полемика)[ \t]*"
+    r"\(core_[a-z_а-яё]+\)[ \t]*\**[ \t]*[).]*"
+)
+_INSTRUCTION_DUMP = re.compile(
+    r"(?i)(?:^|\s)запрещено\s+(?:комментировать|выдумывать|использовать|выдавать|"
+    r"выводить|анализировать)[^.]*\."
+)
+_STRAY_ASTERISK_LINE = re.compile(r"(?m)^\s*\*+\s*$")
+_LABEL_BOLD_JUNK = re.compile(
+    r"(?mi)^(\s*\*{0,2})(факт|механизм|вывод)(\*{0,2})\s*:\s*\*+\s*",
+)
+_LABEL_SPACING = re.compile(
+    r"(?mi)^(\s*\*{0,2})(факт|механизм|вывод)(\*{0,2})\s*:\s*",
+)
+_SECTION_LABEL = re.compile(
+    r"(?mi)(?:^|\n)\s*\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
+)
+_INLINE_SECTION_RESTART = re.compile(
+    r"(?mi)(?<=[.!?])[ \t]+\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
+)
+_HOLE_PATTERNS = (
+    re.compile(r"\bчто\s*,", re.IGNORECASE),
+    re.compile(r"утверждение\s+о\s+и\b", re.IGNORECASE),
+    re.compile(r"\bи\s+и\b", re.IGNORECASE),
+    re.compile(r"\bо\s+может\b", re.IGNORECASE),
+    re.compile(r"\bбез\s*,", re.IGNORECASE),
+    re.compile(r"\bесть\s*,\s*который\b", re.IGNORECASE),
+    re.compile(r"изложенные\s+в\s*\.", re.IGNORECASE),
+)
+_RESIDUAL_STANCE = re.compile(
+    rf"(?i)(?:ленин|lenin)\s*\((?:{_STANCE_CORE})\)|"
+    r"(?:согласие|критика|полемика)\s*\(core_[a-z_а-яё]+\)"
+)
+_POST_STANCE_DEBRIS = re.compile(r"(?:\s*---\s*|\s*\)\s*\.?\s*){2,}")
+_YELLOW_PREFIX = "ограниченный режим анализа"
+_DISCLAIMER_HINT = "ответ сгенерирован"
+
+
+@dataclass
+class BodyCleanupResult:
+    text: str
+    codes: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def _normalize_fact_body(text: str) -> str:
+    cleaned = re.sub(r"\*{1,2}", "", text)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip().casefold()
+    return cleaned
+
+
+def _protect_safety_tails(text: str) -> tuple[str, str]:
+    """Split trailing yellow/disclaimer so scrub does not remove them."""
+    lines = text.split("\n")
+    keep_from = len(lines)
+    for idx in range(len(lines) - 1, -1, -1):
+        low = lines[idx].strip().casefold()
+        if not low:
+            continue
+        if low.startswith(_YELLOW_PREFIX) or _DISCLAIMER_HINT in low:
+            keep_from = idx
+            continue
+        break
+    if keep_from >= len(lines):
+        return text, ""
+    body = "\n".join(lines[:keep_from]).rstrip()
+    tail = "\n".join(lines[keep_from:])
+    return body, ("\n" + tail if body else tail)
+
+
+def scrub_synthetic_stance(text: str) -> tuple[str, list[str]]:
+    codes: list[str] = []
+    working = text
+    if _INLINE_STANCE_LENIN.search(working):
+        working = _INLINE_STANCE_LENIN.sub(" ", working)
+        codes.append("strip:inline_stance_lenin")
+    if _INLINE_STANCE_RU_LABEL.search(working):
+        working = _INLINE_STANCE_RU_LABEL.sub(" ", working)
+        codes.append("strip:inline_stance_ru_label")
+    if codes and _POST_STANCE_DEBRIS.search(working):
+        working = _POST_STANCE_DEBRIS.sub(" ", working)
+        codes.append("strip:stance_debris")
+    return working, codes
+
+
+def scrub_instruction_dumps(text: str) -> tuple[str, list[str]]:
+    codes: list[str] = []
+    working = text
+    if _INSTRUCTION_DUMP.search(working):
+        working = _INSTRUCTION_DUMP.sub(" ", working)
+        codes.append("strip:instruction_dump")
+    return working, codes
+
+
+def normalize_section_headers(text: str) -> tuple[str, list[str]]:
+    codes: list[str] = []
+    working = text
+    if _STRAY_ASTERISK_LINE.search(working):
+        working = _STRAY_ASTERISK_LINE.sub("", working)
+        codes.append("strip:stray_asterisk_line")
+    if _LABEL_BOLD_JUNK.search(working):
+
+        def _label_sub(match: re.Match[str]) -> str:
+            return f"{match.group(2).capitalize()}: "
+
+        working = _LABEL_BOLD_JUNK.sub(_label_sub, working)
+        codes.append("fix:label_bold_junk")
+    elif _LABEL_SPACING.search(working):
+
+        def _space_sub(match: re.Match[str]) -> str:
+            return f"{match.group(2).capitalize()}: "
+
+        new_text = _LABEL_SPACING.sub(_space_sub, working)
+        if new_text != working:
+            working = new_text
+            codes.append("fix:label_spacing")
+    return working, codes
+
+
+def truncate_trailing_triad_restart(text: str) -> tuple[str, list[str]]:
+    """Keep first Факт/Механизм/Вывод; cut restart after first Вывод."""
+    codes: list[str] = []
+    matches = list(_SECTION_LABEL.finditer(text))
+    first_fact = next((m for m in matches if m.group(1).casefold() == "факт"), None)
+    first_vyvod = next((m for m in matches if m.group(1).casefold() == "вывод"), None)
+    if first_vyvod is None:
+        return text, codes
+
+    cut_at: int | None = None
+    after_vyvod = [m for m in matches if m.start() > first_vyvod.start()]
+    if after_vyvod:
+        cut_at = after_vyvod[0].start()
+        restart = after_vyvod[0]
+    else:
+        inline = None
+        for match in _INLINE_SECTION_RESTART.finditer(text):
+            if match.start() > first_vyvod.start():
+                inline = match
+                break
+        if inline is None:
+            return text, codes
+        cut_at = inline.start()
+        restart = inline
+
+    if (
+        first_fact is not None
+        and restart.group(1).casefold() == "факт"
+    ):
+        next_after_fact = next(
+            (m for m in matches if m.start() > first_fact.start()),
+            None,
+        )
+        fact_end = next_after_fact.start() if next_after_fact is not None else len(text)
+        canonical_fact = _normalize_fact_body(text[first_fact.end() : fact_end])
+        next_after_restart = next(
+            (m for m in matches if m.start() > restart.start()),
+            None,
+        )
+        trail_end = next_after_restart.start() if next_after_restart is not None else len(text)
+        # Inline restart: body runs to end or next newline section.
+        if next_after_restart is None and cut_at is not None:
+            trail_end = len(text)
+        trailing = _normalize_fact_body(text[restart.end() : trail_end])
+        if trailing and trailing == canonical_fact:
+            codes.append("strip:trailing_exact_fact_dup")
+        else:
+            codes.append("strip:trailing_triad_restart")
+    else:
+        codes.append("strip:trailing_triad_restart")
+    return text[:cut_at].rstrip(), codes
+
+
+def detect_integrity_issues(text: str) -> list[str]:
+    codes: list[str] = []
+    if _MOJIBAKE_SG in text:
+        codes.append("artifact:mojibake_sg")
+    if _MOJIBAKE_RYO.search(text):
+        codes.append("artifact:mojibake_ryo")
+    if _LATIN_ISLAND.search(text):
+        codes.append("artifact:latin_island")
+    if "\ufffd" in text:
+        codes.append("artifact:replacement_char")
+    for pattern in _HOLE_PATTERNS:
+        if pattern.search(text):
+            codes.append("integrity:hole_syntax")
+            break
+    if _RESIDUAL_STANCE.search(text):
+        codes.append("integrity:residual_stance")
+    if _INSTRUCTION_DUMP.search(text):
+        codes.append("integrity:residual_instruction")
+    return codes
+
+
+def cleanup_answer_body(
+    text: str,
+    *,
+    config: QualityPostcheckConfig | None = None,
+) -> BodyCleanupResult:
+    """Mutate analysis body before NewsGuard / yellow; preserve safety tails."""
+    cfg = config or QualityPostcheckConfig()
+    if not bool(getattr(cfg, "answer_body_cleanup_enabled", True)):
+        return BodyCleanupResult(text=text)
+
+    body, safety_tail = _protect_safety_tails(text)
+    codes: list[str] = []
+    working = body
+
+    working, stance_codes = scrub_synthetic_stance(working)
+    codes.extend(stance_codes)
+    working, instr_codes = scrub_instruction_dumps(working)
+    codes.extend(instr_codes)
+    working, norm_codes = normalize_section_headers(working)
+    codes.extend(norm_codes)
+    working, triad_codes = truncate_trailing_triad_restart(working)
+    codes.extend(triad_codes)
+
+    working = re.sub(r"[ \t]{2,}", " ", working)
+    working = re.sub(r"\n{3,}", "\n\n", working).strip()
+    # Re-scrub stance after triad ops (markers may sit on conclusion line).
+    working, stance_codes2 = scrub_synthetic_stance(working)
+    codes.extend(stance_codes2)
+    working, instr_codes2 = scrub_instruction_dumps(working)
+    codes.extend(instr_codes2)
+
+    integrity_codes = detect_integrity_issues(working)
+    enforce = str(getattr(cfg, "integrity_enforce_mode", "soft") or "soft").lower()
+    integrity_error = bool(integrity_codes)
+    hard_fail = bool(getattr(cfg, "integrity_check_enabled", True)) and enforce == "strict" and integrity_error
+
+    if safety_tail:
+        working = f"{working.rstrip()}\n{safety_tail.lstrip()}" if working else safety_tail.lstrip()
+
+    meta: dict[str, Any] = {
+        "body_cleanup_codes": list(codes),
+        "integrity_codes": list(integrity_codes),
+        "integrity_error": integrity_error,
+        "postprocess_hard_fail": hard_fail,
+        "integrity_enforce_mode": enforce,
+    }
+    if hard_fail:
+        codes.append("deny:postprocess_hard_fail")
+    return BodyCleanupResult(text=working, codes=codes, metadata=meta)
