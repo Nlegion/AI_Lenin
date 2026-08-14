@@ -16,9 +16,10 @@ _STANCE_CORE = (
     r"agreement|disagreement|core_approval|core_criticism|core_self|core_disapproval|"
     r"core_согласие|core_критика"
 )
+# Known allowlist forms + broken echoes like «Ленин (core_ Lenin )».
 _INLINE_STANCE_LENIN = re.compile(
     rf"(?i)[ \t]*[-—*]+[ \t]*\**[ \t]*(?:ленин|lenin)[ \t]*"
-    rf"\((?:{_STANCE_CORE})[^)]*\)[ \t]*\**[ \t]*[).]*"
+    rf"\((?:(?:{_STANCE_CORE})[^)]*|[^)]*core_[^)]*)\)[ \t]*\**[ \t]*[).]*"
 )
 _INLINE_STANCE_RU_LABEL = re.compile(
     r"(?i)[ \t]*[-—*]+[ \t]*\**[ \t]*(?:согласие|критика|полемика)[ \t]*"
@@ -28,7 +29,16 @@ _INSTRUCTION_DUMP = re.compile(
     r"(?i)(?:^|\s)запрещено\s+(?:комментировать|выдумывать|использовать|выдавать|"
     r"выводить|анализировать)[^.]*\."
 )
+# Prompt-tail requires several markers together (avoid generic slash cuts).
+_PROMPT_TASK_TAIL = re.compile(
+    r"(?i)(?:\s*---\s*)*задача\s*:\s*краткий\s+анализ(?:\s+в\s+стиле\s+ленина)?"
+    r"[^\n]*(?:\bR[123]\b|/)?[^\n]*$"
+)
 _STRAY_ASTERISK_LINE = re.compile(r"(?m)^\s*\*+\s*$")
+# Section-boundary bold labels: start / newline / after sentence punctuation.
+_INLINE_BOLD_LABEL = re.compile(
+    r"(?mi)(?:^|(?<=[.!?])\s+|\n)\s*\*{1,2}(факт|механизм|вывод)\*{0,2}\s*:\s*\*{0,2}\s*",
+)
 _LABEL_BOLD_JUNK = re.compile(
     r"(?mi)^(\s*\*{0,2})(факт|механизм|вывод)(\*{0,2})\s*:\s*\*+\s*",
 )
@@ -41,6 +51,13 @@ _SECTION_LABEL = re.compile(
 _INLINE_SECTION_RESTART = re.compile(
     r"(?mi)(?<=[.!?])[ \t]+\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
 )
+# Terminal markdown debris only (not global ---/##).
+_TERMINAL_MD_DEBRIS = re.compile(
+    r"(?:\s*(?:---|##))+(?:\s*\.)?\s*$",
+)
+_INLINE_MD_DEBRIS_CLUSTER = re.compile(
+    r"(?<=[.!?])\s*(?:(?:---|##)\s*){2,}(?:\.)?\s*",
+)
 _HOLE_PATTERNS = (
     re.compile(r"\bчто\s*,", re.IGNORECASE),
     re.compile(r"утверждение\s+о\s+и\b", re.IGNORECASE),
@@ -51,10 +68,15 @@ _HOLE_PATTERNS = (
     re.compile(r"изложенные\s+в\s*\.", re.IGNORECASE),
 )
 _RESIDUAL_STANCE = re.compile(
-    rf"(?i)(?:ленин|lenin)\s*\((?:{_STANCE_CORE})\)|"
+    rf"(?i)(?:ленин|lenin)\s*\((?:(?:{_STANCE_CORE})[^)]*|[^)]*core_[^)]*)\)|"
     r"(?:согласие|критика|полемика)\s*\(core_[a-z_а-яё]+\)"
 )
+_RESIDUAL_PROMPT_TASK = re.compile(
+    r"(?i)задача\s*:\s*краткий\s+анализ",
+)
+_RESIDUAL_MD_DEBRIS = re.compile(r"(?:---\s*){2,}|(?:##\s*){2,}|---\s*##|##\s*---")
 _POST_STANCE_DEBRIS = re.compile(r"(?:\s*---\s*|\s*\)\s*\.?\s*){2,}")
+_MESTO_MARKER = re.compile(r"«?\s*\[(?:место|обезличено)\]\s*»?", re.IGNORECASE)
 _YELLOW_PREFIX = "ограниченный режим анализа"
 _DISCLAIMER_HINT = "ответ сгенерирован"
 
@@ -112,6 +134,21 @@ def scrub_instruction_dumps(text: str) -> tuple[str, list[str]]:
     if _INSTRUCTION_DUMP.search(working):
         working = _INSTRUCTION_DUMP.sub(" ", working)
         codes.append("strip:instruction_dump")
+    if _PROMPT_TASK_TAIL.search(working):
+        working = _PROMPT_TASK_TAIL.sub("", working)
+        codes.append("strip:prompt_task_tail")
+    return working, codes
+
+
+def scrub_markdown_debris(text: str) -> tuple[str, list[str]]:
+    codes: list[str] = []
+    working = text
+    if _INLINE_MD_DEBRIS_CLUSTER.search(working):
+        working = _INLINE_MD_DEBRIS_CLUSTER.sub(" ", working)
+        codes.append("strip:md_debris_cluster")
+    if _TERMINAL_MD_DEBRIS.search(working):
+        working = _TERMINAL_MD_DEBRIS.sub("", working)
+        codes.append("strip:terminal_md_debris")
     return working, codes
 
 
@@ -121,6 +158,20 @@ def normalize_section_headers(text: str) -> tuple[str, list[str]]:
     if _STRAY_ASTERISK_LINE.search(working):
         working = _STRAY_ASTERISK_LINE.sub("", working)
         codes.append("strip:stray_asterisk_line")
+    if _INLINE_BOLD_LABEL.search(working):
+
+        def _bold_sub(match: re.Match[str]) -> str:
+            raw = match.group(0)
+            if raw.startswith("\n") or "\n" in raw[:3]:
+                prefix = "\n"
+            elif match.start() > 0:
+                prefix = " "
+            else:
+                prefix = ""
+            return f"{prefix}{match.group(1).capitalize()}: "
+
+        working = _INLINE_BOLD_LABEL.sub(_bold_sub, working)
+        codes.append("fix:inline_bold_label")
     if _LABEL_BOLD_JUNK.search(working):
 
         def _label_sub(match: re.Match[str]) -> str:
@@ -128,7 +179,7 @@ def normalize_section_headers(text: str) -> tuple[str, list[str]]:
 
         working = _LABEL_BOLD_JUNK.sub(_label_sub, working)
         codes.append("fix:label_bold_junk")
-    elif _LABEL_SPACING.search(working):
+    if _LABEL_SPACING.search(working):
 
         def _space_sub(match: re.Match[str]) -> str:
             return f"{match.group(2).capitalize()}: "
@@ -165,10 +216,7 @@ def truncate_trailing_triad_restart(text: str) -> tuple[str, list[str]]:
         cut_at = inline.start()
         restart = inline
 
-    if (
-        first_fact is not None
-        and restart.group(1).casefold() == "факт"
-    ):
+    if first_fact is not None and restart.group(1).casefold() == "факт":
         next_after_fact = next(
             (m for m in matches if m.start() > first_fact.start()),
             None,
@@ -179,8 +227,9 @@ def truncate_trailing_triad_restart(text: str) -> tuple[str, list[str]]:
             (m for m in matches if m.start() > restart.start()),
             None,
         )
-        trail_end = next_after_restart.start() if next_after_restart is not None else len(text)
-        # Inline restart: body runs to end or next newline section.
+        trail_end = (
+            next_after_restart.start() if next_after_restart is not None else len(text)
+        )
         if next_after_restart is None and cut_at is not None:
             trail_end = len(text)
         trailing = _normalize_fact_body(text[restart.end() : trail_end])
@@ -211,6 +260,12 @@ def detect_integrity_issues(text: str) -> list[str]:
         codes.append("integrity:residual_stance")
     if _INSTRUCTION_DUMP.search(text):
         codes.append("integrity:residual_instruction")
+    if _RESIDUAL_PROMPT_TASK.search(text):
+        codes.append("integrity:prompt_task_echo")
+    if _RESIDUAL_MD_DEBRIS.search(text) or _TERMINAL_MD_DEBRIS.search(text):
+        codes.append("integrity:md_debris")
+    if _MESTO_MARKER.search(text):
+        codes.append("integrity:mesto_marker")
     return codes
 
 
@@ -228,30 +283,42 @@ def cleanup_answer_body(
     codes: list[str] = []
     working = body
 
+    working, norm_codes = normalize_section_headers(working)
+    codes.extend(norm_codes)
     working, stance_codes = scrub_synthetic_stance(working)
     codes.extend(stance_codes)
     working, instr_codes = scrub_instruction_dumps(working)
     codes.extend(instr_codes)
-    working, norm_codes = normalize_section_headers(working)
-    codes.extend(norm_codes)
+    working, md_codes = scrub_markdown_debris(working)
+    codes.extend(md_codes)
     working, triad_codes = truncate_trailing_triad_restart(working)
     codes.extend(triad_codes)
 
     working = re.sub(r"[ \t]{2,}", " ", working)
     working = re.sub(r"\n{3,}", "\n\n", working).strip()
-    # Re-scrub stance after triad ops (markers may sit on conclusion line).
+    # Re-scrub after triad ops (markers may sit on conclusion line).
     working, stance_codes2 = scrub_synthetic_stance(working)
     codes.extend(stance_codes2)
     working, instr_codes2 = scrub_instruction_dumps(working)
     codes.extend(instr_codes2)
+    working, md_codes2 = scrub_markdown_debris(working)
+    codes.extend(md_codes2)
 
     integrity_codes = detect_integrity_issues(working)
     enforce = str(getattr(cfg, "integrity_enforce_mode", "soft") or "soft").lower()
     integrity_error = bool(integrity_codes)
-    hard_fail = bool(getattr(cfg, "integrity_check_enabled", True)) and enforce == "strict" and integrity_error
+    hard_fail = (
+        bool(getattr(cfg, "integrity_check_enabled", True))
+        and enforce == "strict"
+        and integrity_error
+    )
 
     if safety_tail:
-        working = f"{working.rstrip()}\n{safety_tail.lstrip()}" if working else safety_tail.lstrip()
+        working = (
+            f"{working.rstrip()}\n{safety_tail.lstrip()}"
+            if working
+            else safety_tail.lstrip()
+        )
 
     meta: dict[str, Any] = {
         "body_cleanup_codes": list(codes),

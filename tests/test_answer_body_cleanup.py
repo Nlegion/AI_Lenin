@@ -104,3 +104,75 @@ def test_artifact_pass_wires_body_cleanup() -> None:
     assert "Ленин (agreement)" not in result.text
     assert result.text.count("Факт:") == 1
     assert result.metadata.get("body_cleanup_codes")
+
+
+def test_qa2229_broken_core_lenin_stance() -> None:
+    result = cleanup_answer_body(text=_load("core_lenin_broken_stance.in.txt"))
+    assert "core_" not in result.text
+    assert "Ленин (core_" not in result.text
+    assert "strip:inline_stance_lenin" in result.codes
+    assert "integrity:residual_stance" not in result.metadata["integrity_codes"]
+
+
+def test_qa2229_md_hash_dash_tail() -> None:
+    result = cleanup_answer_body(text=_load("md_hash_dash_tail.in.txt"))
+    assert "--- ##" not in result.text
+    assert not result.text.rstrip().endswith("##.")
+    assert any(
+        code in result.codes
+        for code in ("strip:md_debris_cluster", "strip:terminal_md_debris")
+    )
+    assert "integrity:md_debris" not in result.metadata["integrity_codes"]
+
+
+def test_qa2229_prompt_task_tail() -> None:
+    result = cleanup_answer_body(text=_load("prompt_task_tail.in.txt"))
+    assert "Задача" not in result.text
+    assert "краткий анализ" not in result.text.casefold()
+    assert "strip:prompt_task_tail" in result.codes
+    assert "integrity:prompt_task_echo" not in result.metadata["integrity_codes"]
+
+
+def test_qa2229_bold_section_labels() -> None:
+    result = cleanup_answer_body(text=_load("bold_section_labels.in.txt"))
+    assert "**Механизм:**" not in result.text
+    assert "**Вывод:**" not in result.text
+    assert "Механизм:" in result.text
+    assert "Вывод:" in result.text
+    assert "fix:inline_bold_label" in result.codes
+
+
+def test_negative_legitimate_core_prose_and_slash() -> None:
+    text = (
+        "Факт: доклад о core_issue экономики.\n"
+        "Механизм: ссылка https://example.com/path/критикой.\n"
+        "Вывод: Ленин подчёркивал роль партии."
+    )
+    result = cleanup_answer_body(text=text)
+    assert "core_issue" in result.text
+    assert "https://example.com/path/критикой" in result.text
+    assert "Ленин подчёркивал" in result.text
+    assert "strip:inline_stance_lenin" not in result.codes
+    assert "strip:prompt_task_tail" not in result.codes
+
+
+def test_negative_single_md_separator_not_global_cut() -> None:
+    text = "Факт: событие.\nМеханизм: анализ --- детали класса.\nВывод: итог."
+    result = cleanup_answer_body(text=text)
+    assert "анализ --- детали" in result.text
+    assert "strip:terminal_md_debris" not in result.codes
+    assert "strip:md_debris_cluster" not in result.codes
+
+
+def test_integrity_residual_codes_for_unscrubbed_debris() -> None:
+    from src.core.generation.answer_body_cleanup import detect_integrity_issues
+
+    text = (
+        "Вывод: итог. — Ленин (core_ Lenin ). --- ## --- ##. "
+        "Задача: краткий анализ в стиле Ленина. «[место]»"
+    )
+    codes = detect_integrity_issues(text)
+    assert "integrity:residual_stance" in codes
+    assert "integrity:md_debris" in codes
+    assert "integrity:prompt_task_echo" in codes
+    assert "integrity:mesto_marker" in codes

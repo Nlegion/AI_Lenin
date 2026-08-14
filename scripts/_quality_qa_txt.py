@@ -24,6 +24,11 @@ _SECTION_LABEL_RE = re.compile(
     r"^(\*{0,2})(Факт|Механизм|Вывод)(\*{0,2})\s*:\s*",
     flags=re.IGNORECASE,
 )
+_BOLD_LABEL_NORMALIZE_RE = re.compile(
+    r"\*{0,2}(Факт|Механизм|Вывод)\*{0,2}\s*:\s*\*{0,2}",
+    flags=re.IGNORECASE,
+)
+_ORPHAN_STARS_RE = re.compile(r"^\*+\s*$")
 _SECTION_CANON = {"факт": "Факт", "механизм": "Механизм", "вывод": "Вывод"}
 
 
@@ -39,6 +44,8 @@ def format_answer_for_display(answer: str) -> str:
         return ""
 
     text = _HALLUCINATION_PREFIX_RE.sub(" ", text)
+    # Normalize **Label:** / Label:** before section split to avoid orphan '*'.
+    text = _BOLD_LABEL_NORMALIZE_RE.sub(r"\1: ", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
@@ -51,13 +58,17 @@ def format_answer_for_display(answer: str) -> str:
     chunks = [part.strip() for part in _SECTION_SPLIT_RE.split(text) if part.strip()]
     sections: list[str] = []
     for chunk in chunks:
+        if _ORPHAN_STARS_RE.match(chunk):
+            continue
         label_match = _SECTION_LABEL_RE.match(chunk)
         if label_match is None:
-            if chunk:
+            if chunk and not _ORPHAN_STARS_RE.match(chunk):
                 sections.append(chunk)
             continue
         canon = _SECTION_CANON[label_match.group(2).casefold()]
-        body = chunk[label_match.end() :].strip()
+        body = chunk[label_match.end() :].strip().lstrip("*").strip()
+        if _ORPHAN_STARS_RE.match(body):
+            body = ""
         sections.append(f"{canon} : {body}" if body else f"{canon} :")
 
     if not sections and text:

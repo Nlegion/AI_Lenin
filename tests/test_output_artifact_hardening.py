@@ -47,3 +47,41 @@ def test_artifact_pass_strips_inline_stance_and_instruction() -> None:
     assert "Ленин (core_approval)" not in result.text
     assert "Запрещено выдумывать" not in result.text
     assert "Факт: событие" in result.text
+
+
+def test_final_public_scrub_strips_mesto_and_obezlicheno() -> None:
+    text = (
+        "Факт: чиновник из «[место]» заявил о реформе. "
+        "Механизм: [обезличено] влияет на бюджет. "
+        "Вывод: нужен контроль,, классов."
+    )
+    cleaned, codes = final_public_scrub(text)
+    assert "«[место]»" not in cleaned
+    assert "[место]" not in cleaned
+    assert "[обезличено]" not in cleaned
+    assert "strip:mesto_marker" in codes
+    assert "«»" not in cleaned
+    assert ",," not in cleaned
+    assert "чиновник из" in cleaned
+    assert "заявил о реформе" in cleaned
+
+
+def test_final_public_scrub_after_newsguard_insert() -> None:
+    """Markers inserted after body cleanup are removed on the public path."""
+    from src.core.generation.answer_body_cleanup import cleanup_answer_body
+
+    cfg = QualityPostcheckConfig()
+    body = cleanup_answer_body(
+        text="Факт: Иванов сообщил. Механизм: анализ. Вывод: итог.",
+        config=cfg,
+    )
+    assert "«[место]»" not in body.text
+    # Simulate NewsGuard PII redact after body cleanup.
+    guarded = body.text.replace("Иванов", "«[место]»")
+    assert "«[место]»" in guarded
+    cleaned, codes = final_public_scrub(guarded)
+    assert "«[место]»" not in cleaned
+    assert "Иванов" not in cleaned  # PII not restored
+    assert "strip:mesto_marker" in codes
+    # Reasoning publish path uses the same scrub helper.
+    assert final_public_scrub(guarded)[0] == cleaned

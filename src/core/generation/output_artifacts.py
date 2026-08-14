@@ -45,9 +45,13 @@ _BROKEN = (
     re.compile(r"утверждение\s+о\s+и\b", re.IGNORECASE),
     re.compile(r"\bи\s+и\b", re.IGNORECASE),
 )
-_CHATML_TOKEN = re.compile(r"<\|im_(?:start|end)\|>\s*(?:assistant|user|system)?", re.IGNORECASE)
+_CHATML_TOKEN = re.compile(
+    r"<\|im_(?:start|end)\|>\s*(?:assistant|user|system)?", re.IGNORECASE
+)
 _MULTI_STANCE_TAG = re.compile(r"\[multi-stance\]\s*", re.IGNORECASE)
-_ORCHESTRATOR_LABEL = re.compile(r"\bR[123]\b\s*(?:нет|содержит|упоминает|подтверждает)?", re.IGNORECASE)
+_ORCHESTRATOR_LABEL = re.compile(
+    r"\bR[123]\b\s*(?:нет|содержит|упоминает|подтверждает)?", re.IGNORECASE
+)
 _EMPTY_SLOT = re.compile(r"(?mi)(?:^|\s)(?:##\s*)?\(пусто\)\s*")
 _PROMPT_CITE_DEBRIS = re.compile(
     r"\[\d+\]\s*\(\s*(?:\d+\.\s*)?(?:[^\)]{0,120}|[^\)]*$)",
@@ -84,9 +88,15 @@ LONG_DISCLAIMER_RE = re.compile(
     r"Ответ сгенерирован искусственным интеллектом.{0,200}призывом к действию\.?",
     re.IGNORECASE | re.DOTALL,
 )
-# «[место]» is an intentional PII placeholder and is allowed in public output.
-_PLACEHOLDER_MESTO_ALLOWED = True
-
+# Visible redaction markers are stripped in final_public_scrub; upstream still redacts PII.
+_PLACEHOLDER_MESTO_ALLOWED = False
+_MESTO_PUBLIC_MARKER = re.compile(
+    r"«?\s*\[(?:место|обезличено)\]\s*»?",
+    re.IGNORECASE,
+)
+_EMPTY_QUOTES = re.compile(r"[«\"]\s*[»\"]")
+_DOUBLE_PUNCT = re.compile(r"([,.;:!?])\s*\1+")
+_DANGLING_SPACE_PUNCT = re.compile(r"\s+([,.;:!?])")
 
 
 @dataclass
@@ -130,7 +140,9 @@ def _pick_fallback(config: QualityPostcheckConfig, item_id: str | None) -> str:
     return templates[idx]
 
 
-def _strip_citation_debris(text: str, *, grounded_titles: set[str]) -> tuple[str, list[str]]:
+def _strip_citation_debris(
+    text: str, *, grounded_titles: set[str]
+) -> tuple[str, list[str]]:
     codes: list[str] = []
     working = text
     if _EMPTY_PRINCIPLE.search(working):
@@ -206,6 +218,18 @@ def final_public_scrub(text: str) -> tuple[str, list[str]]:
     if _TRAILING_DASHES.search(working):
         working = _TRAILING_DASHES.sub("", working)
         codes.append("strip:trailing_dashes")
+    if _MESTO_PUBLIC_MARKER.search(working):
+        working = _MESTO_PUBLIC_MARKER.sub(" ", working)
+        codes.append("strip:mesto_marker")
+        if _EMPTY_QUOTES.search(working):
+            working = _EMPTY_QUOTES.sub(" ", working)
+            codes.append("strip:empty_quotes_after_mesto")
+        working = _DOUBLE_PUNCT.sub(r"\1", working)
+        working = _DANGLING_SPACE_PUNCT.sub(r"\1", working)
+    # Postcondition: no visible redaction markers remain.
+    if _MESTO_PUBLIC_MARKER.search(working):
+        working = _MESTO_PUBLIC_MARKER.sub(" ", working)
+        codes.append("strip:mesto_marker_residual")
     working = re.sub(r"\n{3,}", "\n\n", working)
     working = re.sub(r"[ \t]{2,}", " ", working).strip()
     return working, codes
@@ -318,4 +342,3 @@ def apply_artifact_pass(
         )
 
     return ArtifactPassResult(text=working, codes=codes, metadata=meta)
-

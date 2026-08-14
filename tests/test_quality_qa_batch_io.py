@@ -20,7 +20,9 @@ from scripts._quality_qa_io import (
 
 def test_load_qa_items_requires_fields(tmp_path: Path) -> None:
     path = tmp_path / "bad.jsonl"
-    path.write_text(json.dumps({"id": "a", "title": "t", "content": "c"}) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps({"id": "a", "title": "t", "content": "c"}) + "\n", encoding="utf-8"
+    )
     with pytest.raises(ValueError, match="question"):
         load_qa_items(path=path)
 
@@ -29,7 +31,10 @@ def test_load_qa_items_rejects_duplicate_ids(tmp_path: Path) -> None:
     path = tmp_path / "dup.jsonl"
     row = {"id": "a", "title": "t", "content": "c", "question": "q?"}
     path.write_text(
-        json.dumps(row, ensure_ascii=False) + "\n" + json.dumps(row, ensure_ascii=False) + "\n",
+        json.dumps(row, ensure_ascii=False)
+        + "\n"
+        + json.dumps(row, ensure_ascii=False)
+        + "\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="Duplicate"):
@@ -45,8 +50,12 @@ def test_checkpoint_last_wins_and_skip(tmp_path: Path) -> None:
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
     last = load_checkpoint_last_wins(path=path)
     assert last["a"]["answer"] == "new"
-    assert should_skip_checkpoint_row(row=last["a"], input_hash="h2", force=False) is True
-    assert should_skip_checkpoint_row(row=last["a"], input_hash="h1", force=False) is False
+    assert (
+        should_skip_checkpoint_row(row=last["a"], input_hash="h2", force=False) is True
+    )
+    assert (
+        should_skip_checkpoint_row(row=last["a"], input_hash="h1", force=False) is False
+    )
 
 
 def test_artifact_paths_and_txt_format(tmp_path: Path) -> None:
@@ -91,6 +100,23 @@ def test_format_answer_for_display_keeps_only_sections() -> None:
         "Факт : A.\n\nМеханизм : B.\n\nВывод : C.\n\n"
         "Ответ сгенерирован ИИ в образовательных целях."
     )
+
+
+def test_format_answer_for_display_no_orphan_stars_from_bold_labels() -> None:
+    from pathlib import Path
+
+    from scripts._quality_qa_io import format_answer_for_display
+
+    raw = Path(
+        "tests/fixtures/answer_postprocess/bold_section_labels.in.txt"
+    ).read_text(encoding="utf-8")
+    rendered = format_answer_for_display(raw)
+    orphan_lines = [ln for ln in rendered.splitlines() if ln.strip() in {"*", "**"}]
+    assert orphan_lines == []
+    assert "\n*\n" not in f"\n{rendered}\n"
+    assert "Механизм :" in rendered
+    assert "Вывод :" in rendered
+    assert "Ответ сгенерирован ИИ" in rendered
 
 
 def test_dataset_file_has_fifty_unique_ids() -> None:

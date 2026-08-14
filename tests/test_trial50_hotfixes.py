@@ -7,7 +7,10 @@ from pathlib import Path
 
 from scripts._live_news_qa_gate import apply_live_pre_llm_gate
 from scripts._quality_qa_io import QaItem
-from src.core.generation.output_artifacts import apply_artifact_pass, detect_encoding_artifacts
+from src.core.generation.output_artifacts import (
+    apply_artifact_pass,
+    detect_encoding_artifacts,
+)
 from src.core.safety.drone_combat_guard import (
     combat_adjacent_hit,
     drone_air_raid_hit,
@@ -70,7 +73,9 @@ def test_soft_pass_blocked_for_bpla_unknown() -> None:
         source="TASS",
     )
     # Force unknown path: if already deny, that also satisfies safety.
-    gate = GUARD.evaluate_input(title=item.title, content=item.content, source=item.source)
+    gate = GUARD.evaluate_input(
+        title=item.title, content=item.content, source=item.source
+    )
     if gate.decision == "deny":
         return
     row: dict = {"id": item.id}
@@ -128,7 +133,10 @@ def test_siloviki_search_crime_carveout() -> None:
         source="TASS",
     )
     assert "context:military_rf_forces" not in result.reason_codes
-    assert result.decision != "deny" or result.reason != "military/combat topic hard deny matched"
+    assert (
+        result.decision != "deny"
+        or result.reason != "military/combat topic hard deny matched"
+    )
 
 
 def test_siloviki_obstrel_still_deny() -> None:
@@ -154,7 +162,15 @@ def test_redact_placeholder_not_bare_delete() -> None:
     text = "Посол России в [обезличено] отверг обвинения и дал развернутый комментарий по существу."
     res = apply_artifact_pass(text=text, config=QC, item_id="r1")
     assert "[обезличено]" not in res.text
-    assert "«[место]»" in res.text or res.used_fallback
+    # Visible redaction markers are stripped by final_public_scrub; prose remains.
+    assert "«[место]»" not in res.text
+    assert "Посол России в" in res.text
+    assert "отверг обвинения" in res.text
+    assert (
+        "strip:redact_placeholder" in res.codes
+        or "strip:mesto_marker" in res.codes
+        or res.used_fallback
+    )
 
 
 def test_short_loop_strip() -> None:
@@ -168,17 +184,25 @@ def test_disclaimer_footer_not_header() -> None:
     out = GUARD.guard_output(analysis="Краткий анализ экономики и санкций.")
     assert out.moderated_text.strip().startswith("Краткий")
     assert "образовательных целях" in out.moderated_text
-    assert out.moderated_text.index("Краткий") < out.moderated_text.index("образовательных")
+    assert out.moderated_text.index("Краткий") < out.moderated_text.index(
+        "образовательных"
+    )
 
 
 def test_safe_gold_false_deny_budget() -> None:
     path = ROOT / "data" / "eval" / "safe_gold_trial50.jsonl"
     if not path.is_file():
         return
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     false_deny = 0
     for row in rows:
-        result = GUARD.evaluate_input(title=row["title"], content=row["content"], source="TASS")
+        result = GUARD.evaluate_input(
+            title=row["title"], content=row["content"], source="TASS"
+        )
         if result.decision == "deny" and row.get("expect") != "deny":
             false_deny += 1
     assert false_deny <= max(1, int(0.02 * len(rows) + 1))
@@ -186,17 +210,30 @@ def test_safe_gold_false_deny_budget() -> None:
 
 def test_sbil_matrix() -> None:
     assert drone_air_raid_hit("В области сбили БПЛА над регионом РФ.").hit is True
-    assert drone_air_raid_hit("Водитель сбил пешехода на переходе в городе.").hit is False
-    assert drone_air_raid_hit("Его сбил с толку странный заголовок новости.").hit is False
-    assert combat_adjacent_hit("Кибератака на сайт банка со стороны конкурентов.").hit is False
+    assert (
+        drone_air_raid_hit("Водитель сбил пешехода на переходе в городе.").hit is False
+    )
+    assert (
+        drone_air_raid_hit("Его сбил с толку странный заголовок новости.").hit is False
+    )
+    assert (
+        combat_adjacent_hit("Кибератака на сайт банка со стороны конкурентов.").hit
+        is False
+    )
 
 
 def test_drone_red_gold_no_false_accept() -> None:
     path = ROOT / "data" / "eval" / "red_gold_drone.jsonl"
     if not path.is_file():
         return
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     for row in rows:
         hit = drone_air_raid_hit(f"{row['title']}\n{row['content']}")
-        result = GUARD.evaluate_input(title=row["title"], content=row["content"], source="TASS")
+        result = GUARD.evaluate_input(
+            title=row["title"], content=row["content"], source="TASS"
+        )
         assert hit.hit or result.decision == "deny"
