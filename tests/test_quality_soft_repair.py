@@ -23,6 +23,7 @@ def test_stage0_flags_disable_template_escalation() -> None:
     assert CFG.yellow_output_filter_enabled is False
     assert CFG.quote_postcheck_enforce_mode == "soft"
     assert CFG.artifact_enforce_mode == "soft"
+    assert CFG.postprocess_clean_mode == "live"
     assert CFG.trial50_hotfixes.get("generation_hotfixes_enabled") is True
     assert CFG.trial50_hotfixes.get("loop_strip_enabled") is True
 

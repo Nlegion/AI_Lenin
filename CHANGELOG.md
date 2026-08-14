@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-14 — postprocess-clean-v1 — agent
+### Changed
+- Unified `postprocess_clean` contract (`pre_guard` / `post_guard`) as the live writer for body+public scrub.
+- Terminal public scrub after persist/publish `NewsGuard.guard_output`; `LeninAnalyzer.clean_analysis` no longer re-mutates pipeline text.
+- Config: `quality_postcheck.postprocess_clean_mode` (`live` default; `shadow` / `off` rollback).
+### Metrics
+| metric | note |
+|--------|------|
+| dual inner+outer public scrub | same rules, two phases; post_guard remains after Guard |
+| late mutation after terminal scrub | removed (`clean_analysis` identity) |
+### Artifacts
+- `.cursor/artifacts/20260814-2110-postprocess-clean-baseline.md`
+### Notes
+- Quote/loop/NewsGuard stay outside the module. Soft integrity default unchanged.
+
 ## Template
 
 ```markdown

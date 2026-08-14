@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from src.core.generation.postprocess_clean import scrub_after_output_guard
 from src.core.generation.publishability import is_error_placeholder, is_publishable_analysis
 from src.core.safety.pre_rag_censor import PreRagCensor
 from src.core.safety.pre_rag_censor_types import CensorInput
@@ -142,7 +143,7 @@ async def generate_and_persist_analysis(
             guard_result.blocked,
             ",".join(guard_result.reason_codes),
         )
-        analysis = guard_result.moderated_text
+        analysis = scrub_after_output_guard(guard_result.moderated_text)
 
     validation = validator.validate_analysis(analysis, news.title)
     logger.info("Результат валидации: %s", validation)

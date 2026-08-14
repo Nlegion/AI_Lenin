@@ -1,5 +1,4 @@
 import logging
-import re
 from pathlib import Path
 from typing import List
 
@@ -13,7 +12,7 @@ from src.core.retrieval.provider_factory import build_provider
 from src.core.safety.news_guard import NewsGuard
 from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT, LLAMA_SERVER_URL
 from src.core.settings.config import Settings
-from src.core.settings.dialectical_constants import CONTEXT_UNAVAILABLE_MESSAGE
+from src.core.generation.postprocess_clean.passthrough import passthrough_pipeline_text
 from src.core.settings.generation_config import PersonaModel, default_generation_config_path, load_generation_config
 from src.core.text_cleaner import TextCleaner
 
@@ -203,6 +202,7 @@ class LeninAnalyzer:
             )
             self.circuit_breaker.record_success()
             self.last_pipeline_metadata = dict(result.metadata or {})
+            # Terminal post-guard already ran in the pipeline; do not re-mutate.
             cleaned_content = self.clean_analysis(result.analysis)
             suffix = result.metadata.get("cache_suffix")
             if suffix:
@@ -228,29 +228,5 @@ class LeninAnalyzer:
             return degraded.text
 
     def clean_analysis(self, text: str) -> str:
-        if not text or text in {
-            "Анализ временно недоступен.",
-            "Ошибка анализа.",
-            CONTEXT_UNAVAILABLE_MESSAGE,
-        }:
-            return text if text == CONTEXT_UNAVAILABLE_MESSAGE else "Не удалось сгенерировать анализ."
-        text = self.text_cleaner.clean_text(text)
-        patterns = [
-            r"Анализ новости с марксистско-ленинской точки зрения[:]?",
-            r"Теперь[^.!?]*[.!?]",
-            r"Рассмотрим[^.!?]*[.!?]",
-            r"Анализируя[^.!?]*[.!?]",
-            r"можно сделать вывод[^.!?]*[.!?]",
-            r"данная ситуация[^.!?]*[.!?]",
-            r"В контексте[^.!?]*[.!?]",
-        ]
-        for pattern in patterns:
-            text = re.sub(pattern, "", text, flags=re.IGNORECASE)
-        text = self.text_cleaner.truncate_to_last_complete_sentence(text)
-        sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 10]
-        if not sentences:
-            return "Не удалось сгенерировать анализ."
-        result = ". ".join(sentences)
-        if not result.endswith("."):
-            result += "."
-        return result
+        """Identity for pipeline output. Placeholders stay non-publishable."""
+        return passthrough_pipeline_text(text)

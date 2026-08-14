@@ -8,7 +8,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.core.generation.answer_body_cleanup import cleanup_answer_body
 from src.core.safety.hotfix_flags import generation_flag_enabled
 from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
 
@@ -306,15 +305,19 @@ def apply_artifact_pass(
             working = LONG_DISCLAIMER_RE.sub("", working)
             codes.append("strip:long_disclaimer_header")
 
-    # Body cleanup before final token scrub (pre-NewsGuard / yellow).
-    body = cleanup_answer_body(text=working, config=config)
-    working = body.text
-    codes.extend(body.codes)
-    meta.update(body.metadata)
+    # Pre-guard body+public via postprocess_clean (single writer; post_guard still
+    # runs after NewsGuard/yellow because Guard may insert «[место]»).
+    from src.core.generation.postprocess_clean.adapter import apply_pre_guard_for_artifact
 
-    # Always scrub critical service tokens (even if loop-strip hotfix is off).
-    working, always_codes = final_public_scrub(working)
-    codes.extend(always_codes)
+    pre = apply_pre_guard_for_artifact(
+        working,
+        config=config,
+        item_id=item_id,
+        combat_sensitive=combat_sensitive,
+    )
+    working = pre.cleaned_text
+    codes.extend(pre.codes)
+    meta.update(pre.to_legacy_metadata())
 
     working = re.sub(r"\n{3,}", "\n\n", working).strip()
     broken = any(p.search(working) for p in _BROKEN)

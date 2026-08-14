@@ -180,6 +180,9 @@ def apply_quality_post_generate(
         art.metadata.get("integrity_enforce_mode")
         or getattr(config, "integrity_enforce_mode", "soft")
     )
+    if art.metadata.get("postprocess_status"):
+        meta["postprocess_status"] = art.metadata.get("postprocess_status")
+        meta["postprocess_codes"] = list(art.metadata.get("postprocess_codes") or [])
 
     if config.grounded_element_check_enabled and brief is not None:
         r1_text = "\n".join(item.text for item in brief.r1_core_self)

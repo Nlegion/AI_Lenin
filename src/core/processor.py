@@ -13,6 +13,7 @@ from src.core.database.db_core import session_scope
 from src.core.llama_server import LeninServer
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
+from src.core.generation.postprocess_clean import scrub_after_output_guard
 from src.core.news_item_pipeline import (
     attach_censor_cache_callbacks,
     evaluate_and_annotate_news,
@@ -300,7 +301,9 @@ class NewsProcessor:
                                     analysis_to_publish = item.analysis
                                     if self.news_guard is not None:
                                         guard_result = self.news_guard.guard_output(analysis=item.analysis)
-                                        analysis_to_publish = guard_result.moderated_text
+                                        analysis_to_publish = scrub_after_output_guard(
+                                            guard_result.moderated_text
+                                        )
                                     success = await self.publisher.publish_analysis(
                                         item.news_id,
                                         item.news.title,

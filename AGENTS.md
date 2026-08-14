@@ -175,7 +175,7 @@ Project rules in `.cursor/rules/*.mdc` are adapted from an external baseline (`P
 
 Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).
 Dialectical reasoning engine: `docs/dialectical_reasoning_engine.md` (`dialectical_reasoning.mode` in the same YAML).
-Semantic core (modern→Lenin abstract topics): `docs/semantic_core.md` (`config/semantic_core.yaml`, default off). Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
+Semantic core (modern→Lenin abstract topics): `docs/semantic_core.md` (`config/semantic_core.yaml`, default off). Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Answer post-processing / public scrub: `docs/answer_postprocess.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
 
 ## Agent Collaboration Rules
 

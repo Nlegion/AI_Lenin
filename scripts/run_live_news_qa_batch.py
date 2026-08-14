@@ -3,6 +3,7 @@
 
 Safety deny/quarantine → *.rejected.jsonl / *.rejected.txt (not counted).
 Successful LLM answers are numbered in *.txt toward --target-done (default 50).
+With --poll-seconds > 0, refetches TASS until target-done (or --max-wait-hours).
 Does not modify scripts/run_quality_qa_batch.py.
 """
 
@@ -91,11 +92,19 @@ async def async_main(args) -> int:
         logger.error("Incompatible flags: --require-rag-nonempty with --allow-legacy-fallback")
         return 2
     target = max(1, int(args.target_done))
+    poll_s = max(0.0, float(args.poll_seconds))
+    max_wait_s = max(0.0, float(args.max_wait_hours) * 3600.0)
     items = fetch_live_qa_items(fetch_limit=int(args.fetch_limit))
-    if not items:
+    if not items and poll_s <= 0:
         logger.error("No live news fetched from TASS RSS")
         return 2
-    logger.info("fetched_live_news n=%s target_done=%s", len(items), target)
+    logger.info(
+        "fetched_live_news n=%s target_done=%s poll_s=%s max_wait_h=%s",
+        len(items),
+        target,
+        poll_s,
+        args.max_wait_hours,
+    )
 
     guard = NewsGuard(config=load_news_guard_config(path=REPO_ROOT / args.news_guard_config))
     try:
@@ -172,95 +181,159 @@ async def async_main(args) -> int:
         logger.error("Retrieval unavailable; use --allow-legacy-fallback")
         await analyzer.close_session()
         return 4
-    if args.allow_legacy_fallback:
-        logger.info("RAG probe skipped due to legacy fallback")
-    elif rag_probe(analyzer=analyzer, item=items[0], require_nonempty=args.require_rag_nonempty) != 0:
-        await analyzer.close_session()
-        return 5
 
     pipeline = analyzer._get_pipeline()  # noqa: SLF001
     _ensure_headers(txt=artifacts.txt, rejected_txt=rejected_txt)
     rejected_count = 0
     error_count = 0
+    cycle = 0
+    wait_deadline = time.monotonic() + max_wait_s if max_wait_s > 0 else None
+    probe_item = items[0] if items else None
     try:
-        for item in items:
-            if done_count >= target:
-                break
-            input_hash = item.input_hash()
-            previous = prior.get(item.id)
-            if should_skip_checkpoint_row(row=previous, input_hash=input_hash, force=args.force):
-                logger.info("skip id=%s", item.id)
-                continue
+        if probe_item is not None:
+            if args.allow_legacy_fallback:
+                logger.info("RAG probe skipped due to legacy fallback")
+            elif rag_probe(
+                analyzer=analyzer,
+                item=probe_item,
+                require_nonempty=args.require_rag_nonempty,
+            ) != 0:
+                return 5
 
-            seed_row = base_row(item, persona_model=generation_config.persona_model, input_hash=input_hash)
-            outcome = await apply_live_pre_rag_gate(
-                censor=censor,
-                item=item,
-                row=seed_row,
-                strict_review=bool(args.censor_strict_review),
-            )
-            if outcome.blocked_row is not None:
-                row = outcome.blocked_row
-                rejected_count += 1
-                append_jsonl(path=artifacts.checkpoint, row=row)
-                append_jsonl(path=artifacts.results, row=row)
-                append_jsonl(path=rejected_jsonl, row=row)
-                with rejected_txt.open("a", encoding="utf-8") as handle:
-                    handle.write(
-                        format_txt_block(
-                            index=rejected_count,
-                            item=item,
-                            answer=str(row.get("answer") or ""),
-                            txt_max_chars=int(args.txt_max_chars),
-                        )
-                    )
-                logger.info(
-                    "rejected id=%s reason=%s done=%s/%s",
-                    item.id,
-                    row.get("skipped_llm_reason"),
+        while done_count < target:
+            if wait_deadline is not None and time.monotonic() >= wait_deadline:
+                logger.error(
+                    "Max wait reached: done=%s < target=%s max_wait_h=%s",
                     done_count,
                     target,
+                    args.max_wait_hours,
                 )
-                prior[item.id] = row
-                continue
-
-            gen_ctx = outcome.generation
-            row = await generate_one(
-                analyzer=analyzer,
-                pipeline=pipeline,
-                item=item,
-                retries=int(args.retries),
-                save_full_prompts=bool(args.save_full_prompts),
-                skip_input_gate=True,
-                risk_tier=(gen_ctx.risk_tier if gen_ctx else "green"),
-                context_hints=(gen_ctx.context_hints if gen_ctx else None),
-                needs_yellow_warning=bool(gen_ctx.needs_yellow_warning) if gen_ctx else False,
+                return 6
+            if cycle > 0 or not items:
+                try:
+                    items = fetch_live_qa_items(fetch_limit=int(args.fetch_limit))
+                except Exception as error:
+                    logger.exception("fetch_failed cycle=%s error=%s", cycle + 1, error)
+                    items = []
+            cycle += 1
+            logger.info(
+                "cycle=%s fetched=%s done=%s/%s",
+                cycle,
+                len(items),
+                done_count,
+                target,
             )
-            if gen_ctx is not None:
-                row["decision"] = gen_ctx.censor_decision
-                row["censor_decision"] = gen_ctx.censor_decision
-                row["censor_reason_codes"] = list(gen_ctx.censor_reason_codes)
-                row["risk_tier"] = gen_ctx.risk_tier
-                row["context_hints"] = list(gen_ctx.context_hints)
-                row["needs_yellow_warning"] = bool(gen_ctx.needs_yellow_warning)
-            append_jsonl(path=artifacts.checkpoint, row=row)
-            append_jsonl(path=artifacts.results, row=row)
-            if row.get("status") == "done" and not row.get("blocked"):
-                done_count += 1
-                with artifacts.txt.open("a", encoding="utf-8") as handle:
-                    handle.write(
-                        format_txt_block(
-                            index=done_count,
-                            item=item,
-                            answer=str(row.get("answer") or ""),
-                            txt_max_chars=int(args.txt_max_chars),
+            progressed = False
+            for item in items:
+                if done_count >= target:
+                    break
+                input_hash = item.input_hash()
+                previous = prior.get(item.id)
+                # --force only wipes artifacts at start; never disable skip across poll cycles.
+                if should_skip_checkpoint_row(
+                    row=previous,
+                    input_hash=input_hash,
+                    force=False,
+                ):
+                    logger.info("skip id=%s", item.id)
+                    continue
+
+                seed_row = base_row(
+                    item,
+                    persona_model=generation_config.persona_model,
+                    input_hash=input_hash,
+                )
+                outcome = await apply_live_pre_rag_gate(
+                    censor=censor,
+                    item=item,
+                    row=seed_row,
+                    strict_review=bool(args.censor_strict_review),
+                )
+                if outcome.blocked_row is not None:
+                    row = outcome.blocked_row
+                    rejected_count += 1
+                    append_jsonl(path=artifacts.checkpoint, row=row)
+                    append_jsonl(path=artifacts.results, row=row)
+                    append_jsonl(path=rejected_jsonl, row=row)
+                    with rejected_txt.open("a", encoding="utf-8") as handle:
+                        handle.write(
+                            format_txt_block(
+                                index=rejected_count,
+                                item=item,
+                                answer=str(row.get("answer") or ""),
+                                txt_max_chars=int(args.txt_max_chars),
+                            )
                         )
+                    logger.info(
+                        "rejected id=%s reason=%s done=%s/%s",
+                        item.id,
+                        row.get("skipped_llm_reason"),
+                        done_count,
+                        target,
                     )
-                logger.info("done id=%s progress=%s/%s", item.id, done_count, target)
-            else:
-                error_count += 1
-                logger.info("not_counted id=%s status=%s", item.id, row.get("status"))
-            prior[item.id] = row
+                    prior[item.id] = row
+                    progressed = True
+                    continue
+
+                gen_ctx = outcome.generation
+                row = await generate_one(
+                    analyzer=analyzer,
+                    pipeline=pipeline,
+                    item=item,
+                    retries=int(args.retries),
+                    save_full_prompts=bool(args.save_full_prompts),
+                    skip_input_gate=True,
+                    risk_tier=(gen_ctx.risk_tier if gen_ctx else "green"),
+                    context_hints=(gen_ctx.context_hints if gen_ctx else None),
+                    needs_yellow_warning=bool(gen_ctx.needs_yellow_warning)
+                    if gen_ctx
+                    else False,
+                )
+                if gen_ctx is not None:
+                    row["decision"] = gen_ctx.censor_decision
+                    row["censor_decision"] = gen_ctx.censor_decision
+                    row["censor_reason_codes"] = list(gen_ctx.censor_reason_codes)
+                    row["risk_tier"] = gen_ctx.risk_tier
+                    row["context_hints"] = list(gen_ctx.context_hints)
+                    row["needs_yellow_warning"] = bool(gen_ctx.needs_yellow_warning)
+                append_jsonl(path=artifacts.checkpoint, row=row)
+                append_jsonl(path=artifacts.results, row=row)
+                progressed = True
+                if row.get("status") == "done" and not row.get("blocked"):
+                    done_count += 1
+                    with artifacts.txt.open("a", encoding="utf-8") as handle:
+                        handle.write(
+                            format_txt_block(
+                                index=done_count,
+                                item=item,
+                                answer=str(row.get("answer") or ""),
+                                txt_max_chars=int(args.txt_max_chars),
+                            )
+                        )
+                    logger.info("done id=%s progress=%s/%s", item.id, done_count, target)
+                else:
+                    error_count += 1
+                    logger.info("not_counted id=%s status=%s", item.id, row.get("status"))
+                prior[item.id] = row
+
+            if done_count >= target:
+                break
+            if poll_s <= 0:
+                logger.error(
+                    "Pool exhausted: done=%s < target=%s (fetched=%s)",
+                    done_count,
+                    target,
+                    len(items),
+                )
+                return 6
+            logger.info(
+                "waiting_for_news sleep_s=%.0f done=%s/%s progressed=%s",
+                poll_s,
+                done_count,
+                target,
+                progressed,
+            )
+            await asyncio.sleep(poll_s)
     finally:
         await pipeline.close()
         await analyzer.close_session()
@@ -268,16 +341,17 @@ async def async_main(args) -> int:
             await owned_server.stop_server()
 
     logger.info(
-        "summary done=%s target=%s rejected=%s errors=%s txt=%s rejected_txt=%s",
+        "summary done=%s target=%s rejected=%s errors=%s cycles=%s txt=%s rejected_txt=%s",
         done_count,
         target,
         rejected_count,
         error_count,
+        cycle,
         artifacts.txt,
         rejected_txt,
     )
     if done_count < target:
-        logger.error("Pool exhausted: done=%s < target=%s (fetched=%s)", done_count, target, len(items))
+        logger.error("Incomplete: done=%s < target=%s", done_count, target)
         return 6
     return 0
 

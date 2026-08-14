@@ -13,5 +13,6 @@
 | [safety_gate_ops.md](safety_gate_ops.md) | Dual-run ops, rollback switches, dashboard metrics |
 | [censor_manual_terms.md](censor_manual_terms.md) | Pre-RAG manual trigger YAML lists / scrub / overrides |
 | [config_ownership.md](config_ownership.md) | Config SoT / ownership for retrieval vs generation knobs |
+| [answer_postprocess.md](answer_postprocess.md) | Post-generation answer scrub (`postprocess_clean` pre/post-guard, publishability) |
 
 Also see root [`README.md`](../README.md), [`AGENTS.md`](../AGENTS.md), and [`CHANGELOG.md`](../CHANGELOG.md).

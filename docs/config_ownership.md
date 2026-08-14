@@ -10,6 +10,7 @@
 | LLM runtime knobs (ctx/temp/max_tokens) | `config/generation.yaml` | `src/core/settings/generation_config.py` (**SoT**) |
 | Censorship runtime | `config/safety_gate_config.yaml` | `src/core/settings/censorship_runtime_config.py` |
 | Quality postcheck | `config/quality_postcheck.yaml` | `src/core/settings/quality_postcheck_config.py` |
+| Answer postprocess writer | same YAML → `postprocess_clean_mode` | `src/core/generation/postprocess_clean/` |
 
 ## Overlap policy
 

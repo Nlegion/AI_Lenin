@@ -14,6 +14,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--target-done", type=int, default=50, help="Successful LLM answers to collect.")
     parser.add_argument("--fetch-limit", type=int, default=0, help="Max RSS items to consider (0=all).")
+    parser.add_argument(
+        "--poll-seconds",
+        type=float,
+        default=300.0,
+        help=(
+            "If done < target after one RSS pass, sleep this many seconds and refetch "
+            "(0 = fail when pool exhausted, legacy one-shot)."
+        ),
+    )
+    parser.add_argument(
+        "--max-wait-hours",
+        type=float,
+        default=24.0,
+        help="Stop polling after this many hours even if target-done not reached (0=unlimited).",
+    )
     parser.add_argument("--persona-model", choices=["base_strong", "fine_tuned"], default="base_strong")
     parser.add_argument("--start-server", action="store_true")
     parser.add_argument("--start-wait", type=float, default=300.0)

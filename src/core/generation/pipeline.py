@@ -32,7 +32,7 @@ from src.core.generation.context_budget import (
     shrink_budget,
 )
 from src.core.generation.factory import build_generation_backend
-from src.core.generation.output_artifacts import final_public_scrub
+from src.core.generation.postprocess_clean import apply_terminal_public_scrub
 from src.core.generation.prompt_adapter import (
     build_chat_request,
     build_completion_request,
@@ -509,9 +509,11 @@ class AnalysisGenerationPipeline:
                         decision=warn_decision,
                         warning_text=sg_cfg.policy.yellow_warning_text,
                     )
-                moderated, final_codes = final_public_scrub(moderated)
-                if final_codes:
-                    quality_meta["final_public_scrub_codes"] = final_codes
+                moderated = apply_terminal_public_scrub(
+                    moderated,
+                    quality_meta=quality_meta,
+                    config=postcheck_cfg,
+                )
                 guard_result = OutputGuardResult(
                     blocked=guard_result.blocked,
                     moderated_text=moderated,
@@ -705,9 +707,11 @@ class AnalysisGenerationPipeline:
                 reason_codes=list(guard_result.reason_codes),
             )
 
-        moderated_final, final_codes = final_public_scrub(guard_result.moderated_text)
-        if final_codes:
-            quality_meta["final_public_scrub_codes"] = final_codes
+        moderated_final = apply_terminal_public_scrub(
+            guard_result.moderated_text,
+            quality_meta=quality_meta,
+            config=postcheck_cfg,
+        )
         guard_result = OutputGuardResult(
             blocked=guard_result.blocked,
             moderated_text=moderated_final,
