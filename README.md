@@ -148,7 +148,7 @@ Default persona is **GigaChat3** (`persona_model: base_strong` in [`config/gener
 |-----|--------|
 | Model | `ai-sage/GigaChat3-10B-A1.8B` |
 | GGUF | `models/gigachat3/GigaChat3-10B-A1.8B-q6_k.gguf` |
-| API | OpenAI-compatible `/v1/chat/completions` via local `llama-server` (`http://127.0.0.1:8080`) |
+| API | OpenAI-compatible `/v1/chat/completions` via local `llama-server` (`http://127.0.0.1:8080`); client in [`src/core/llm/`](src/core/llm/) |
 | Prompts | [`src/core/generation/prompt_adapter.py`](src/core/generation/prompt_adapter.py) |
 
 Prefer a recent `llama.cpp` Windows CUDA build (`llama.cpp/release_b*` or `llama.cpp/current`); update with:
@@ -169,6 +169,10 @@ pip install -r requirements.txt
 
 Required env (Telegram publish path): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_ID`.  
 Run app: `python src/main.py`. Local LLM via llama-server / configured backend in `config/generation.yaml`.
+
+### Docker (VPS RAG replica)
+
+Linux container with a copy of the local RAG index (embedded Qdrant + embeddings). No GGUF / `llama-server` on the VPS; set `LLM_SPAWN_LOCAL=false` and point `GENERATION_SERVER_URL` at an OpenAI-compatible API. See [`docs/docker.md`](docs/docker.md), [`.env.example`](.env.example), and `docker compose up`.
 
 ### Qdrant stance index
 

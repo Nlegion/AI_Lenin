@@ -14,7 +14,7 @@ from src.core.dialectics.engine import DialecticalEngine
 from src.core.dialectics.judge import sample_judge
 from src.core.dialectics.schemas import DialecticalRequest, DialecticalResult
 from src.core.dialectics.shadow import should_sample_shadow, write_shadow_record
-from src.core.generation.base import GenerationBackend
+from src.core.llm.base import GenerationBackend
 from src.core.generation.quality_hooks import apply_quality_post_generate
 from src.core.generation.text_postprocess import clamp_answer_length
 from src.core.settings.quality_postcheck_config import QualityPostcheckConfig

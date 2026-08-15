@@ -10,7 +10,7 @@ Domain folders under `scripts/`. Root `scripts/*.py` files are thin compatibilit
 | `retrieval/` | Qdrant, embeddings, RAG eval, AB sandbox |
 | `dialectics/` | Dialectical dry-runs, semantic core |
 | `corpus/` | Cleaning, chunking, ontology, source registry |
-| `ops/` | Release pass, subplan gates, version, bootstrap |
+| `ops/` | Release pass, subplan gates, version, bootstrap, RAG snapshot pack |
 
 Prefer:
 

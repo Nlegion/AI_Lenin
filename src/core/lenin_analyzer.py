@@ -10,7 +10,7 @@ from src.core.generation.errors import ErrorKind, classify_exception
 from src.core.generation.pipeline import AnalysisGenerationPipeline
 from src.core.retrieval.provider_factory import build_provider
 from src.core.safety.news_guard import NewsGuard
-from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT, LLAMA_SERVER_URL
+from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT
 from src.core.settings.config import Settings
 from src.core.generation.postprocess_clean.passthrough import passthrough_pipeline_text
 from src.core.settings.generation_config import (
@@ -31,7 +31,6 @@ class LeninAnalyzer:
         _ = vector_db_path  # compatibility with legacy initializer signature
         self.config = Settings()
         self.base_dir = Path(self.config.BASE_DIR)
-        self.server_url = LLAMA_SERVER_URL
         self.session = None
         self.analysis_cache = {}
         self.text_cleaner = TextCleaner()
@@ -43,7 +42,6 @@ class LeninAnalyzer:
             self.generation_config = self.generation_config.with_persona_model(
                 persona_model
             )
-        self.server_url = self.generation_config.server_url
         self.retrieval_provider = self._init_retrieval_provider()
         retrieval_config_path = self.base_dir / "config" / "retrieval_pipeline.yaml"
         self.context_orchestrator = AnalysisContextOrchestrator(

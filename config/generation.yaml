@@ -1,5 +1,6 @@
 generation:
   persona_model: "base_strong"
+  provider: "llama"
   server_url: "http://127.0.0.1:8080"
   comparison_seed: 42
   safety:
@@ -23,3 +24,6 @@ generation:
       max_tokens: 512
       seed: 42
       max_context_chars: 3000
+      thinking_mode: "disabled"
+      # reasoning_effort used only when thinking_mode=enabled (DeepSeek)
+      # reasoning_effort: "low"

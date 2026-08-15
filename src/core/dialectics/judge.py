@@ -7,7 +7,7 @@ from typing import Any
 
 from src.core.dialectics.parse import parse_json_object
 from src.core.dialectics.schemas import DialecticalResult
-from src.core.generation.base import GenerationBackend, GenerationRequest
+from src.core.llm.base import GenerationBackend, GenerationRequest
 
 JUDGE_SYSTEM = """Ты — строгий академический проверяющий диалектического анализа.
 Оцени JSON-анализ. Не повышай оценку при пустых общих фразах.

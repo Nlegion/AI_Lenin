@@ -16,7 +16,7 @@ def __getattr__(name: str) -> Any:
 
         return AnalysisGenerationPipeline
     if name == "build_generation_backend":
-        from src.core.generation.factory import build_generation_backend
+        from src.core.llm.factory import build_generation_backend
 
         return build_generation_backend
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

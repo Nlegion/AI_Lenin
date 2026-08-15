@@ -6,7 +6,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 
-from src.core.generation.base import GenerationRequest, GenerationResponse
+from src.core.llm.base import GenerationRequest, GenerationResponse
 
 
 @dataclass

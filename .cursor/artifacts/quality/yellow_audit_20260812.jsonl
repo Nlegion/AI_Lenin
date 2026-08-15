@@ -1,0 +1,4 @@
+{"ts": "2026-08-12T19:13:05.518956+00:00", "item_id": "3", "text_hash": "6291489c3068393b", "risk_tier": "yellow", "decision": "review", "reason_codes": ["test"]}
+{"ts": "2026-08-12T19:13:31.657741+00:00", "item_id": "3", "text_hash": "6291489c3068393b", "risk_tier": "yellow", "decision": "review", "reason_codes": ["test"]}
+{"ts": "2026-08-12T19:16:25.607744+00:00", "item_id": "3", "text_hash": "6291489c3068393b", "risk_tier": "yellow", "decision": "review", "reason_codes": ["test"]}
+{"ts": "2026-08-12T19:16:58.228127+00:00", "item_id": "3", "text_hash": "6291489c3068393b", "risk_tier": "yellow", "decision": "review", "reason_codes": ["test"]}

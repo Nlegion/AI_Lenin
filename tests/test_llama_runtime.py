@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.core.settings.llama_runtime import resolve_llama_runtime
+from src.core.settings.llama_runtime import LlamaRuntimePaths, resolve_llama_runtime
+from src.core.llm.runtime import resolve_llama_runtime as llm_resolve_llama_runtime
+
+
+def test_shim_exports_same_resolve_as_llm_package() -> None:
+    assert resolve_llama_runtime is llm_resolve_llama_runtime
+    assert LlamaRuntimePaths is not None
 
 
 def test_resolve_prefers_newest_release(tmp_path: Path) -> None:

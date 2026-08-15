@@ -8,7 +8,7 @@ from typing import Any
 from src.core.dialectics.config import DialecticalReasoningConfig
 from src.core.dialectics.packing import PackedContext
 from src.core.dialectics.prompts import REPAIR_USER_TEMPLATE, SYSTEM_PROMPT
-from src.core.generation.base import GenerationRequest
+from src.core.llm.base import GenerationRequest
 
 
 def build_error_report(errors: list[str], *, max_chars: int) -> str:

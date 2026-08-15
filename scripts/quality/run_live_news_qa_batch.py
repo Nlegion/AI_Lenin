@@ -131,10 +131,19 @@ async def async_main(args) -> int:
     except Exception as error:  # noqa: BLE001
         logger.error("Invalid persona_model/config: %s", error)
         return 2
-    model_path = (REPO_ROOT / backend.model_path).resolve()
-    if not model_path.exists():
-        logger.error("Model file missing: %s", model_path)
-        return 3
+    spawn_local = bool(generation_config.spawn_local)
+    if spawn_local:
+        model_path = (REPO_ROOT / backend.model_path).resolve()
+        if not model_path.exists():
+            logger.error("Model file missing: %s", model_path)
+            return 3
+    else:
+        logger.info(
+            "Remote LLM mode: provider=%s model=%s url=%s",
+            generation_config.provider,
+            backend.model_name,
+            generation_config.server_url,
+        )
 
     checkpoint_arg = Path(args.checkpoint) if args.checkpoint else None
     if checkpoint_arg is not None and not checkpoint_arg.is_absolute():
@@ -164,7 +173,9 @@ async def async_main(args) -> int:
 
     server_url = generation_config.server_url
     owned_server: LeninServer | None = None
-    if is_llama_server_active(server_url=server_url):
+    if not spawn_local:
+        logger.info("Skipping local llama-server lifecycle (spawn_local=false)")
+    elif is_llama_server_active(server_url=server_url):
         logger.warning("Server already running on %s", server_url)
     elif args.start_server:
         owned_server = LeninServer(

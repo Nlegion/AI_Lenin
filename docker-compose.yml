@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-lenin
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      LLM_SPAWN_LOCAL: "false"
+      HF_DATASETS_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      PYTHONPATH: /app
+    # No published ports (Telegram bot + outbound HTTPS only).
+    volumes:
+      # Complete HF embedding repo (weights + config + tokenizer + custom code).
+      - ./models/Giga-Embeddings-instruct:/app/models/Giga-Embeddings-instruct:ro
+      # Embedded Qdrant snapshot (copy while local app is stopped).
+      - ./database/qdrant_local:/app/database/qdrant_local
+      # Sparse encoder + ontology tags (and writable runtime JSONL).
+      - ./.cursor/artifacts:/app/.cursor/artifacts
+      # SQLite must be a pre-created host FILE bind-mount (never a named volume).
+      - ./ai_lenin.db:/app/ai_lenin.db
+    # Optional: uncomment to override baked-in config/
+    # - ./config:/app/config:ro

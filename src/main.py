@@ -9,7 +9,15 @@ from src.core.database.db_migrations import apply_migrations
 from src.core.processor import NewsProcessor
 from src.core.database.db_core import session_scope
 from src.core.version import version_manager
+from src.core.settings.config import Settings
+from src.core.settings.generation_config import (
+    default_generation_config_path,
+    llm_spawn_local_from_env,
+    load_generation_config,
+)
+from src.core.retrieval.rag_preflight import RagPreflightError, run_rag_preflight
 from sqlalchemy import text
+from pathlib import Path
 
 # Настройка логирования SQLAlchemy на уровень ERROR
 logging.getLogger("sqlalchemy.engine").setLevel(logging.ERROR)
@@ -47,6 +55,29 @@ async def async_main():
             sys.exit(1)
         else:
             logger.info("Все необходимые переменные окружения найдены")
+
+        # Fail-fast generation/provider config before RAG preflight and processor init
+        try:
+            generation_config = load_generation_config(
+                path=default_generation_config_path(base_dir=Path(Settings.BASE_DIR))
+            )
+            logger.info(
+                "Generation provider=%s spawn_local=%s model=%s",
+                generation_config.provider,
+                generation_config.spawn_local,
+                generation_config.active_backend().model_name,
+            )
+        except ValueError as error:
+            logger.error("Invalid generation config: %s", error)
+            sys.exit(1)
+
+        if not llm_spawn_local_from_env():
+            logger.info("Remote LLM mode: running RAG preflight")
+            try:
+                run_rag_preflight(base_dir=Path(Settings.BASE_DIR))
+            except RagPreflightError as error:
+                logger.error("RAG preflight failed: %s", error)
+                sys.exit(1)
 
         # Применение миграций
         logger.info("Применение миграций БД")

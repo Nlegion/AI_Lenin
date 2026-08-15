@@ -8,7 +8,7 @@ Project-level guide for Cursor Swarm agents. Read this file before starting any 
 |-------|------------|
 | Language | Python 3 (asyncio) |
 | Runtime entry | `src/main.py` — news fetch → LLM analysis → Telegram publish |
-| LLM inference | llama.cpp (`llama-server.exe`), `llama_cpp_python`, local GGUF models |
+| LLM inference | llama.cpp (`llama-server.exe`), local GGUF models (`llama_cpp_python` unused) |
 | ML / NLP | PyTorch, transformers, sentence-transformers, spacy, pymorphy3 |
 | RAG | Qdrant hybrid + embeddings |
 | Database | SQLite via SQLAlchemy async (`aiosqlite`) |
@@ -30,9 +30,10 @@ AI_Lenin/
 │   ├── core/
 │   │   ├── processor.py        # News processing orchestrator
 │   │   ├── news_item_pipeline.py
-│   │   ├── lenin_analyzer.py   # LLM analysis via llama.cpp HTTP
+│   │   ├── lenin_analyzer.py   # Analysis orchestration (RAG + generation pipeline)
 │   │   ├── publisher.py        # Telegram publishing
-│   │   ├── llama_server.py     # Local model server wrapper
+│   │   ├── llama_server.py     # Shim → src/core/llm/server.py
+│   │   ├── llm/                # HTTP client, factory, llama-server lifecycle
 │   │   ├── generation/         # pipeline, prompts, postprocess_clean
 │   │   ├── dialectics/         # reasoning engine
 │   │   ├── analysis/           # EvidenceBrief, semantic core
@@ -104,6 +105,7 @@ python scripts/safety/rollback_gate_config.py snapshot   # or: restore
 python scripts/ops/release_pass.py --help
 python scripts/quality/collect_anti_cliche_label_batch.py
 python scripts/ops/update_llama_cpp_release.py
+python scripts/ops/pack_rag_snapshot.py
 python scripts/quality/run_quality_qa_batch.py --guard-check-only
 python scripts/quality/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --allow-legacy-fallback
 python scripts/dialectics/calibrate_semantic_core_query.py
@@ -118,8 +120,9 @@ python scripts/corpus/build_ontology_worldview.py --help
 python scripts/retrieval/build_qdrant_index.py --help
 ```
 
-**Required env vars:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_ID`
-**Optional:** `NEWSAPI_KEY`, `HUGGINGFACE_TOKEN`
+**Required env vars:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_ID`  
+**Optional:** `NEWSAPI_KEY`, `HUGGINGFACE_TOKEN`  
+**VPS / remote LLM:** `LLM_SPAWN_LOCAL=false`, `LLM_PROVIDER` (`llama`|`deepseek`), `GENERATION_SERVER_URL`, `LLM_API_KEY` / `DEEPSEEK_API_KEY`, `LLM_MODEL_NAME` — see [`docs/llm_client.md`](docs/llm_client.md) and [`docs/docker.md`](docs/docker.md).
 
 ## Language & Communication
 

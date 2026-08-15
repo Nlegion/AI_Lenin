@@ -10,7 +10,7 @@ from src.core.publisher import TelegramPublisher
 from src.core.settings.config import Settings
 from src.core.utils.decorators import handle_errors
 from src.core.database.db_core import session_scope
-from src.core.llama_server import LeninServer
+from src.core.llm.server import LeninServer
 from src.modules.news_system.classifier import NewsClassifier
 from src.core.analysis_validator import AnalysisValidator
 from src.core.generation.postprocess_clean import scrub_after_output_guard
@@ -26,6 +26,7 @@ from src.core.settings.censorship_runtime_config import (
     default_censorship_runtime_config_path,
     load_censorship_runtime_config,
 )
+from src.core.settings.generation_config import llm_spawn_local_from_env
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
@@ -39,7 +40,8 @@ class NewsProcessor:
 
         self.fetcher = NewsFetcher()
         self.analyzer = None
-        self.server = LeninServer()
+        self.spawn_local = llm_spawn_local_from_env()
+        self.server = LeninServer() if self.spawn_local else None
         self.classifier = NewsClassifier()
         self.validator = AnalysisValidator()
         self.news_guard = self._init_news_guard()
@@ -132,18 +134,23 @@ class NewsProcessor:
                 "🔄 Начало инициализации системы ИИ-Ленин"
             )
 
-            # Запускаем сервер llama.cpp
-            logger.info("Запуск сервера llama.cpp...")
-            await self.publisher.send_admin_notification(
-                "🔌 Запуск сервера llama.cpp..."
-            )
-
-            if not await self.server.start_server():
-                error_msg = "Не удалось запустить сервер llama.cpp"
-                await self.publisher.send_admin_notification(f"❌ {error_msg}")
-                raise Exception(error_msg)
-
-            await self.publisher.send_admin_notification("✅ Сервер llama.cpp запущен")
+            if self.spawn_local:
+                logger.info("Запуск сервера llama.cpp...")
+                await self.publisher.send_admin_notification(
+                    "🔌 Запуск сервера llama.cpp..."
+                )
+                if self.server is None or not await self.server.start_server():
+                    error_msg = "Не удалось запустить сервер llama.cpp"
+                    await self.publisher.send_admin_notification(f"❌ {error_msg}")
+                    raise Exception(error_msg)
+                await self.publisher.send_admin_notification(
+                    "✅ Сервер llama.cpp запущен"
+                )
+            else:
+                logger.info("LLM_SPAWN_LOCAL=false; skipping local llama-server")
+                await self.publisher.send_admin_notification(
+                    "🌐 Remote LLM mode (local llama-server skipped)"
+                )
 
             # Default persona_model=base_strong from config/generation.yaml.
             await self.publisher.send_admin_notification(
@@ -434,6 +441,7 @@ class NewsProcessor:
 
         if self.analyzer:
             await self.analyzer.close_session()
-        await self.server.stop_server()
+        if self.server is not None:
+            await self.server.stop_server()
 
         await self.publisher.send_admin_notification("✅ Система успешно остановлена")

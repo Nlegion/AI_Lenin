@@ -10,6 +10,7 @@ Canonical technical SoT. Prefer these over `.cursor/artifacts/` session notes.
 | [quote_grounding.md](quote_grounding.md) | Quote candidates, chunk citation fields, grounding rules |
 | [dialectical_orchestration_r1_r3.md](dialectical_orchestration_r1_r3.md) | R1–R3 EvidenceBrief orchestration |
 | [dialectical_reasoning_engine.md](dialectical_reasoning_engine.md) | Dialectical reasoning engine (triad/causal QC) |
+| [llm_client.md](llm_client.md) | LLM HTTP client / llama-server lifecycle (`src/core/llm/`) |
 | [dialectical_r3_data_track.md](dialectical_r3_data_track.md) | R3 corpus / principle-seed coverage track |
 | [semantic_core.md](semantic_core.md) | Modern→Lenin abstract topic bridge |
 
@@ -34,5 +35,6 @@ Canonical technical SoT. Prefer these over `.cursor/artifacts/` session notes.
 | [priority_crisis_recovery_and_hardening.md](priority_crisis_recovery_and_hardening.md) | Crisis recovery priorities H1–H3 + M1–M3 |
 | [human_eval_checklist.md](human_eval_checklist.md) | Human eval / weekly label loop / H1-d bar |
 | [config_ownership.md](config_ownership.md) | Config SoT / ownership for retrieval vs generation knobs |
+| [docker.md](docker.md) | VPS Docker RAG replica (remote LLM seam; no local llama-server) |
 
 Also see root [`README.md`](../README.md) (architecture, business process, RAG principles / data sources), [`AGENTS.md`](../AGENTS.md), [`CHANGELOG.md`](../CHANGELOG.md), and [`scripts/README.md`](../scripts/README.md).

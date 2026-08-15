@@ -1,10 +1,18 @@
 import logging
+import re
 from src.core.adapters.telegram.service import TelegramService
 from src.core.settings.config import Settings
-from src.core.version import version_manager
-import re
 
 logger = logging.getLogger(__name__)
+
+AI_DISCLAIMER = (
+    "Ответ сгенерирован ИИ в исследовательских целях "
+    "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
+)
+
+_TRIAD_LINE = re.compile(
+    r"(?im)^\s*\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:\s*(.*?)(?=\n|$)"
+)
 
 
 def clean_telegram_text(text: str) -> str:
@@ -16,11 +24,20 @@ def clean_telegram_text(text: str) -> str:
     return text.strip()
 
 
+def _extract_triad_sections(text: str) -> dict[str, str]:
+    sections: dict[str, str] = {}
+    for match in _TRIAD_LINE.finditer(text):
+        label = match.group(1).casefold()
+        value = match.group(2).strip()
+        if value and label not in sections:
+            sections[label] = value
+    return sections
+
+
 class TelegramPublisher:
     def __init__(self):
         self.config = Settings()
         self.service = TelegramService()
-        self.version = version_manager.get_full_version()
 
     async def publish_analysis(
         self, news_id: str, title: str, url: str, analysis: str
@@ -32,33 +49,48 @@ class TelegramPublisher:
             title = clean_telegram_text(title)
             analysis = clean_telegram_text(analysis)
 
-            # Reserve room for footer/disclaimer + framing (Telegram hard limit 4096).
+            triad_sections = _extract_triad_sections(analysis)
+            mechanism = triad_sections.get("механизм", "").strip()
+            conclusion = triad_sections.get("вывод", "").strip()
+            if not mechanism or not conclusion:
+                logger.warning(
+                    "Публикация отменена: отсутствуют обязательные секции triad",
+                    extra={
+                        "has_mechanism": bool(mechanism),
+                        "has_conclusion": bool(conclusion),
+                        "news_id": news_id,
+                    },
+                )
+                return False
+
+            # Reserve room for body + source + disclaimer (Telegram limit 4096).
             telegram_limit = 4096
             framing_overhead = (
-                len(f"<b>📰 {title}</b>\n\n")
-                + len(f"<i>Модель Ай_Ленин {self.version} 💬</i>\n")
-                + len(f"\n\n<a href='{url}'>Источник</a>")
-                + 8
+                len(f"<b>Факт: {title}</b>\n\n")
+                + len("Механизм: \n\n")
+                + len("Вывод: \n\n")
+                + len(f"<a href='{url}'>источник</a>\n\n")
+                + len(AI_DISCLAIMER)
+                + 48
             )
-            max_analysis = max(200, telegram_limit - framing_overhead)
-            if len(analysis) > max_analysis:
-                logger.warning(
-                    "Слишком длинное сообщение, сокращаем тело (footer preserved)"
-                )
-                # Prefer keeping a trailing short disclaimer paragraph.
-                parts = analysis.rsplit("\n\n", 1)
-                if len(parts) == 2 and len(parts[1]) < 280:
-                    body, footer = parts
-                    budget = max(80, max_analysis - len(footer) - 4)
-                    analysis = f"{body[:budget].rstrip()}...\n\n{footer}"
-                else:
-                    analysis = analysis[: max_analysis - 3].rstrip() + "..."
+            max_sections = max(200, telegram_limit - framing_overhead)
+            if len(mechanism) + len(conclusion) > max_sections:
+                logger.warning("Слишком длинное сообщение, сокращаем sections")
+                mechanism_budget = max(100, int(max_sections * 0.6))
+                conclusion_budget = max(80, max_sections - mechanism_budget)
+                mechanism = mechanism[:mechanism_budget].rstrip()
+                conclusion = conclusion[:conclusion_budget].rstrip()
+                if len(mechanism) == mechanism_budget:
+                    mechanism = mechanism.rstrip(". ") + "..."
+                if len(conclusion) == conclusion_budget:
+                    conclusion = conclusion.rstrip(". ") + "..."
 
             message = (
-                f"<b>📰 {title}</b>\n\n"
-                f"<i>Модель Ай_Ленин {self.version} 💬</i>\n"
-                f"{analysis}\n\n"
-                f"<a href='{url}'>Источник</a>"
+                f"<b>Факт: {title}</b>\n\n"
+                f"Механизм: {mechanism}\n\n"
+                f"Вывод: {conclusion}\n\n"
+                f"<a href='{url}'>источник</a>\n\n"
+                f"{AI_DISCLAIMER}"
             )
 
             # Отправка сообщения

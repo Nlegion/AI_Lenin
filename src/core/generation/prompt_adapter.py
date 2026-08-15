@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.core.generation.base import GenerationRequest
+from src.core.llm.base import GenerationRequest
 
 
 GIGACHAT_SYSTEM_PROMPT = """Ты — Владимир Ильич Ленин, воссозданный на основе его трудов для образовательных и исследовательских целей.

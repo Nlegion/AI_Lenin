@@ -21,7 +21,7 @@ from src.core.dialectics.rag_brief import build_principle_cards, cards_by_stance
 from src.core.dialectics.repair import build_repair_request, error_set_progressed
 from src.core.dialectics.schemas import DialecticalRequest, DialecticalResult
 from src.core.dialectics.validators import build_result_from_payload, validate_result
-from src.core.generation.base import GenerationBackend, GenerationRequest
+from src.core.llm.base import GenerationBackend, GenerationRequest
 
 logger = logging.getLogger(__name__)
 

@@ -136,7 +136,7 @@ async def test_pipeline_applies_newsguard_post_filter():
 
     class _FakeBackend:
         async def generate(self, request):  # noqa: ANN001
-            from src.core.generation.base import GenerationResponse
+            from src.core.llm.base import GenerationResponse
 
             return GenerationResponse(
                 text="raw analysis",

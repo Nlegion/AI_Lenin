@@ -31,7 +31,7 @@ from src.core.generation.context_budget import (
     log_budget,
     shrink_budget,
 )
-from src.core.generation.factory import build_generation_backend
+from src.core.llm.factory import build_generation_backend
 from src.core.generation.postprocess_clean import apply_terminal_public_scrub
 from src.core.generation.prompt_adapter import (
     build_chat_request,

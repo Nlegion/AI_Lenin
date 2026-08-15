@@ -1,0 +1,17 @@
+# Censorship Isolated Run
+- started_utc: 2026-08-09T16:36:01.282409+00:00
+- duration_hours: 0.05
+- rows: 100
+- poll_seconds: 300
+- jsonl: censorship_dryrun_extended.jsonl
+- csv: censorship_dryrun_extended.csv
+- metrics: censorship_dryrun_extended.metrics.json
+- control_path: 
+- control_rows_total: 0
+- control_batch_size: 0
+- control_cursor_final: 0
+- control_exhausted: False
+- sidecar: disabled
+- config_version_hash_last: 777f07cd33abc7ac
+- git_head: b5c4df241c4a8057cfcf283d4eeeaaa95a211aed
+- python_version: 3.12.9

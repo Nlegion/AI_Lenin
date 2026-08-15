@@ -17,7 +17,7 @@ Config section: `dialectical_reasoning` in [`config/retrieval_pipeline.yaml`](..
 
 ## Package
 
-`src/core/dialectics/` — isolated; depends on `EvidenceBrief` types + `GenerationBackend` Protocol only.
+`src/core/dialectics/` — isolated; depends on `EvidenceBrief` types + `GenerationBackend` Protocol from `src.core.llm.base` only.
 
 ## Outcomes
 
