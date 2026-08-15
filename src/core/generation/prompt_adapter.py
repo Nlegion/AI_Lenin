@@ -1,4 +1,4 @@
-"""Prompt adapters for chat (GigaChat3) and completion (fine-tuned) backends."""
+"""Prompt adapters for GigaChat3 chat completions."""
 
 from __future__ import annotations
 
@@ -239,39 +239,6 @@ def build_chat_request(
         {"role": "user", "content": user_content},
     ]
     return GenerationRequest(system_prompt=system_prompt, user_content=user_content, messages=messages)
-
-
-def build_completion_request(
-    *,
-    news_title: str,
-    news_content: str,
-    context: str,
-    max_context_chars: int,
-    feedback: list[str] | None = None,
-) -> GenerationRequest:
-    context_block = _truncate_context(context=context, max_chars=max_context_chars)
-    system_prompt = (
-        "Ты — Владимир Ильич Ленин в 1923 году. Анализируй современные события "
-        "с позиции диалектического материализма и политэкономии.\n\n"
-        f"Релевантные цитаты:\n{context_block}\n\n"
-        "Не призывай к насилию и не комментируй военные действия с участием РФ. "
-        "Используй только контекст. Формат краткий (3-4 предложения)."
-    )
-    if feedback:
-        system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
-    user_content = f"Новость: {news_title}\n{news_content[:400]}"
-    prompt = (
-        "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
-        f"{system_prompt}<|eot_id|>\n"
-        "<|start_header_id|>user<|end_header_id|>\n\n"
-        f"{user_content}<|eot_id|>\n"
-        "<|start_header_id|>assistant<|end_header_id|>\n\n"
-    )
-    return GenerationRequest(
-        system_prompt=system_prompt,
-        user_content=prompt,
-        messages=[{"role": "user", "content": prompt}],
-    )
 
 
 def build_dialectical_chat_request(

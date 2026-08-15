@@ -185,7 +185,7 @@ async def main() -> int:
     parser.add_argument("--skip-judge", action="store_true")
     parser.add_argument("--bypass-safety", action="store_true")
     parser.add_argument("--allow-legacy-fallback", action="store_true")
-    parser.add_argument("--persona-model", choices=["base_strong", "fine_tuned"], default=None)
+    parser.add_argument("--persona-model", choices=["base_strong"], default=None)
     parser.add_argument("--top-n", type=int, default=5)
     parser.add_argument("--retrieval-config", default="config/retrieval_pipeline.yaml")
     parser.add_argument("--generation-config", default="config/generation.yaml")

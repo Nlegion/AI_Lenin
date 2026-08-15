@@ -64,7 +64,7 @@ def main() -> int:
     parser.add_argument(
         "--thresholds-config",
         default="config/release_gates.yaml",
-        help="Unified release_gates.yaml (or legacy quality_thresholds.yaml via shim).",
+        help="Unified release_gates.yaml (rag_quality.metrics).",
     )
     parser.add_argument("--eval-dataset", default=".cursor/artifacts/eval/embedding_eval.tsv")
     parser.add_argument("--output-json", default=".cursor/artifacts/evaluation/rag_quality_metrics.json")

@@ -33,13 +33,13 @@ Default persona is **GigaChat3** (`persona_model: base_strong` in [`config/gener
 | API | OpenAI-compatible `/v1/chat/completions` via local `llama-server` (`http://127.0.0.1:8080`) |
 | Prompts | [`src/core/generation/prompt_adapter.py`](src/core/generation/prompt_adapter.py) |
 
-`fine_tuned` (Saiga) remains an optional / legacy fallback backend. Prefer a recent `llama.cpp` Windows CUDA build (`llama.cpp/release_b*` or `llama.cpp/current`); update with:
+Prefer a recent `llama.cpp` Windows CUDA build (`llama.cpp/release_b*` or `llama.cpp/current`); update with:
 
 ```powershell
 python scripts/update_llama_cpp_release.py
 ```
 
-Server start for GigaChat3 uses `--no-jinja --chat-template chatml`.
+Server start for GigaChat3 uses `--no-jinja --chat-template chatml`. Saiga / `fine_tuned` completion backend has been removed.
 
 ## Setup (short)
 

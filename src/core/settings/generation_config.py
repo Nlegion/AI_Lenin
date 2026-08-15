@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 import yaml
 
 
-PersonaModel = Literal["base_strong", "fine_tuned"]
-ApiStyle = Literal["chat_completions", "completion"]
+PersonaModel = Literal["base_strong"]
+ApiStyle = Literal["chat_completions"]
 
 
 class FallbackConfig(BaseModel):
@@ -18,7 +18,6 @@ class FallbackConfig(BaseModel):
     incident_threshold: int = 5
     window_events: int = 50
     audit_log_path: str = ".cursor/artifacts/safety/dryrun_audit.jsonl"
-    target_persona_model: PersonaModel = "fine_tuned"
 
 
 class SafetyConfig(BaseModel):
@@ -29,7 +28,7 @@ class SafetyConfig(BaseModel):
 class BackendConfig(BaseModel):
     model_name: str
     model_path: str
-    api_style: ApiStyle
+    api_style: ApiStyle = "chat_completions"
     ctx_size: int = 4096
     n_gpu_layers: int = 28
     threads: int = 4

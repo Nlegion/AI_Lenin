@@ -215,6 +215,7 @@ yarn-error.log*
 
 *.json
 !.cursor/worktrees.json
+!.cursor/artifacts/qdrant/sparse_encoder_state_giga_v1.json
 
 /llama.cpp/
 /model_cache/
@@ -224,6 +225,10 @@ yarn-error.log*
 /test_results/
 /zip/
 fetcher_test_results.txt
+.tmp_ssh_key/
 .cursor/artifacts/cleaned_corpus/
 .cursor/artifacts/chunks/chunk_dataset_v2.tsv
 .cursor/artifacts/qdrant/checkpoints/
+.cursor/artifacts/quality/*.checkpoint.jsonl
+.cursor/artifacts/quality/quality_qa_batch_*
+.cursor/artifacts/quality/live_news_qa_*

@@ -41,7 +41,7 @@ def test_factory_builds_chat_backend_by_default():
     assert cfg.persona_model == "base_strong"
 
 
-def test_fallback_recommendation_switches_when_enabled(tmp_path: Path):
+def test_fallback_recommendation_stays_base_strong_when_enabled(tmp_path: Path):
     config = load_generation_config(Path("config/generation.yaml"))
     audit = tmp_path / "audit.jsonl"
     audit.write_text("\n".join(['{"high_risk": true}'] * 6) + "\n", encoding="utf-8")
@@ -52,10 +52,21 @@ def test_fallback_recommendation_switches_when_enabled(tmp_path: Path):
             incident_threshold=5,
             window_events=50,
             audit_log_path=str(audit),
-            target_persona_model="fine_tuned",
         ),
     )
-    assert recommend_persona_model(config=config, base_dir=Path(".")) == "fine_tuned"
+    assert recommend_persona_model(config=config, base_dir=Path(".")) == "base_strong"
+
+
+def test_cli_persona_model_rejects_fine_tuned():
+    from scripts.run_quality_qa_batch_cli import build_parser as quality_parser
+    from scripts.run_live_news_qa_batch_cli import build_parser as live_parser
+    from scripts.run_live_news_qa_24h_cli import build_parser as live24_parser
+
+    for build in (quality_parser, live_parser, live24_parser):
+        parser = build()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--persona-model", "fine_tuned"])
+
 
 
 def test_fallback_disabled_keeps_active_model(tmp_path: Path):

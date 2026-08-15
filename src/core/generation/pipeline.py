@@ -35,7 +35,6 @@ from src.core.generation.factory import build_generation_backend
 from src.core.generation.postprocess_clean import apply_terminal_public_scrub
 from src.core.generation.prompt_adapter import (
     build_chat_request,
-    build_completion_request,
     build_dialectical_chat_request,
 )
 from src.core.generation.quality_hooks import (
@@ -552,60 +551,50 @@ class AnalysisGenerationPipeline:
                 )
 
         request = None
-        prompt_builder = "completion"
+        prompt_builder = "chat"
         for _ in range(6):
             clipped = clip_context_by_chunks(
                 working_context,
                 max_chunks=budget.max_context_chunks,
             )
-            if backend_cfg.api_style == "chat_completions":
-                if dialectical_prompt:
-                    prompt_builder = "dialectical_chat"
-                    request = build_dialectical_chat_request(
-                        news_title=news_title,
-                        news_content=news_content,
-                        context=clipped,
-                        max_context_chars=budget.max_context_chars,
-                        feedback=feedback,
-                        synthesis_hints=synthesis_hints,
-                        hint_only=hint_only,
-                        quote_mode=quote_mode,
-                        social_primary=social_primary,
-                        empty_r1=empty_r1,
-                        fact_opinion=fact_opinion,
-                        risk_tier=risk_tier,
-                        sport_primary=sport_primary,
-                        allowlist_quotes=[c.text for c in quote_candidates[:8]],
-                        context_hints=applied_hints,
-                    )
-                else:
-                    prompt_builder = "chat"
-                    request = build_chat_request(
-                        news_title=news_title,
-                        news_content=news_content,
-                        context=clipped,
-                        max_context_chars=budget.max_context_chars,
-                        feedback=feedback,
-                        synthesis_hints=synthesis_hints,
-                        hint_only=hint_only,
-                        legacy_fallback=legacy_fallback,
-                        quote_mode=quote_mode,
-                        social_primary=social_primary,
-                        empty_r1=empty_r1,
-                        fact_opinion=fact_opinion,
-                        risk_tier=risk_tier,
-                        sport_primary=sport_primary,
-                        allowlist_quotes=[c.text for c in quote_candidates[:8]],
-                        context_hints=applied_hints,
-                    )
-            else:
-                prompt_builder = "completion"
-                request = build_completion_request(
+            if dialectical_prompt:
+                prompt_builder = "dialectical_chat"
+                request = build_dialectical_chat_request(
                     news_title=news_title,
                     news_content=news_content,
                     context=clipped,
                     max_context_chars=budget.max_context_chars,
                     feedback=feedback,
+                    synthesis_hints=synthesis_hints,
+                    hint_only=hint_only,
+                    quote_mode=quote_mode,
+                    social_primary=social_primary,
+                    empty_r1=empty_r1,
+                    fact_opinion=fact_opinion,
+                    risk_tier=risk_tier,
+                    sport_primary=sport_primary,
+                    allowlist_quotes=[c.text for c in quote_candidates[:8]],
+                    context_hints=applied_hints,
+                )
+            else:
+                prompt_builder = "chat"
+                request = build_chat_request(
+                    news_title=news_title,
+                    news_content=news_content,
+                    context=clipped,
+                    max_context_chars=budget.max_context_chars,
+                    feedback=feedback,
+                    synthesis_hints=synthesis_hints,
+                    hint_only=hint_only,
+                    legacy_fallback=legacy_fallback,
+                    quote_mode=quote_mode,
+                    social_primary=social_primary,
+                    empty_r1=empty_r1,
+                    fact_opinion=fact_opinion,
+                    risk_tier=risk_tier,
+                    sport_primary=sport_primary,
+                    allowlist_quotes=[c.text for c in quote_candidates[:8]],
+                    context_hints=applied_hints,
                 )
             prompt_text = f"{request.system_prompt}\n{request.user_content}"
             prompt_tokens = log_budget(prompt_text=prompt_text, state=budget)

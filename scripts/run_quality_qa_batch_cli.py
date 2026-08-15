@@ -9,7 +9,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Quality QA batch without Telegram.")
     parser.add_argument("--input", default="data/eval/quality_qa_batch.jsonl")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--persona-model", choices=["base_strong", "fine_tuned"], default="base_strong")
+    parser.add_argument("--persona-model", choices=["base_strong"], default="base_strong")
     parser.add_argument("--start-server", action="store_true")
     parser.add_argument("--start-wait", type=float, default=120.0)
     parser.add_argument("--allow-legacy-fallback", action="store_true")

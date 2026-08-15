@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=24.0,
         help="Stop polling after this many hours even if target-done not reached (0=unlimited).",
     )
-    parser.add_argument("--persona-model", choices=["base_strong", "fine_tuned"], default="base_strong")
+    parser.add_argument("--persona-model", choices=["base_strong"], default="base_strong")
     parser.add_argument("--start-server", action="store_true")
     parser.add_argument("--start-wait", type=float, default=300.0)
     parser.add_argument("--allow-legacy-fallback", action="store_true")

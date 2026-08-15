@@ -1,4 +1,8 @@
-"""NewsGuard-incident fallback recommendation hook."""
+"""Incident-audit hook for generation persona selection.
+
+With a single runtime persona (base_strong / GigaChat3), recommendations
+never switch backends; the audit counter remains for observability.
+"""
 
 from __future__ import annotations
 
@@ -24,17 +28,13 @@ def count_recent_high_risk_incidents(audit_log_path: Path, window_events: int) -
 
 
 def recommend_persona_model(config: GenerationConfig, base_dir: Path) -> PersonaModel:
-    """Return recommended persona model; auto-switch only when fallback.enabled."""
-    active = config.persona_model
-    fallback = config.safety.fallback
-    if not fallback.enabled:
-        return active
-    configured = Path(fallback.audit_log_path)
-    audit_path = configured.resolve() if configured.is_absolute() else (base_dir / configured).resolve()
-    incidents = count_recent_high_risk_incidents(
-        audit_log_path=audit_path,
-        window_events=fallback.window_events,
-    )
-    if incidents >= fallback.incident_threshold:
-        return fallback.target_persona_model
-    return active
+    """Return active persona; no alternate backend remains after Saiga removal."""
+    if config.safety.fallback.enabled:
+        # Keep reading the audit path so ops can still enable counting without a switch.
+        configured = Path(config.safety.fallback.audit_log_path)
+        audit_path = configured.resolve() if configured.is_absolute() else (base_dir / configured).resolve()
+        _ = count_recent_high_risk_incidents(
+            audit_log_path=audit_path,
+            window_events=config.safety.fallback.window_events,
+        )
+    return config.persona_model

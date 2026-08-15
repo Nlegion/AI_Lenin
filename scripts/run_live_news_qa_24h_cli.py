@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Max new items to process per fetch cycle (0=unlimited).",
     )
     parser.add_argument("--fetch-limit", type=int, default=0, help="Max RSS items per fetch (0=all).")
-    parser.add_argument("--persona-model", choices=["base_strong", "fine_tuned"], default="base_strong")
+    parser.add_argument("--persona-model", choices=["base_strong"], default="base_strong")
     parser.add_argument("--start-server", action="store_true")
     parser.add_argument("--start-wait", type=float, default=300.0)
     parser.add_argument("--allow-legacy-fallback", action="store_true")

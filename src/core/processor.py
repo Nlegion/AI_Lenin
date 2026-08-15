@@ -136,7 +136,7 @@ class NewsProcessor:
 
             await self.publisher.send_admin_notification("✅ Сервер llama.cpp запущен")
 
-            # Default persona_model=base_strong from config/generation.yaml (fine_tuned optional).
+            # Default persona_model=base_strong from config/generation.yaml.
             await self.publisher.send_admin_notification("🧠 Инициализация анализатора...")
             self.analyzer = LeninAnalyzer()
             await self.analyzer.initialize_session()

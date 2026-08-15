@@ -162,7 +162,7 @@ generate → text_cleaner → NewsGuard.mark_unverified_facts
 | Работа | Детали |
 |--------|--------|
 | Включить в `scripts/release_pass.py` / `run_subplan_gates.py` | Вызов evaluate_rag_quality + (опц.) embedding smoke на фикстурном наборе |
-| Пороги | Читать `config/quality_thresholds.yaml`; fail job при регрессии ниже baseline |
+| Пороги | Читать `config/release_gates.yaml` → `rag_quality.metrics`; fail job при регрессии ниже baseline |
 | Артефакты | Писать summary в `.cursor/artifacts/evaluation/` с датой |
 | CI (если есть) | Тот же gate в GitHub Action / локальный pre-release |
 

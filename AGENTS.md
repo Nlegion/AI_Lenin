@@ -10,14 +10,14 @@ Project-level guide for Cursor Swarm agents. Read this file before starting any 
 | Runtime entry | `src/main.py` — news fetch → LLM analysis → Telegram publish |
 | LLM inference | llama.cpp (`llama-server.exe`), `llama_cpp_python`, local GGUF models |
 | ML / NLP | PyTorch, transformers, sentence-transformers, spacy, pymorphy3 |
-| RAG | ChromaDB + embeddings |
+| RAG | Qdrant hybrid + embeddings |
 | Database | SQLite via SQLAlchemy async (`aiosqlite`) |
 | Migrations | Alembic (`alembic.ini`, `src/core/database/migrations/`) |
 | HTTP clients | httpx, aiohttp |
 | Logging | stdlib logging + structlog |
 | Config | `python-dotenv`, `src/core/settings/config.py` |
 | Tests | Integration scripts in `tests/` (async, runnable via `python` or `pytest`) |
-| Training | Standalone ML pipeline in `training/` (LoRA, ontology, quantization) |
+| Training | RAG ontology / worldview stages in `training/` (LLM LoRA abandoned) |
 
 **No web frontend.** User-facing surface is Telegram only.
 
@@ -30,16 +30,16 @@ AI_Lenin/
 │   ├── core/
 │   │   ├── processor.py        # News processing orchestrator
 │   │   ├── lenin_analyzer.py   # LLM analysis via llama.cpp HTTP
-│   │   ├── rag_system.py       # RAG over ChromaDB
 │   │   ├── publisher.py        # Telegram publishing
 │   │   ├── llama_server.py     # Local model server wrapper
 │   │   ├── settings/           # config.py, log.py
-│   │   ├── database/           # SQLAlchemy models, repos, migrations, vector_db
+│   │   ├── database/           # SQLAlchemy models, repos, migrations
+│   │   ├── retrieval/          # Qdrant retrieval providers
 │   │   ├── adapters/telegram/  # Telegram client/service
 │   │   └── utils/
-│   └── modules/news_system/    # fetcher, analyzer, classifier
+│   └── modules/news_system/    # fetcher, classifier
 ├── tests/                      # Integration test scripts
-├── training/                   # ML training pipeline (separate from runtime)
+├── training/                   # RAG ontology / worldview (not LLM fine-tune)
 ├── scripts/                    # Maintenance utilities
 ├── tools/                      # One-off converters and helpers
 ├── alembic.ini
@@ -78,7 +78,6 @@ alembic upgrade head
 python tests/test_news_fetcher.py
 python tests/test_news_processor.py
 python tests/test_telegram_publisher.py
-python tests/test_lenin_analyzer.py
 
 # Pytest (when tests are pytest-compatible)
 pytest tests -q
@@ -106,8 +105,9 @@ python scripts/run_dialectical_reasoning_dryrun.py --fixture neftegaz
 # Version bump
 python scripts/version_update.py patch   # or major / minor
 
-# Training (separate pipeline)
-python training/train_lora.py
+# RAG ontology rebuild (not LLM fine-tune)
+python scripts/build_ontology_worldview.py --help
+python scripts/build_qdrant_index.py --help
 ```
 
 **Required env vars:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_ID`

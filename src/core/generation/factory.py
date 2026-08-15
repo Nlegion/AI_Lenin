@@ -7,7 +7,6 @@ from pathlib import Path
 import aiohttp
 
 from src.core.generation.chat_backend import ChatCompletionsBackend
-from src.core.generation.completion_backend import CompletionBackend
 from src.core.generation.fallback import recommend_persona_model
 from src.core.settings.generation_config import (
     GenerationConfig,
@@ -36,14 +35,11 @@ def build_generation_backend(
         selected = recommend_persona_model(config=cfg, base_dir=base_dir)
     cfg = cfg.with_persona_model(selected)
     backend_cfg = cfg.active_backend()
-    if backend_cfg.api_style == "chat_completions":
-        return ChatCompletionsBackend(
-            server_url=cfg.server_url,
-            backend_config=backend_cfg,
-            session=session,
-            persona_model=selected,
-        ), cfg
-    return CompletionBackend(
+    if backend_cfg.api_style != "chat_completions":
+        raise ValueError(
+            f"Unsupported api_style={backend_cfg.api_style!r}; only chat_completions is supported"
+        )
+    return ChatCompletionsBackend(
         server_url=cfg.server_url,
         backend_config=backend_cfg,
         session=session,

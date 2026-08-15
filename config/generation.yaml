@@ -9,7 +9,6 @@ generation:
       incident_threshold: 5
       window_events: 50
       audit_log_path: ".cursor/artifacts/safety/dryrun_audit.jsonl"
-      target_persona_model: "fine_tuned"
   backends:
     base_strong:
       model_name: "ai-sage/GigaChat3-10B-A1.8B"
@@ -21,19 +20,6 @@ generation:
       temperature: 0.4
       top_p: 0.9
       repetition_penalty: 1.25
-      max_tokens: 512
-      seed: 42
-      max_context_chars: 3000
-    fine_tuned:
-      model_name: "saiga-lenin-q4"
-      model_path: "models/saiga/lenin_model.q4_k.gguf"
-      api_style: "completion"
-      ctx_size: 4096
-      n_gpu_layers: 999
-      threads: 4
-      temperature: 0.4
-      top_p: 0.8
-      repetition_penalty: 1.5
       max_tokens: 512
       seed: 42
       max_context_chars: 3000

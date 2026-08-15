@@ -70,14 +70,7 @@ def metric_passes(
 @lru_cache(maxsize=4)
 def load_release_gates(path: str | None = None) -> ReleaseGatesConfig:
     config_path = Path(path) if path else _REPO_ROOT / "config" / "release_gates.yaml"
-    # Shim: old quality_thresholds.yaml still readable if release_gates missing
     if not config_path.is_file():
-        legacy = _REPO_ROOT / "config" / "quality_thresholds.yaml"
-        if legacy.is_file():
-            payload = yaml.safe_load(legacy.read_text(encoding="utf-8")) or {}
-            section = payload.get("quality_thresholds", payload)
-            metrics = _parse_metrics(section)
-            return ReleaseGatesConfig(rag_quality=RagQualityGate(metrics=metrics))
         return ReleaseGatesConfig()
 
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
@@ -86,8 +79,6 @@ def load_release_gates(path: str | None = None) -> ReleaseGatesConfig:
         payload = payload["release_gates"]
     rag_raw = payload.get("rag_quality") or {}
     metrics_raw = rag_raw.get("metrics")
-    if metrics_raw is None and "quality_thresholds" in payload:
-        metrics_raw = payload["quality_thresholds"]
     rag = RagQualityGate(
         enabled=bool(rag_raw.get("enabled", True)),
         tolerance_relative=float(rag_raw.get("tolerance_relative", 0.03)),
