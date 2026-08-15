@@ -1,14 +1,33 @@
 import logging
 import re
+from pathlib import Path
+
 from src.core.adapters.telegram.service import TelegramService
 from src.core.settings.config import Settings
+from src.core.settings.quality_postcheck_config import (
+    default_quality_postcheck_path,
+    get_quality_postcheck_config,
+)
 
 logger = logging.getLogger(__name__)
 
-AI_DISCLAIMER = (
-    "Ответ сгенерирован ИИ в исследовательских целях "
-    "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
-)
+
+def _load_ai_disclaimer() -> str:
+    """Public Telegram footer SoT: quality_postcheck.short_disclaimer."""
+    # src/core/publisher.py -> core -> src -> repo root
+    root = Path(__file__).resolve().parents[2]
+    path = default_quality_postcheck_path(base_dir=root)
+    fallback = (
+        "Ответ сгенерирован ИИ в образовательных целях "
+        "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
+    )
+    if not path.is_file():
+        return fallback
+    cfg = get_quality_postcheck_config(path_str=str(path))
+    return (cfg.short_disclaimer or "").strip() or fallback
+
+
+AI_DISCLAIMER = _load_ai_disclaimer()
 
 _TRIAD_LINE = re.compile(
     r"(?im)^\s*\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:\s*(.*?)(?=\n|$)"

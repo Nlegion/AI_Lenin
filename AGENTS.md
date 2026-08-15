@@ -8,7 +8,7 @@ Project-level guide for Cursor Swarm agents. Read this file before starting any 
 |-------|------------|
 | Language | Python 3 (asyncio) |
 | Runtime entry | `src/main.py` — news fetch → LLM analysis → Telegram publish |
-| LLM inference | llama.cpp (`llama-server.exe`), local GGUF models (`llama_cpp_python` unused) |
+| LLM inference | llama.cpp (`llama-server.exe`) + local GGUF; optional remote **DeepSeek** API (`LLM_PROVIDER=deepseek`; `llama_cpp_python` unused) |
 | ML / NLP | PyTorch, transformers, sentence-transformers, spacy, pymorphy3 |
 | RAG | Qdrant hybrid + embeddings |
 | Database | SQLite via SQLAlchemy async (`aiosqlite`) |
@@ -20,6 +20,8 @@ Project-level guide for Cursor Swarm agents. Read this file before starting any 
 | Training | RAG ontology / worldview stages in `training/` (LLM LoRA abandoned) |
 
 **No web frontend.** User-facing surface is Telegram only.
+
+Legal SoT (do not invent corpus URLs or whole-file PD claims): [`DISCLAIMER.md`](DISCLAIMER.md), [`LICENSE`](LICENSE), [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md), [`NOTICE`](NOTICE). Local corpus: PSS 5th edition, 55 volumes (under gitignored `/data/`).
 
 ## Project Structure
 

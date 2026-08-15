@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-15 — legal-docs-attribution — agent
+### Changed
+- Added root legal pack: `LICENSE` (MIT, repo-authored code/docs only), bilingual `DISCLAIMER.md`, `THIRD_PARTY_LICENSES.md`, `CONTRIBUTING.md`.
+- README: Legal notice, accurate PSS/data paths, DeepSeek provider table; AGENTS Tech Stack + legal SoT link; docs index; NOTICE audit script path.
+- Unified Telegram `AI_DISCLAIMER` with `quality_postcheck.short_disclaimer` («образовательных целях»).
+### Metrics
+| metric | note |
+|--------|------|
+| publisher vs NewsGuard footer | same educational wording SoT |
+### Artifacts
+- `LICENSE`, `DISCLAIMER.md`, `THIRD_PARTY_LICENSES.md`, `CONTRIBUTING.md`
+- `tests/test_publisher_disclaimer.py`
+### Notes
+- Corpus digitization URL still unrecorded; whole PSS files not claimed PD.
+
 ## 2026-08-15 — triad-flatten-cleanup — agent
 ### Changed
 - Restore triad section breaks after consecutive-sentence join in `finalize_generated_text`.

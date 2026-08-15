@@ -42,7 +42,9 @@ def build_generation_backend(
         raise ValueError(
             f"Unsupported api_style={backend_cfg.api_style!r}; only chat_completions is supported"
         )
-    backend_cls = DeepSeekBackend if cfg.provider == "deepseek" else ChatCompletionsBackend
+    backend_cls = (
+        DeepSeekBackend if cfg.provider == "deepseek" else ChatCompletionsBackend
+    )
     return backend_cls(
         server_url=cfg.server_url,
         backend_config=backend_cfg,

@@ -11,7 +11,10 @@ from src.core.generation.prompt_adapter import build_chat_request
 from src.core.llm.chat_completions import ChatCompletionsBackend
 from src.core.llm.deepseek import DeepSeekBackend
 from src.core.llm.factory import build_generation_backend
-from src.core.settings.deepseek_config import DEEPSEEK_DEFAULT_MODEL, DEEPSEEK_DEFAULT_SERVER_URL
+from src.core.settings.deepseek_config import (
+    DEEPSEEK_DEFAULT_MODEL,
+    DEEPSEEK_DEFAULT_SERVER_URL,
+)
 from src.core.settings.generation_config import (
     GenerationConfig,
     apply_generation_env_overrides,
@@ -232,7 +235,9 @@ async def test_deepseek_thinking_enabled_includes_effort():
 
 
 @pytest.mark.asyncio
-async def test_local_default_payload_keeps_llama_fields(monkeypatch: pytest.MonkeyPatch):
+async def test_local_default_payload_keeps_llama_fields(
+    monkeypatch: pytest.MonkeyPatch,
+):
     _clear_llm_env(monkeypatch)
     config = load_generation_config(Path("config/generation.yaml"))
     backend = ChatCompletionsBackend(

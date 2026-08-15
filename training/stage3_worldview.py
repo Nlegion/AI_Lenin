@@ -15,12 +15,11 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[
-                        logging.FileHandler("worldview_builder.log"),
-                        logging.StreamHandler()
-                    ])
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("worldview_builder.log"), logging.StreamHandler()],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -35,64 +34,81 @@ class HistoricalContext:
     def load_events(self):
         """Ключевые исторические события с их влиянием"""
         return {
-            1893: {"event": "Начало революционной деятельности", "impact": "Формирование марксистских взглядов"},
-            1900: {"event": "Основание 'Искры'", "impact": "Развитие организационных принципов"},
-            1905: {"event": "Первая русская революция", "impact": "Теория революционной ситуации"},
-            1914: {"event": "Начало Первой мировой войны", "impact": "Теория империализма"},
+            1893: {
+                "event": "Начало революционной деятельности",
+                "impact": "Формирование марксистских взглядов",
+            },
+            1900: {
+                "event": "Основание 'Искры'",
+                "impact": "Развитие организационных принципов",
+            },
+            1905: {
+                "event": "Первая русская революция",
+                "impact": "Теория революционной ситуации",
+            },
+            1914: {
+                "event": "Начало Первой мировой войны",
+                "impact": "Теория империализма",
+            },
             1917: {"event": "Февральская революция", "impact": "Апрельские тезисы"},
-            1917: {"event": "Октябрьская революция", "impact": "Теория государства и революции"},
-            1921: {"event": "НЭП", "impact": "Пересмотр экономической политики"}
+            1917: {
+                "event": "Октябрьская революция",
+                "impact": "Теория государства и революции",
+            },
+            1921: {"event": "НЭП", "impact": "Пересмотр экономической политики"},
         }
 
     def load_ontological_maps(self, path):
         """Загрузка онтологических карт из Этапа 1"""
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {
-                    'concepts': data.get('concepts', []),
-                    'relations': data.get('relations', []),
-                    'embeddings': data.get('embeddings', {})
+                    "concepts": data.get("concepts", []),
+                    "relations": data.get("relations", []),
+                    "embeddings": data.get("embeddings", {}),
                 }
         except Exception as e:
             logger.error(f"Не удалось загрузить онтологические карты: {str(e)}")
-            return {
-                'concepts': [],
-                'relations': [],
-                'embeddings': {}
-            }
+            return {"concepts": [], "relations": [], "embeddings": {}}
 
     def load_transformation_patterns(self, path):
         """Загрузка паттернов трансформации из Этапа 2"""
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {
-                    'transformations': data.get('transformations', {}),
-                    'interpretations': data.get('interpretations', {})
+                    "transformations": data.get("transformations", {}),
+                    "interpretations": data.get("interpretations", {}),
                 }
         except Exception as e:
             logger.error(f"Не удалось загрузить паттерны трансформации: {str(e)}")
-            return {
-                'transformations': {},
-                'interpretations': {}
-            }
+            return {"transformations": {}, "interpretations": {}}
 
     def get_context_for_year(self, year):
         """Получение исторического контекста для конкретного года"""
         events = [e for y, e in self.key_events.items() if y <= year]
-        return sorted(events, key=lambda x: list(self.key_events.keys())[list(self.key_events.values()).index(x)])
+        return sorted(
+            events,
+            key=lambda x: list(self.key_events.keys())[
+                list(self.key_events.values()).index(x)
+            ],
+        )
 
     def get_ontological_foundation(self, concept):
         """Получение онтологических связей для концепта"""
-        for relation in self.ontological_maps['relations']:
-            if relation['source'] == concept or relation['target'] == concept:
+        for relation in self.ontological_maps["relations"]:
+            if relation["source"] == concept or relation["target"] == concept:
                 return relation
         return {}
 
     def get_transformation_index(self, concept):
         """Получение индекса трансформации для концепта"""
-        return self.transformation_patterns['transformations'].get(concept, {}).get("transformation_index", 1.0)
+        return (
+            self.transformation_patterns["transformations"]
+            .get(concept, {})
+            .get("transformation_index", 1.0)
+        )
 
 
 class TextPreprocessor:
@@ -101,15 +117,50 @@ class TextPreprocessor:
     def __init__(self, historical_context):
         self.historical_context = historical_context
         self.stop_words = self.load_stop_words()
-        self.model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+        self.model = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
 
     def load_stop_words(self):
-        return set([
-            "и", "в", "не", "на", "с", "по", "к", "а", "из", "от", "то",
-            "что", "как", "но", "он", "я", "мы", "вы", "его", "ее", "их",
-            "это", "тот", "этот", "такой", "где", "когда", "даже", "лишь",
-            "уже", "или", "если", "чтобы", "хотя", "за", "до", "после"
-        ])
+        return set(
+            [
+                "и",
+                "в",
+                "не",
+                "на",
+                "с",
+                "по",
+                "к",
+                "а",
+                "из",
+                "от",
+                "то",
+                "что",
+                "как",
+                "но",
+                "он",
+                "я",
+                "мы",
+                "вы",
+                "его",
+                "ее",
+                "их",
+                "это",
+                "тот",
+                "этот",
+                "такой",
+                "где",
+                "когда",
+                "даже",
+                "лишь",
+                "уже",
+                "или",
+                "если",
+                "чтобы",
+                "хотя",
+                "за",
+                "до",
+                "после",
+            ]
+        )
 
     def clean_text(self, text):
         text = re.sub(r"[^а-яА-ЯёЁ\s\-]", "", text)
@@ -119,7 +170,9 @@ class TextPreprocessor:
 
     def tokenize(self, text):
         tokens = text.split()
-        return [token for token in tokens if token not in self.stop_words and len(token) > 2]
+        return [
+            token for token in tokens if token not in self.stop_words and len(token) > 2
+        ]
 
     def preprocess(self, text):
         cleaned = self.clean_text(text)
@@ -139,14 +192,32 @@ class StylometricAnalyzer:
 
     def __init__(self):
         self.function_words = [
-            "и", "в", "не", "на", "с", "по", "к", "а", "из", "от", "то",
-            "что", "как", "но", "же", "бы", "вот", "ли", "только", "уже"
+            "и",
+            "в",
+            "не",
+            "на",
+            "с",
+            "по",
+            "к",
+            "а",
+            "из",
+            "от",
+            "то",
+            "что",
+            "как",
+            "но",
+            "же",
+            "бы",
+            "вот",
+            "ли",
+            "только",
+            "уже",
         ]
 
     def analyze(self, text):
         """Многоуровневый стилометрический анализ"""
         # Разделение на предложения
-        sentences = [s.strip() for s in re.split(r'[.!?]', text) if s.strip()]
+        sentences = [s.strip() for s in re.split(r"[.!?]", text) if s.strip()]
 
         # Разделение на слова
         words = text.split()
@@ -159,12 +230,12 @@ class StylometricAnalyzer:
 
         # Расчет метрик
         return {
-            'sentence_length': self.avg_sentence_length(sentences),
-            'lexical_diversity': len(unique_words) / len(words),
-            'function_words': self.function_word_frequency(words),
-            'punctuation': self.punctuation_analysis(text),
-            'paragraph_length': self.avg_paragraph_length(text),
-            'word_length': np.mean([len(word) for word in words])
+            "sentence_length": self.avg_sentence_length(sentences),
+            "lexical_diversity": len(unique_words) / len(words),
+            "function_words": self.function_word_frequency(words),
+            "punctuation": self.punctuation_analysis(text),
+            "paragraph_length": self.avg_paragraph_length(text),
+            "word_length": np.mean([len(word) for word in words]),
         }
 
     def avg_sentence_length(self, sentences):
@@ -184,42 +255,45 @@ class StylometricAnalyzer:
     def punctuation_analysis(self, text):
         """Анализ использования пунктуации"""
         return {
-            'comma': text.count(','),
-            'semicolon': text.count(';'),
-            'colon': text.count(':'),
-            'dash': text.count('—'),
-            'quote': text.count('"') + text.count("'"),
-            'parenthesis': text.count('(') + text.count(')')
+            "comma": text.count(","),
+            "semicolon": text.count(";"),
+            "colon": text.count(":"),
+            "dash": text.count("—"),
+            "quote": text.count('"') + text.count("'"),
+            "parenthesis": text.count("(") + text.count(")"),
         }
 
     def avg_paragraph_length(self, text):
         """Средняя длина абзаца в предложениях"""
-        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
         if not paragraphs:
             return 0
-        return np.mean([len(re.split(r'[.!?]', p)) for p in paragraphs])
+        return np.mean([len(re.split(r"[.!?]", p)) for p in paragraphs])
 
     def compare(self, profile1, profile2):
         """Вычисление стилометрического сходства"""
         # Весовые коэффициенты
         weights = {
-            'sentence_length': 0.25,
-            'lexical_diversity': 0.20,
-            'function_words': 0.30,
-            'word_length': 0.15,
-            'paragraph_length': 0.10
+            "sentence_length": 0.25,
+            "lexical_diversity": 0.20,
+            "function_words": 0.30,
+            "word_length": 0.15,
+            "paragraph_length": 0.10,
         }
 
         # Сравнение по каждому параметру
         scores = {
-            'sentence_length': 1 - abs(profile1['sentence_length'] - profile2['sentence_length']) / 50,
-            'lexical_diversity': 1 - abs(profile1['lexical_diversity'] - profile2['lexical_diversity']),
-            'function_words': self.compare_function_words(
-                profile1['function_words'],
-                profile2['function_words']
+            "sentence_length": 1
+            - abs(profile1["sentence_length"] - profile2["sentence_length"]) / 50,
+            "lexical_diversity": 1
+            - abs(profile1["lexical_diversity"] - profile2["lexical_diversity"]),
+            "function_words": self.compare_function_words(
+                profile1["function_words"], profile2["function_words"]
             ),
-            'word_length': 1 - abs(profile1['word_length'] - profile2['word_length']) / 3,
-            'paragraph_length': 1 - abs(profile1['paragraph_length'] - profile2['paragraph_length']) / 5
+            "word_length": 1
+            - abs(profile1["word_length"] - profile2["word_length"]) / 3,
+            "paragraph_length": 1
+            - abs(profile1["paragraph_length"] - profile2["paragraph_length"]) / 5,
         }
 
         # Общий взвешенный балл
@@ -259,8 +333,11 @@ class ConceptualNetworkBuilder:
             if not preprocessed_text.strip():
                 return []
 
-            vectorizer = TfidfVectorizer(max_features=n * 2) if len(tokens) > 100 else CountVectorizer(
-                max_features=n * 2)
+            vectorizer = (
+                TfidfVectorizer(max_features=n * 2)
+                if len(tokens) > 100
+                else CountVectorizer(max_features=n * 2)
+            )
             vectorizer.fit([preprocessed_text])
             terms = vectorizer.get_feature_names_out()
 
@@ -270,7 +347,9 @@ class ConceptualNetworkBuilder:
                 # Учет трансформации концепта из Этапа 2
                 transformation = self.historical_context.get_transformation_index(term)
                 # Учет онтологических связей из Этапа 1
-                ontological_links = self.historical_context.get_ontological_foundation(term)
+                ontological_links = self.historical_context.get_ontological_foundation(
+                    term
+                )
                 ontological_score = len(ontological_links) if ontological_links else 0
                 score = transformation * (1 + ontological_score * 0.1)
                 ranked_terms.append((term, score))
@@ -295,22 +374,35 @@ class ConceptualNetworkBuilder:
                 context = self.historical_context.get_context_for_year(year)
 
                 # Добавляем исторический контекст как атрибуты узла
-                graph.add_node(author, type="text", year=year, context=context,
-                               author=author_labels[i] if author_labels else "unknown")
+                graph.add_node(
+                    author,
+                    type="text",
+                    year=year,
+                    context=context,
+                    author=author_labels[i] if author_labels else "unknown",
+                )
 
                 # Извлечение терминов с учетом исторического контекста
                 text_terms = self.extract_key_terms(text, year, n=15)
                 for term in text_terms:
                     if term not in graph:
                         # Добавляем онтологические связи из Этапа 1
-                        ontological = self.historical_context.get_ontological_foundation(term)
+                        ontological = (
+                            self.historical_context.get_ontological_foundation(term)
+                        )
                         # Добавляем индекс трансформации из Этапа 2
-                        transformation = self.historical_context.get_transformation_index(term)
-                        graph.add_node(term, type="concept", ontological=ontological,
-                                       transformation=transformation)
+                        transformation = (
+                            self.historical_context.get_transformation_index(term)
+                        )
+                        graph.add_node(
+                            term,
+                            type="concept",
+                            ontological=ontological,
+                            transformation=transformation,
+                        )
 
                     # Усиливаем связь для трансформированных концептов
-                    weight = 1.0 * graph.nodes[term].get('transformation', 1.0)
+                    weight = 1.0 * graph.nodes[term].get("transformation", 1.0)
                     graph.add_edge(author, term, weight=weight)
 
             # Построение связей между терминами
@@ -330,7 +422,7 @@ class ConceptualNetworkBuilder:
         for text, year in zip(texts, dates):
             text_terms = self.extract_key_terms(text, year, n=30)
             for i, term1 in enumerate(text_terms):
-                for term2 in text_terms[i + 1:]:
+                for term2 in text_terms[i + 1 :]:
                     term_cooccurrence[term1][term2] += 1
                     term_cooccurrence[term2][term1] += 1
                     term_evolution[term1][term2].append(year)
@@ -346,8 +438,8 @@ class ConceptualNetworkBuilder:
 
                     # Учет онтологических связей
                     ontological_match = self.calculate_ontological_similarity(
-                        graph.nodes[term1].get('ontological', {}),
-                        graph.nodes[term2].get('ontological', {})
+                        graph.nodes[term1].get("ontological", {}),
+                        graph.nodes[term2].get("ontological", {}),
                     )
 
                     weight = count * stability * ontological_match
@@ -360,11 +452,11 @@ class ConceptualNetworkBuilder:
 
         # Простой расчет схожести на основе общих связей
         common = 0
-        if 'source' in onto1 and 'source' in onto2:
-            if onto1['source'] == onto2['source'] or onto1['source'] == onto2['target']:
+        if "source" in onto1 and "source" in onto2:
+            if onto1["source"] == onto2["source"] or onto1["source"] == onto2["target"]:
                 common += 1
-        if 'target' in onto1 and 'target' in onto2:
-            if onto1['target'] == onto2['target'] or onto1['target'] == onto2['source']:
+        if "target" in onto1 and "target" in onto2:
+            if onto1["target"] == onto2["target"] or onto1["target"] == onto2["source"]:
                 common += 1
 
         return 1 + common * 0.2
@@ -373,8 +465,9 @@ class ConceptualNetworkBuilder:
 class LeninWorldviewTemplateBuilder:
     """Финальная версия построителя шаблона мировоззрения"""
 
-    def __init__(self, lenin_pss_path, references_path, output_dir,
-                 stage1_path, stage2_path):
+    def __init__(
+        self, lenin_pss_path, references_path, output_dir, stage1_path, stage2_path
+    ):
         self.lenin_pss_path = lenin_pss_path
         self.references_path = references_path
         self.output_dir = output_dir
@@ -385,8 +478,7 @@ class LeninWorldviewTemplateBuilder:
         self.preprocessor = TextPreprocessor(self.historical_context)
         self.stylometric_analyzer = StylometricAnalyzer()
         self.conceptual_builder = ConceptualNetworkBuilder(
-            self.preprocessor,
-            self.historical_context
+            self.preprocessor, self.historical_context
         )
 
         # Данные
@@ -414,20 +506,24 @@ class LeninWorldviewTemplateBuilder:
         self.lenin_dates = []
 
         for vol_file in sorted(os.listdir(self.lenin_pss_path)):
-            if vol_file.endswith('.txt'):
+            if vol_file.endswith(".txt"):
                 vol_path = os.path.join(self.lenin_pss_path, vol_file)
                 try:
-                    with open(vol_path, 'r', encoding='utf-8', errors='replace') as f:
+                    with open(vol_path, "r", encoding="utf-8", errors="replace") as f:
                         text = f.read()
-                        if len(text.strip()) > 1000:  # Пропускаем слишком короткие файлы
+                        if (
+                            len(text.strip()) > 1000
+                        ):  # Пропускаем слишком короткие файлы
                             self.lenin_texts.append(text)
 
                             # Извлечение года
-                            year_match = re.search(r'\d{4}', vol_file)
+                            year_match = re.search(r"\d{4}", vol_file)
                             year = int(year_match.group()) if year_match else 1900
                             self.lenin_dates.append(year)
                         else:
-                            logger.warning(f"Файл {vol_file} слишком короткий, пропущен")
+                            logger.warning(
+                                f"Файл {vol_file} слишком короткий, пропущен"
+                            )
                 except Exception as e:
                     logger.error(f"Ошибка загрузки файла {vol_file}: {str(e)}")
 
@@ -441,21 +537,29 @@ class LeninWorldviewTemplateBuilder:
             author_path = os.path.join(self.references_path, author_dir)
             if os.path.isdir(author_path):
                 for work_file in os.listdir(author_path):
-                    if work_file.endswith('.txt'):
+                    if work_file.endswith(".txt"):
                         work_path = os.path.join(author_path, work_file)
                         try:
-                            with open(work_path, 'r', encoding='utf-8', errors='replace') as f:
+                            with open(
+                                work_path, "r", encoding="utf-8", errors="replace"
+                            ) as f:
                                 text = f.read()
-                                if len(text.strip()) > 500:  # Пропускаем слишком короткие файлы
+                                if (
+                                    len(text.strip()) > 500
+                                ):  # Пропускаем слишком короткие файлы
                                     self.reference_texts.append(text)
                                     self.reference_authors.append(author_dir)
 
                                     # Оценочная датировка для референсов
-                                    year_match = re.search(r'\d{4}', work_file)
-                                    year = int(year_match.group()) if year_match else 1850
+                                    year_match = re.search(r"\d{4}", work_file)
+                                    year = (
+                                        int(year_match.group()) if year_match else 1850
+                                    )
                                     self.reference_dates.append(year)
                                 else:
-                                    logger.warning(f"Файл {work_file} слишком короткий, пропущен")
+                                    logger.warning(
+                                        f"Файл {work_file} слишком короткий, пропущен"
+                                    )
                         except Exception as e:
                             logger.error(f"Ошибка загрузки файла {work_file}: {str(e)}")
 
@@ -467,9 +571,7 @@ class LeninWorldviewTemplateBuilder:
         all_authors = ["lenin"] * len(self.lenin_texts) + self.reference_authors
 
         self.full_conceptual_network = self.conceptual_builder.build_network(
-            all_texts,
-            all_dates,
-            all_authors
+            all_texts, all_dates, all_authors
         )
 
         # Визуализация сети
@@ -488,17 +590,19 @@ class LeninWorldviewTemplateBuilder:
         labels = {}
 
         for node in self.full_conceptual_network.nodes:
-            node_type = self.full_conceptual_network.nodes[node].get('type', '')
-            if node_type == 'text' and 'lenin' in node:
-                node_colors.append('red')
+            node_type = self.full_conceptual_network.nodes[node].get("type", "")
+            if node_type == "text" and "lenin" in node:
+                node_colors.append("red")
                 node_sizes.append(100)
-                labels[node] = 'Ленин'
-            elif node_type == 'text':
-                node_colors.append('blue')
+                labels[node] = "Ленин"
+            elif node_type == "text":
+                node_colors.append("blue")
                 node_sizes.append(80)
-                labels[node] = self.full_conceptual_network.nodes[node].get('author', '')
+                labels[node] = self.full_conceptual_network.nodes[node].get(
+                    "author", ""
+                )
             else:
-                node_colors.append('green')
+                node_colors.append("green")
                 node_sizes.append(30)
                 # Показываем только ключевые концепты
                 if self.full_conceptual_network.degree[node] > 2:
@@ -512,7 +616,7 @@ class LeninWorldviewTemplateBuilder:
             node_color=node_colors,
             node_size=node_sizes,
             edge_color="gray",
-            alpha=0.6
+            alpha=0.6,
         )
 
         # Ручная подпись ключевых узлов
@@ -523,7 +627,7 @@ class LeninWorldviewTemplateBuilder:
                     pos[node][1],
                     label,
                     fontsize=8,
-                    bbox=dict(facecolor='white', alpha=0.7)
+                    bbox=dict(facecolor="white", alpha=0.7),
                 )
 
         plt.title("Концептуальная сеть мировоззрения Ленина", fontsize=16)
@@ -535,9 +639,12 @@ class LeninWorldviewTemplateBuilder:
         logger.info("Идентификация уникальных паттернов Ленина")
 
         # Сбор данных по Ленину из сети
-        lenin_nodes = [n for n in self.full_conceptual_network.nodes
-                       if self.full_conceptual_network.nodes[n].get('type') == 'text'
-                       and self.full_conceptual_network.nodes[n].get('author') == 'lenin']
+        lenin_nodes = [
+            n
+            for n in self.full_conceptual_network.nodes
+            if self.full_conceptual_network.nodes[n].get("type") == "text"
+            and self.full_conceptual_network.nodes[n].get("author") == "lenin"
+        ]
 
         lenin_concepts = set()
         for node in lenin_nodes:
@@ -547,7 +654,7 @@ class LeninWorldviewTemplateBuilder:
         # Анализ уникальных концептов
         unique_patterns = []
         for concept in lenin_concepts:
-            if self.full_conceptual_network.nodes[concept].get('type') != 'concept':
+            if self.full_conceptual_network.nodes[concept].get("type") != "concept":
                 continue
 
             # Данные из первых этапов
@@ -557,32 +664,47 @@ class LeninWorldviewTemplateBuilder:
             # Связи в сети
             connections = []
             for neighbor in self.full_conceptual_network.neighbors(concept):
-                if self.full_conceptual_network.nodes[neighbor].get('type') == 'concept':
-                    weight = self.full_conceptual_network[concept][neighbor].get('weight', 0)
-                    years = self.full_conceptual_network[concept][neighbor].get('years', [])
-                    connections.append({
-                        'concept': neighbor,
-                        'weight': weight,
-                        'years': sorted(list(set(years)))
-                    })
+                if (
+                    self.full_conceptual_network.nodes[neighbor].get("type")
+                    == "concept"
+                ):
+                    weight = self.full_conceptual_network[concept][neighbor].get(
+                        "weight", 0
+                    )
+                    years = self.full_conceptual_network[concept][neighbor].get(
+                        "years", []
+                    )
+                    connections.append(
+                        {
+                            "concept": neighbor,
+                            "weight": weight,
+                            "years": sorted(list(set(years))),
+                        }
+                    )
 
-            unique_patterns.append({
-                'concept': concept,
-                'transformation': transformation,
-                'ontological_links': ontological,
-                'connections': sorted(connections, key=lambda x: x['weight'], reverse=True)[:5]
-            })
+            unique_patterns.append(
+                {
+                    "concept": concept,
+                    "transformation": transformation,
+                    "ontological_links": ontological,
+                    "connections": sorted(
+                        connections, key=lambda x: x["weight"], reverse=True
+                    )[:5],
+                }
+            )
 
         # Формирование шаблона
         self.worldview_template = {
-            'metadata': {
-                'created': datetime.datetime.now().isoformat(),
-                'lenin_volumes': len(self.lenin_texts),
-                'reference_authors': list(set(self.reference_authors)),
-                'historical_events': self.historical_context.key_events
+            "metadata": {
+                "created": datetime.datetime.now().isoformat(),
+                "lenin_volumes": len(self.lenin_texts),
+                "reference_authors": list(set(self.reference_authors)),
+                "historical_events": self.historical_context.key_events,
             },
-            'unique_patterns': sorted(unique_patterns, key=lambda x: x['transformation'], reverse=True),
-            'evolution': self.analyze_evolution()
+            "unique_patterns": sorted(
+                unique_patterns, key=lambda x: x["transformation"], reverse=True
+            ),
+            "evolution": self.analyze_evolution(),
         }
 
     def analyze_evolution(self):
@@ -593,12 +715,15 @@ class LeninWorldviewTemplateBuilder:
         periods = {
             (1890, 1905): "Ранний период",
             (1905, 1917): "Революционный период",
-            (1917, 1924): "Послереволюционный период"
+            (1917, 1924): "Послереволюционный период",
         }
 
         for (start, end), period_name in periods.items():
-            period_texts = [text for text, year in zip(self.lenin_texts, self.lenin_dates)
-                            if start <= year <= end]
+            period_texts = [
+                text
+                for text, year in zip(self.lenin_texts, self.lenin_dates)
+                if start <= year <= end
+            ]
             period_dates = [year for year in self.lenin_dates if start <= year <= end]
 
             if not period_texts:
@@ -607,21 +732,28 @@ class LeninWorldviewTemplateBuilder:
             # Анализ концептов периода
             concepts = []
             for text, year in zip(period_texts, period_dates):
-                concepts.extend(self.conceptual_builder.extract_key_terms(text, year, n=10))
+                concepts.extend(
+                    self.conceptual_builder.extract_key_terms(text, year, n=10)
+                )
 
             concept_counts = Counter(concepts)
-            top_concepts = [concept for concept, count in concept_counts.most_common(10)]
+            top_concepts = [
+                concept for concept, count in concept_counts.most_common(10)
+            ]
 
             # Исторический контекст периода
-            context_events = [e for year, e in self.historical_context.key_events.items()
-                              if start <= year <= end]
+            context_events = [
+                e
+                for year, e in self.historical_context.key_events.items()
+                if start <= year <= end
+            ]
 
             # Формирование данных периода
             evolution[period_name] = {
-                'years': f"{start}-{end}",
-                'top_concepts': top_concepts,
-                'historical_events': context_events,
-                'text_samples': len(period_texts)
+                "years": f"{start}-{end}",
+                "top_concepts": top_concepts,
+                "historical_events": context_events,
+                "text_samples": len(period_texts),
             }
 
         return evolution
@@ -629,7 +761,11 @@ class LeninWorldviewTemplateBuilder:
     def export_template(self):
         """Экспорт финального шаблона"""
         logger.info("Экспорт шаблона")
-        with open(os.path.join(self.output_dir, "lenin_worldview_template.json"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(self.output_dir, "lenin_worldview_template.json"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(self.worldview_template, f, ensure_ascii=False, indent=2)
         logger.info(f"Шаблон сохранен в {self.output_dir}")
 
@@ -655,11 +791,11 @@ class LeninWorldviewTemplateBuilder:
 def combine_stage_data(ontology_path, specificity_path, output_path):
     """Объединение данных этапов 1 и 2"""
     # Загрузка данных этапа 1
-    with open(ontology_path, 'r', encoding='utf-8') as f:
+    with open(ontology_path, "r", encoding="utf-8") as f:
         ontology = json.load(f)
 
     # Загрузка данных этапа 2
-    with open(specificity_path, 'r', encoding='utf-8') as f:
+    with open(specificity_path, "r", encoding="utf-8") as f:
         specificity = json.load(f)
 
     # Создаем объединенную структуру
@@ -667,7 +803,7 @@ def combine_stage_data(ontology_path, specificity_path, output_path):
         "transformations": {},
         "interpretations": {},
         "relations": ontology.get("relations", []),
-        "embeddings": {}
+        "embeddings": {},
     }
 
     # Сопоставляем концепты
@@ -678,13 +814,19 @@ def combine_stage_data(ontology_path, specificity_path, output_path):
     for concept in analyzed_concepts:
         if concept in specificity.get("transformations", {}):
             combined["transformations"][concept] = {
-                "transformation_index": specificity["transformations"][concept].get("transformation_index", 1.0),
-                "occurrences": specificity["transformations"][concept].get("occurrences", 0)
+                "transformation_index": specificity["transformations"][concept].get(
+                    "transformation_index", 1.0
+                ),
+                "occurrences": specificity["transformations"][concept].get(
+                    "occurrences", 0
+                ),
             }
 
         if concept in specificity.get("interpretations", {}):
             combined["interpretations"][concept] = {
-                "original_embedding": specificity["interpretations"][concept].get("original_embedding", [])
+                "original_embedding": specificity["interpretations"][concept].get(
+                    "original_embedding", []
+                )
             }
 
     # Добавляем недостающие концепты из этапа 1
@@ -695,11 +837,11 @@ def combine_stage_data(ontology_path, specificity_path, output_path):
             # Для непроанализированных концептов используем нейтральные значения
             combined["transformations"][concept] = {
                 "transformation_index": 1.0,
-                "occurrences": 0
+                "occurrences": 0,
             }
 
     # Сохраняем объединенные данные
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(combined, f, ensure_ascii=False, indent=2)
 
     print(f"Объединенные данные сохранены в {output_path}")
@@ -722,7 +864,7 @@ if __name__ == "__main__":
     combine_stage_data(
         ontology_path=STAGE1_PATH,
         specificity_path=STAGE2_PATH,
-        output_path=COMBINED_PATH
+        output_path=COMBINED_PATH,
     )
 
     # Создаем и запускаем построитель шаблона
@@ -731,7 +873,7 @@ if __name__ == "__main__":
         references_path=REFERENCES_PATH,
         output_dir=OUTPUT_DIR,
         stage1_path=STAGE1_PATH,
-        stage2_path=STAGE2_PATH
+        stage2_path=STAGE2_PATH,
     )
 
     if builder.execute_pipeline():

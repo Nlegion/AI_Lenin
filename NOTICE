@@ -11,4 +11,7 @@ Current explicitly allowed license examples:
 - CC-BY-4.0
 
 Any dataset whose license changes to a non-allowed or unknown value is blocked by:
-- scripts/audit_external_dataset_licenses.py
+- scripts/corpus/audit_external_dataset_licenses.py
+
+Key third-party libraries, models, and external services (non-exhaustive):
+- THIRD_PARTY_LICENSES.md

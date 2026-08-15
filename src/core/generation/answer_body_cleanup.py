@@ -116,7 +116,9 @@ def _protect_safety_tails(text: str) -> tuple[str, str]:
                 abs_pos = raw.casefold().rfind(_DISCLAIMER_HINT)
                 content_part = raw[:abs_pos].rstrip()
                 disc_part = raw[abs_pos:].lstrip()
-                body_lines = [*lines[:idx], content_part] if content_part else list(lines[:idx])
+                body_lines = (
+                    [*lines[:idx], content_part] if content_part else list(lines[:idx])
+                )
                 body = "\n".join(body_lines).rstrip()
                 tail = "\n".join([disc_part, *lines[idx + 1 :]]).strip("\n")
                 return body, ("\n" + tail if body and tail else tail)

@@ -38,6 +38,7 @@ def _pipeline_with(*, dialectical_enabled: bool, evidence_builder, context_build
     pipe.backend = _DummyBackend()
     pipe.config = SimpleNamespace(
         persona_model="test",
+        provider="llama",
         safety=SimpleNamespace(
             post_filter=False, fallback=SimpleNamespace(enabled=False)
         ),

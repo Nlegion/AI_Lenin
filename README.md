@@ -121,14 +121,16 @@ RAG here means **indexing a labeled corpus**, not training a new LLM. LoRA / Sai
 
 | Source | Used for | Location / config |
 |--------|----------|-------------------|
-| Lenin PSS and related works | R1 `core_self` | `data/books` paths `pss/`, `single/` (`config/source_registry_rules.yaml`) |
-| Marx / Engels | R2 `influence_agree` | `data/books` path `МарксЭнгельс/` |
-| Bernstein, Kautsky, Mensheviks, revisionism | R3 `influence_critical` | author lists in the same YAML |
+| Lenin PSS (5th ed., 55 vols, Politizdat Moscow 1967) | R1 `core_self` | Local trees under `data/books/`: `intellectual/Ленин/pss/`, `ultimate_cleaned_ontology/Ленин/pss/`, plus `…/single/` (`config/source_registry_rules.yaml`) |
+| Marx / Engels | R2 `influence_agree` | `data/books/…/МарксЭнгельс/` |
+| Critical / revisionist authors | R3 `influence_critical` | Author lists in the same YAML (files may be absent; registry can show `influence_critical: 0`) |
 | Live news | Product input | TASS RSS `https://tass.ru/rss/v2.xml` only (`NewsFetcher`) |
 | Quality fixtures | Offline QA, no Telegram | `tests/fixtures/quality/`, `data/eval/` (gitignored) |
-| External news/hate sets | Censorship eval only, open-license | `config/external_dataset_sources.yaml` |
+| External news/hate sets | Censorship eval only | [`config/external_dataset_sources.yaml`](config/external_dataset_sources.yaml); attribution in [`NOTICE`](NOTICE) |
 
-`data/books`, `models/`, `database/` are gitignored. `NEWSAPI_KEY` is optional leftover config; production fetch is TASS RSS.
+Entire `/data/` (including books), `models/`, and `database/` are gitignored — corpus is not shipped with the repo. Digitization URL is not recorded. Lenin’s own writings are generally public domain in many jurisdictions; **whole PSS volume files are not claimed PD** (Soviet editorial apparatus). Path/`author` labels are RAG classification, not legal attribution. See [`DISCLAIMER.md`](DISCLAIMER.md).
+
+`NEWSAPI_KEY` is optional leftover config; production fetch is TASS RSS.
 
 ### Rebuild index
 
@@ -142,7 +144,14 @@ python scripts/retrieval/ensure_qdrant_stance_index.py
 
 ## Generation backend
 
-Default persona is **GigaChat3** (`persona_model: base_strong` in [`config/generation.yaml`](config/generation.yaml)):
+Providers: `llama` (default, local GigaChat3 via `llama-server`) or `deepseek` (remote API). Switch with `LLM_PROVIDER` / `generation.provider` in [`config/generation.yaml`](config/generation.yaml). Details: [`docs/llm_client.md`](docs/llm_client.md). API keys and ToS compliance are the operator’s responsibility; secrets must not be committed.
+
+| Provider | Runtime | Notes |
+|----------|---------|--------|
+| `llama` | Local `llama-server` + GGUF | Default; persona `base_strong` |
+| `deepseek` | Remote HTTPS API | Requires `LLM_SPAWN_LOCAL=false` and `DEEPSEEK_API_KEY` / `LLM_API_KEY` |
+
+Default local persona is **GigaChat3** (`persona_model: base_strong`):
 
 | Key | Value |
 |-----|--------|
@@ -277,3 +286,16 @@ When `semantic_core` is enabled: warn-only if the model hedges around an empty/e
 | `.cursor/artifacts/human_eval/` | Human label batches / pilot scores |
 | `.cursor/artifacts/quality/` | Quality QA batch dumps (`.txt` / `.jsonl` / checkpoint) |
 | `.cursor/artifacts/safety/` | Warn audits / dry-run audit logs |
+
+## Legal notice
+
+This project is an **educational / research simulation**. Generated texts are produced by AI from a local Lenin corpus and do **not** represent the authors’ position, any organization or state, or a call to action. Responsibility for use rests with the end user / instance operator. Repository-authored code and documentation are MIT ([LICENSE](LICENSE)); that license does **not** cover the local corpus, news feeds, model weights, or third-party packages.
+
+Full notice: [`DISCLAIMER.md`](DISCLAIMER.md).  
+Key libraries / models / services: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).  
+Eval dataset attribution: [`NOTICE`](NOTICE).  
+Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+### Юридическая информация (кратко)
+
+Проект — **образовательная / исследовательская симуляция**. Сгенерированные тексты созданы ИИ на основе локального корпуса трудов В.И. Ленина и не отражают позицию авторов проекта, не являются призывом к действию и не могут считаться официальной позицией. Проект не аффилирован с политическими или государственными структурами. Ответственность за использование лежит на конечном пользователе. Подробнее: [`DISCLAIMER.md`](DISCLAIMER.md).

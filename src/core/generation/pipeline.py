@@ -33,6 +33,17 @@ from src.core.generation.context_budget import (
 )
 from src.core.llm.factory import build_generation_backend
 from src.core.generation.postprocess_clean import apply_terminal_public_scrub
+from src.core.generation.deepseek_prompts import (
+    DEEPSEEK_QUOTE_FEEDBACK,
+    build_deepseek_chat_request,
+    build_deepseek_dialectical_chat_request,
+)
+from src.core.generation.deepseek_quote_validate import (
+    deepseek_raw_quote_ok,
+    finalize_deepseek_quotes,
+    quote_grounded_in_excerpts,
+)
+from src.core.generation.deepseek_r1_excerpts import build_deepseek_r1_excerpts
 from src.core.generation.prompt_adapter import (
     build_chat_request,
     build_dialectical_chat_request,
@@ -571,6 +582,23 @@ class AnalysisGenerationPipeline:
                     user_prompt=request_user,
                 )
 
+        use_deepseek = getattr(self.config, "provider", "llama") == "deepseek"
+        deepseek_excerpts = (
+            build_deepseek_r1_excerpts(
+                brief=brief,
+                config=postcheck_cfg,
+                news_text=news_blob,
+            )
+            if use_deepseek
+            else None
+        )
+        deepseek_usable = bool(deepseek_excerpts and deepseek_excerpts.usable)
+        postcheck_candidates = (
+            list(deepseek_excerpts.candidates)
+            if deepseek_usable and deepseek_excerpts is not None
+            else quote_candidates
+        )
+
         request = None
         prompt_builder = "chat"
         for _ in range(6):
@@ -578,7 +606,50 @@ class AnalysisGenerationPipeline:
                 working_context,
                 max_chunks=budget.max_context_chunks,
             )
-            if dialectical_prompt:
+            if use_deepseek:
+                excerpts_block = (
+                    deepseek_excerpts.block if deepseek_excerpts is not None else ""
+                )
+                if dialectical_prompt:
+                    prompt_builder = "dialectical_chat"
+                    request = build_deepseek_dialectical_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=clipped,
+                        max_context_chars=budget.max_context_chars,
+                        excerpts_block=excerpts_block,
+                        usable_excerpts=deepseek_usable,
+                        feedback=feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        context_hints=applied_hints,
+                    )
+                else:
+                    prompt_builder = "chat"
+                    request = build_deepseek_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=clipped,
+                        max_context_chars=budget.max_context_chars,
+                        excerpts_block=excerpts_block,
+                        usable_excerpts=deepseek_usable,
+                        feedback=feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                        legacy_fallback=legacy_fallback,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        context_hints=applied_hints,
+                    )
+            elif dialectical_prompt:
                 prompt_builder = "dialectical_chat"
                 request = build_dialectical_chat_request(
                     news_title=news_title,
@@ -630,21 +701,114 @@ class AnalysisGenerationPipeline:
         if request is None:
             raise RuntimeError("generation request was not prepared")
         response = await self.backend.generate(request=request)
+        total_latency_ms = int(response.latency_ms)
+        deepseek_regen_count = 0
         text = response.text
         if self.text_cleaner is not None and hasattr(self.text_cleaner, "clean_text"):
             text = self.text_cleaner.clean_text(text)
         text, dedupe_meta = finalize_generated_text(text)
 
+        deepseek_raw_quote_valid = False
+        if use_deepseek and deepseek_excerpts is not None:
+            deepseek_raw_quote_valid = deepseek_raw_quote_ok(
+                text=text,
+                excerpts=deepseek_excerpts.candidates,
+                usable_excerpts=deepseek_usable,
+            )
+            if deepseek_usable and not deepseek_raw_quote_valid:
+                regen_feedback = list(feedback or [])
+                regen_feedback.append(DEEPSEEK_QUOTE_FEEDBACK)
+                excerpts_block = deepseek_excerpts.block
+                if dialectical_prompt:
+                    request = build_deepseek_dialectical_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=working_context,
+                        max_context_chars=budget.max_context_chars,
+                        excerpts_block=excerpts_block,
+                        usable_excerpts=True,
+                        feedback=regen_feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        context_hints=applied_hints,
+                    )
+                else:
+                    request = build_deepseek_chat_request(
+                        news_title=news_title,
+                        news_content=news_content,
+                        context=working_context,
+                        max_context_chars=budget.max_context_chars,
+                        excerpts_block=excerpts_block,
+                        usable_excerpts=True,
+                        feedback=regen_feedback,
+                        synthesis_hints=synthesis_hints,
+                        hint_only=hint_only,
+                        legacy_fallback=legacy_fallback,
+                        social_primary=social_primary,
+                        empty_r1=empty_r1,
+                        fact_opinion=fact_opinion,
+                        risk_tier=risk_tier,
+                        sport_primary=sport_primary,
+                        context_hints=applied_hints,
+                    )
+                response = await self.backend.generate(request=request)
+                total_latency_ms += int(response.latency_ms)
+                deepseek_regen_count = 1
+                text = response.text
+                if self.text_cleaner is not None and hasattr(
+                    self.text_cleaner, "clean_text"
+                ):
+                    text = self.text_cleaner.clean_text(text)
+                text, dedupe_meta = finalize_generated_text(text)
+                deepseek_raw_quote_valid = deepseek_raw_quote_ok(
+                    text=text,
+                    excerpts=deepseek_excerpts.candidates,
+                    usable_excerpts=True,
+                )
+
         text, quality_meta = apply_quality_post_generate(
             text=text,
             chunks=chunks,
-            candidates=quote_candidates,
+            candidates=postcheck_candidates,
             brief=brief,
             config=postcheck_cfg,
             context_has_quotes=context_has_quotes,
             news_text=news_blob,
             combat_sensitive=False,
         )
+        if use_deepseek:
+            cleanup_flags: dict[str, bool] = {}
+            if deepseek_excerpts is not None:
+                text, cleanup_flags = finalize_deepseek_quotes(
+                    text=text,
+                    excerpts=deepseek_excerpts.candidates,
+                    usable_excerpts=deepseek_usable,
+                )
+            post_quote_valid = (
+                quote_grounded_in_excerpts(
+                    text=text,
+                    excerpts=deepseek_excerpts.candidates,
+                )
+                if deepseek_usable and deepseek_excerpts is not None
+                else False
+            )
+            quality_meta["deepseek_raw_quote_valid"] = deepseek_raw_quote_valid
+            quality_meta["deepseek_quote_valid"] = post_quote_valid
+            quality_meta["deepseek_regen_count"] = deepseek_regen_count
+            quality_meta["deepseek_quote_unfulfilled"] = bool(
+                deepseek_usable and not post_quote_valid
+            )
+            quality_meta["provider"] = "deepseek"
+            if deepseek_excerpts is not None:
+                quality_meta["deepseek_best_link_score"] = float(
+                    deepseek_excerpts.best_link_score
+                )
+            quality_meta.update(cleanup_flags)
         text, post_quality_clamped = clamp_answer_length(text)
         if post_quality_clamped:
             quality_meta["answer_len_clamped_post_quality"] = True
@@ -777,7 +941,7 @@ class AnalysisGenerationPipeline:
             context=working_context,
             backend=response.backend,
             model_name=response.model_name,
-            latency_ms=response.latency_ms,
+            latency_ms=total_latency_ms,
             guard_result=guard_result,
             hallucination_codes=hallucination_codes,
             metadata=metadata,

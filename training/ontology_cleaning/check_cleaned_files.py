@@ -36,10 +36,10 @@ def analyze_ultimate_cleaning():
             continue
 
         # Читаем файлы
-        with open(original_file, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(original_file, "r", encoding="utf-8", errors="ignore") as f:
             original_content = f.read()
 
-        with open(ultimate_file, 'r', encoding='utf-8') as f:
+        with open(ultimate_file, "r", encoding="utf-8") as f:
             ultimate_content = f.read()
 
         # Анализ
@@ -54,14 +54,26 @@ def analyze_ultimate_cleaning():
         else:
             reduction = 0
 
-        print(f"{relative_path}: {original_size} → {ultimate_size} символов ({reduction:.1f}% reduction)")
+        print(
+            f"{relative_path}: {original_size} → {ultimate_size} символов ({reduction:.1f}% reduction)"
+        )
 
         # Проверяем на наличие технических артефактов
         technical_patterns = [
-            r"Тираж", r"Цена", r"Редактор", r"Заведующий редакцией",
-            r"Подписано к печати", r"Сдано в набор", r"ISBN", r"©",
-            r"том\s*\d+", r"Том\s*\d+", r"стр\.\s*\d+", r"МОСКВА\s*\d{4}",
-            r"ПЕЧАТАЕТСЯ ПО ПОСТАНОВЛЕНИЮ", r"ИНСТИТУТ МАРКСИЗМА-ЛЕНИНИЗМА"
+            r"Тираж",
+            r"Цена",
+            r"Редактор",
+            r"Заведующий редакцией",
+            r"Подписано к печати",
+            r"Сдано в набор",
+            r"ISBN",
+            r"©",
+            r"том\s*\d+",
+            r"Том\s*\d+",
+            r"стр\.\s*\d+",
+            r"МОСКВА\s*\d{4}",
+            r"ПЕЧАТАЕТСЯ ПО ПОСТАНОВЛЕНИЮ",
+            r"ИНСТИТУТ МАРКСИЗМА-ЛЕНИНИЗМА",
         ]
 
         artifacts_found = []
@@ -70,8 +82,10 @@ def analyze_ultimate_cleaning():
                 artifacts_found.append(pattern)
 
         if artifacts_found:
-            print(f"  Найдены артефакты: {', '.join(artifacts_found[:2])}" +
-                  ("..." if len(artifacts_found) > 2 else ""))
+            print(
+                f"  Найдены артефакты: {', '.join(artifacts_found[:2])}"
+                + ("..." if len(artifacts_found) > 2 else "")
+            )
 
     # Общая статистика
     print("\n" + "=" * 80)
@@ -90,6 +104,7 @@ def analyze_ultimate_cleaning():
     print("=" * 80)
 
     import random
+
     sample_files = random.sample(original_files, min(5, len(original_files)))
 
     for original_file in sample_files:
@@ -99,7 +114,7 @@ def analyze_ultimate_cleaning():
         if not ultimate_file.exists():
             continue
 
-        with open(ultimate_file, 'r', encoding='utf-8') as f:
+        with open(ultimate_file, "r", encoding="utf-8") as f:
             ultimate_content = f.read()
 
         print(f"\n{relative_path}:")

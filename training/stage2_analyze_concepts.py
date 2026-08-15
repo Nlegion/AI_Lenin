@@ -16,7 +16,9 @@ import random
 import time
 
 # Инициализация логгера
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger()
 
 
@@ -30,7 +32,9 @@ class LeninPhilosophyAnalyzer:
         self.EMBEDDING_BATCH_SIZE = 32  # Оптимально для 8GB VRAM
         self.MIN_OCCURRENCES = 3  # Включаем редкие концепты
         self.TOP_CONCEPTS = 1000  # Топ-50 трансформированных концептов
-        self.MODEL_NAME = "ai-sage/Giga-Embeddings-instruct"  # Runtime embedding baseline
+        self.MODEL_NAME = (
+            "ai-sage/Giga-Embeddings-instruct"  # Runtime embedding baseline
+        )
 
         self.ontology_path = Path(ontology_path)
         self.books_dir = Path(books_dir)
@@ -50,47 +54,51 @@ class LeninPhilosophyAnalyzer:
                 "min_occurrences": self.MIN_OCCURRENCES,
                 "top_concepts": self.TOP_CONCEPTS,
                 "model": self.MODEL_NAME,
-                "device": str(self.device)
+                "device": str(self.device),
             },
             "statistics": {
                 "total_concepts": 0,
                 "analyzed_concepts": 0,
                 "total_occurrences": 0,
                 "start_time": time.time(),
-                "last_update": time.time()
+                "last_update": time.time(),
             },
             "interpretations": {},
             "transformations": {},
-            "top_transformed": []
+            "top_transformed": [],
         }
         logger.info("High-coverage analyzer initialized")
-        logger.info(f"Target: top-{self.TOP_CONCEPTS} from {len(self.ontology)} concepts")
+        logger.info(
+            f"Target: top-{self.TOP_CONCEPTS} from {len(self.ontology)} concepts"
+        )
         logger.info(f"Using device: {self.device}")
 
     def select_device(self):
         """Автоматический выбор устройства с учетом памяти"""
         if torch.cuda.is_available():
-            total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
-            free_vram = torch.cuda.mem_get_info()[0] / (1024 ** 3)
-            logger.info(f"GPU available: {total_vram:.1f}GB total, {free_vram:.1f}GB free")
+            total_vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+            free_vram = torch.cuda.mem_get_info()[0] / (1024**3)
+            logger.info(
+                f"GPU available: {total_vram:.1f}GB total, {free_vram:.1f}GB free"
+            )
 
             # Используем GPU если свободно более 4GB
             if free_vram > 4.0:
-                return 'cuda'
-        return 'cpu'
+                return "cuda"
+        return "cpu"
 
     def load_model(self):
         """Загрузка оптимальной модели"""
         model = SentenceTransformer(
             self.MODEL_NAME,
             device=self.device,
-            cache_folder='./model_cache',
+            cache_folder="./model_cache",
             trust_remote_code=True,
         )
         model.max_seq_length = 256
 
         # Оптимизация для GPU
-        if self.device == 'cuda':
+        if self.device == "cuda":
             model = model.half()  # Используем float16 для экономии памяти
             logger.info("Model optimized for GPU (float16)")
 
@@ -101,7 +109,7 @@ class LeninPhilosophyAnalyzer:
     def get_ontology_dimension(self):
         if not self.ontology:
             return 0
-        first_embedding = next(iter(self.ontology.values()))['embedding']
+        first_embedding = next(iter(self.ontology.values()))["embedding"]
         return len(first_embedding)
 
     def align_embeddings(self, embedding):
@@ -111,7 +119,9 @@ class LeninPhilosophyAnalyzer:
         if ontology_dim == model_dim:
             return embedding
 
-        logger.warning(f"Embedding dimension mismatch: ontology={ontology_dim}, model={model_dim}")
+        logger.warning(
+            f"Embedding dimension mismatch: ontology={ontology_dim}, model={model_dim}"
+        )
 
         if ontology_dim > model_dim:
             return embedding[:model_dim]
@@ -122,22 +132,21 @@ class LeninPhilosophyAnalyzer:
         """Загрузка облегченного NLP-пайплайна"""
         try:
             nlp = spacy.load(
-                "ru_core_news_sm",
-                disable=["parser", "ner", "lemmatizer", "textcat"]
+                "ru_core_news_sm", disable=["parser", "ner", "lemmatizer", "textcat"]
             )
             logger.info("Loaded efficient Russian language processor")
         except Exception as e:
             logger.error(f"Error loading spaCy model: {str(e)}")
             raise
 
-        nlp.add_pipe('sentencizer')
+        nlp.add_pipe("sentencizer")
         return nlp
 
     def load_ontology(self):
         if not self.ontology_path.exists():
             raise FileNotFoundError(f"Ontology file not found: {self.ontology_path}")
 
-        with open(self.ontology_path, 'r', encoding='utf-8') as f:
+        with open(self.ontology_path, "r", encoding="utf-8") as f:
             ontology = json.load(f)
 
         # Фильтрация нерелевантных концептов
@@ -166,7 +175,7 @@ class LeninPhilosophyAnalyzer:
         for work in works:
             work_path = lenin_dir / work
             if work_path.exists():
-                with open(work_path, 'r', encoding='utf-8') as f:
+                with open(work_path, "r", encoding="utf-8") as f:
                     content = f.read()
                 texts[work] = content
                 logger.info(f"Loaded: {work} ({len(content)} chars)")
@@ -195,12 +204,12 @@ class LeninPhilosophyAnalyzer:
     def normalize_concept(self, concept):
         """Быстрая нормализация концепта"""
         # Удаление пунктуации и приведение к нижнему регистру
-        cleaned = re.sub(r'[^\w\s]', '', concept)
+        cleaned = re.sub(r"[^\w\s]", "", concept)
         return cleaned.lower().strip()
 
     def find_concept_occurrences(self, concept):
         """Эффективный поиск вхождений с кэшированием"""
-        cache_key = hashlib.md5(concept.encode('utf-8')).hexdigest()
+        cache_key = hashlib.md5(concept.encode("utf-8")).hexdigest()
 
         if cache_key in self.context_cache:
             return self.context_cache[cache_key]
@@ -224,12 +233,14 @@ class LeninPhilosophyAnalyzer:
                 context_end = min(len(text), end_idx + self.CONTEXT_SIZE)
                 context = text[context_start:context_end]
 
-                all_occurrences.append({
-                    "work": work_name,
-                    "context": context,
-                    "position": (pos, end_idx),
-                    "match": text[pos:end_idx]
-                })
+                all_occurrences.append(
+                    {
+                        "work": work_name,
+                        "context": context,
+                        "position": (pos, end_idx),
+                        "match": text[pos:end_idx],
+                    }
+                )
 
                 total_count += 1
                 start_idx = end_idx
@@ -245,7 +256,9 @@ class LeninPhilosophyAnalyzer:
     def calculate_transformation(self, original_embedding, interpretation_embeddings):
         """Оптимизированный расчет метрик"""
         original_embedding = np.array(original_embedding, dtype=np.float32)
-        interpretation_embeddings = np.array(interpretation_embeddings, dtype=np.float32)
+        interpretation_embeddings = np.array(
+            interpretation_embeddings, dtype=np.float32
+        )
 
         # Нормализация
         original_norm = np.linalg.norm(original_embedding)
@@ -291,7 +304,7 @@ class LeninPhilosophyAnalyzer:
             # Обработка вхождений пакетами
             all_embeddings = []
             for i in range(0, len(occurrences), self.EMBEDDING_BATCH_SIZE):
-                batch_occurrences = occurrences[i:i + self.EMBEDDING_BATCH_SIZE]
+                batch_occurrences = occurrences[i : i + self.EMBEDDING_BATCH_SIZE]
                 contexts = [occ["context"] for occ in batch_occurrences]
 
                 try:
@@ -301,7 +314,7 @@ class LeninPhilosophyAnalyzer:
                         show_progress_bar=False,
                         convert_to_numpy=True,
                         normalize_embeddings=True,
-                        device=self.device
+                        device=self.device,
                     )
                     # Конвертация float16 в float32 если нужно
                     if batch_embeddings.dtype == np.float16:
@@ -314,7 +327,7 @@ class LeninPhilosophyAnalyzer:
                 # Очистка памяти
                 del batch_embeddings
                 gc.collect()
-                if self.device == 'cuda':
+                if self.device == "cuda":
                     torch.cuda.empty_cache()
 
             if not all_embeddings:
@@ -325,26 +338,29 @@ class LeninPhilosophyAnalyzer:
             # Расчет метрик
             try:
                 transformation_index, similarities = self.calculate_transformation(
-                    concept_data['embedding'],
-                    context_embeddings
+                    concept_data["embedding"], context_embeddings
                 )
             except Exception as e:
-                logger.error(f"Error calculating transformation for '{concept}': {str(e)}")
+                logger.error(
+                    f"Error calculating transformation for '{concept}': {str(e)}"
+                )
                 continue
 
             # Сохранение только топ-примеров
             try:
-                sorted_indices = np.argsort(similarities)[::-1][:self.EXAMPLES_TO_SAVE]
+                sorted_indices = np.argsort(similarities)[::-1][: self.EXAMPLES_TO_SAVE]
                 examples = []
                 for idx in sorted_indices:
                     if idx < len(occurrences):
                         occ = occurrences[idx]
-                        examples.append({
-                            "work": occ["work"],
-                            "context": occ["context"],
-                            "similarity": float(similarities[idx]),
-                            "transformation": float(1 - similarities[idx])
-                        })
+                        examples.append(
+                            {
+                                "work": occ["work"],
+                                "context": occ["context"],
+                                "similarity": float(similarities[idx]),
+                                "transformation": float(1 - similarities[idx]),
+                            }
+                        )
             except Exception as e:
                 logger.error(f"Error selecting examples for '{concept}': {str(e)}")
                 examples = []
@@ -352,7 +368,7 @@ class LeninPhilosophyAnalyzer:
             # Сохранение результатов
             batch_results[concept] = {
                 "interpretation": {
-                    "original_embedding": [float(x) for x in concept_data['embedding']],
+                    "original_embedding": [float(x) for x in concept_data["embedding"]],
                     "transformation_index": float(transformation_index),
                     "sampled_occurrences": len(occurrences),
                     "total_occurrences": total_occurrences,
@@ -360,14 +376,14 @@ class LeninPhilosophyAnalyzer:
                 },
                 "transformation": {
                     "transformation_index": float(transformation_index),
-                    "occurrences": total_occurrences
-                }
+                    "occurrences": total_occurrences,
+                },
             }
 
             # Освобождение памяти
             del context_embeddings, all_embeddings
             gc.collect()
-            if self.device == 'cuda':
+            if self.device == "cuda":
                 torch.cuda.empty_cache()
 
         return batch_results
@@ -384,7 +400,7 @@ class LeninPhilosophyAnalyzer:
 
         # Пакетная обработка с детальным логированием
         for i in range(0, total_concepts, self.BATCH_SIZE):
-            batch = concepts[i:i + self.BATCH_SIZE]
+            batch = concepts[i : i + self.BATCH_SIZE]
             batch_results = self.analyze_batch(batch)
 
             # Сохранение результатов
@@ -392,7 +408,9 @@ class LeninPhilosophyAnalyzer:
                 self.report["interpretations"][concept] = data["interpretation"]
                 self.report["transformations"][concept] = data["transformation"]
                 self.report["statistics"]["analyzed_concepts"] += 1
-                self.report["statistics"]["total_occurrences"] += data["transformation"]["occurrences"]
+                self.report["statistics"]["total_occurrences"] += data[
+                    "transformation"
+                ]["occurrences"]
 
             # Логирование прогресса
             elapsed = time.time() - start_time
@@ -408,7 +426,7 @@ class LeninPhilosophyAnalyzer:
 
             # Очистка памяти
             gc.collect()
-            if self.device == 'cuda':
+            if self.device == "cuda":
                 torch.cuda.empty_cache()
 
         # Анализ топ-трансформированных концептов
@@ -417,7 +435,9 @@ class LeninPhilosophyAnalyzer:
         total_time = (time.time() - start_time) / 60
         logger.info("Analysis completed successfully")
         logger.info(f"Analyzed concepts: {analyzed}/{total_concepts} ({progress:.1f}%)")
-        logger.info(f"Total occurrences analyzed: {self.report['statistics']['total_occurrences']}")
+        logger.info(
+            f"Total occurrences analyzed: {self.report['statistics']['total_occurrences']}"
+        )
         logger.info(f"Total time: {total_time:.1f} minutes")
 
     def identify_top_concepts(self):
@@ -425,43 +445,47 @@ class LeninPhilosophyAnalyzer:
         transformed_concepts = []
         for concept, data in self.report["transformations"].items():
             if data["occurrences"] >= self.MIN_OCCURRENCES:
-                transformed_concepts.append({
-                    "concept": concept,
-                    "transformation_index": data["transformation_index"],
-                    "occurrences": data["occurrences"]
-                })
+                transformed_concepts.append(
+                    {
+                        "concept": concept,
+                        "transformation_index": data["transformation_index"],
+                        "occurrences": data["occurrences"],
+                    }
+                )
 
         # Сортировка и выбор топ-концептов
         top_transformed = sorted(
-            transformed_concepts,
-            key=lambda x: x["transformation_index"],
-            reverse=True
-        )[:self.TOP_CONCEPTS]
+            transformed_concepts, key=lambda x: x["transformation_index"], reverse=True
+        )[: self.TOP_CONCEPTS]
 
         self.report["top_transformed"] = top_transformed
 
         # Детальное логирование результатов
         logger.info(f"Top {self.TOP_CONCEPTS} transformed concepts:")
         for i, item in enumerate(top_transformed, 1):
-            logger.info(f"{i:3d}. {item['concept'][:30]:<30} | "
-                        f"Index: {item['transformation_index']:.3f} | "
-                        f"Occur: {item['occurrences']}")
+            logger.info(
+                f"{i:3d}. {item['concept'][:30]:<30} | "
+                f"Index: {item['transformation_index']:.3f} | "
+                f"Occur: {item['occurrences']}"
+            )
 
     def save_report(self, output_path):
         """Сохранение отчета с версионированием"""
         output_path = Path(output_path)
         version = 1
         while output_path.exists():
-            backup_path = output_path.with_name(f"{output_path.stem}_v{version}{output_path.suffix}")
+            backup_path = output_path.with_name(
+                f"{output_path.stem}_v{version}{output_path.suffix}"
+            )
             if not backup_path.exists():
                 break
             version += 1
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(self.report, f, ensure_ascii=False, indent=2)
 
         logger.info(f"Report saved to {output_path}")
-        logger.info(f"Report size: {os.path.getsize(output_path) / (1024 ** 2):.2f} MB")
+        logger.info(f"Report size: {os.path.getsize(output_path) / (1024**2):.2f} MB")
 
 
 if __name__ == "__main__":

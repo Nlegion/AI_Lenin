@@ -16,7 +16,9 @@ from src.core.retrieval.rag_preflight import (
 )
 
 
-def _write_pipeline_config(path: Path, *, qdrant_path: str = "database/qdrant_local") -> None:
+def _write_pipeline_config(
+    path: Path, *, qdrant_path: str = "database/qdrant_local"
+) -> None:
     payload = {
         "retrieval_pipeline": {
             "enabled": True,

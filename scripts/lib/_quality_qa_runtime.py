@@ -239,6 +239,17 @@ async def generate_one(
                 "artifact_codes",
                 "paragraph_loop_detected",
                 "structure_rebuilt",
+                "provider",
+                "deepseek_raw_quote_valid",
+                "deepseek_quote_valid",
+                "deepseek_quote_unfulfilled",
+                "deepseek_regen_count",
+                "deepseek_no_quote_conflict",
+                "deepseek_stripped_all_quotes",
+                "deepseek_stripped_ungrounded",
+                "deepseek_scrubbed_debris",
+                "deepseek_repaired_holes",
+                "deepseek_best_link_score",
             ):
                 if key in result.metadata:
                     row[key] = result.metadata.get(key)

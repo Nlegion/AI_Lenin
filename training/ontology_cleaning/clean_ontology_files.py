@@ -10,11 +10,11 @@ from collections import Counter
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("/logs/ultimate_cleaning.log", encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler("/logs/ultimate_cleaning.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -27,74 +27,69 @@ class UltimateOntologyCleaner:
         # Ультра-специфичные паттерны для советских изданий
         self.patterns = [
             # 1. ИЗДАТЕЛЬСКАЯ ИНФОРМАЦИЯ (полные блоки)
-            r'ПЕЧАТАЕТСЯ\s+ПО\s+ПОСТАНОВЛЕНИЮ.*?ЦК\s+КПСС',
-            r'ИНСТИТУТ\s+МАРКСИЗМА-ЛЕНИНИЗМА.*?ПРИ\s+ЦК\s+КПСС',
-            r'ПОЛНОЕ\s+СОБРАНИЕ\s+СОЧИНЕНИЙ.*?ИЗДАНИЕ\s+(ПЯТОЕ|ТРЕТЬЕ|ЧЕТВЕРТОЕ)',
-            r'ГОСУДАРСТВЕННОЕ\s+ИЗДАТЕЛЬСТВО.*?ПОЛИТИЧЕСКОЙ\s+ЛИТЕРАТУРЫ',
-            r'ИЗДАТЕЛЬСТВО\s+ПОЛИТИЧЕСКОЙ\s+ЛИТЕРАТУРЫ',
-            r'МОСКВА[·\s]*\d{4}',
-            r'Пролетарии\s+всех\s+стран,\s+соединяйтесь!*',
-
+            r"ПЕЧАТАЕТСЯ\s+ПО\s+ПОСТАНОВЛЕНИЮ.*?ЦК\s+КПСС",
+            r"ИНСТИТУТ\s+МАРКСИЗМА-ЛЕНИНИЗМА.*?ПРИ\s+ЦК\s+КПСС",
+            r"ПОЛНОЕ\s+СОБРАНИЕ\s+СОЧИНЕНИЙ.*?ИЗДАНИЕ\s+(ПЯТОЕ|ТРЕТЬЕ|ЧЕТВЕРТОЕ)",
+            r"ГОСУДАРСТВЕННОЕ\s+ИЗДАТЕЛЬСТВО.*?ПОЛИТИЧЕСКОЙ\s+ЛИТЕРАТУРЫ",
+            r"ИЗДАТЕЛЬСТВО\s+ПОЛИТИЧЕСКОЙ\s+ЛИТЕРАТУРЫ",
+            r"МОСКВА[·\s]*\d{4}",
+            r"Пролетарии\s+всех\s+стран,\s+соединяйтесь!*",
             # 2. ТЕХНИЧЕСКАЯ ИНФОРМАЦИЯ (полные строки)
-            r'^Тираж.*\d+.*$',
-            r'^Цена.*\d+.*$',
-            r'^©.*$',
-            r'^ISBN.*$',
-            r'^Заведующий\s+редакцией.*$',
-            r'^Редактор.*$',
-            r'^Художественный\s+редактор.*$',
-            r'^Технический\s+редактор.*$',
-            r'^Корректор.*$',
-            r'^Сдано\s+в\s+набор.*$',
-            r'^Подписано\s+к\s+печати.*$',
-
+            r"^Тираж.*\d+.*$",
+            r"^Цена.*\d+.*$",
+            r"^©.*$",
+            r"^ISBN.*$",
+            r"^Заведующий\s+редакцией.*$",
+            r"^Редактор.*$",
+            r"^Художественный\s+редактор.*$",
+            r"^Технический\s+редактор.*$",
+            r"^Корректор.*$",
+            r"^Сдано\s+в\s+набор.*$",
+            r"^Подписано\s+к\s+печати.*$",
             # 3. НОМЕРА ТОМОВ И СТРАНИЦ (агрессивно)
-            r'Том\s*\d+',
-            r'том\s*\d+',
-            r'ТОМ\s*\d+',
-            r'стр\.\s*\d+',
-            r'с\.\s*\d+',
-            r'—\s*\d+\s*—',
-            r'Страница\s*\d+',
-            r'Глава\s*[IVXLCDM]+',
-            r'ГЛАВА\s*[IVXLCDM]+',
-
+            r"Том\s*\d+",
+            r"том\s*\d+",
+            r"ТОМ\s*\d+",
+            r"стр\.\s*\d+",
+            r"с\.\s*\d+",
+            r"—\s*\d+\s*—",
+            r"Страница\s*\d+",
+            r"Глава\s*[IVXLCDM]+",
+            r"ГЛАВА\s*[IVXLCDM]+",
             # 4. OCR-АРТЕФАКТЫ
-            r'\b[А-Яа-я]+0[А-Яа-я]+\b',
-            r'\b[А-Яа-я]+1[А-Яа-я]+\b',
-            r'\bр\s*е\s*д\s*\.',
-            r'[А-Яа-я]+-\s*[А-Яа-я]+',
-
+            r"\b[А-Яа-я]+0[А-Яа-я]+\b",
+            r"\b[А-Яа-я]+1[А-Яа-я]+\b",
+            r"\bр\s*е\s*д\s*\.",
+            r"[А-Яа-я]+-\s*[А-Яа-я]+",
             # 5. СЛУЖЕБНЫЕ ПОМЕТКИ
-            r'Прим\.\s*ред\.',
-            r'Nota\s*bene',
-            r'Ред\.',
-            r'sic!?',
-            r'Заметьте\.\s*Ред\.',
-
+            r"Прим\.\s*ред\.",
+            r"Nota\s*bene",
+            r"Ред\.",
+            r"sic!?",
+            r"Заметьте\.\s*Ред\.",
             # 6. ФОРМАТИРОВАНИЕ
-            r'\*{3,}',
-            r'·{3,}',
-            r'—{3,}',
-            r'_{3,}',
+            r"\*{3,}",
+            r"·{3,}",
+            r"—{3,}",
+            r"_{3,}",
         ]
 
         # Дополнительные паттерны для многоуровневой очистки
         self.secondary_patterns = [
-            r'^\s*[IVXLCDM]+\s*$',
-            r'^\s*\d+\s*$',
-            r'^\.\.\.\s*$',
-            r'^-+\s*$',
-            r'^_{3,}\s*$',
-            r'^\s*$',
+            r"^\s*[IVXLCDM]+\s*$",
+            r"^\s*\d+\s*$",
+            r"^\.\.\.\s*$",
+            r"^-+\s*$",
+            r"^_{3,}\s*$",
+            r"^\s*$",
         ]
 
         # Ключевые слова для сохранения
         self.patterns_to_keep = [
-            r'.{80,}',  # Сохранять строки длиннее 80 символов
-            r'.*[а-яА-Я]{8,}.*',  # Сохранять строки с кириллическими словами
-            r'.*[a-zA-Z]{8,}.*',  # Сохранять строки с латинскими словами
-            r'.*\d{4,}.*',  # Сохранять строки с длинными числами
+            r".{80,}",  # Сохранять строки длиннее 80 символов
+            r".*[а-яА-Я]{8,}.*",  # Сохранять строки с кириллическими словами
+            r".*[a-zA-Z]{8,}.*",  # Сохранять строки с латинскими словами
+            r".*\d{4,}.*",  # Сохранять строки с длинными числами
         ]
 
         # Маркеры начала содержания
@@ -112,20 +107,20 @@ class UltimateOntologyCleaner:
 
     def normalize_text(self, text: str) -> str:
         """Нормализация текста"""
-        text = unicodedata.normalize('NFKC', text)
-        text = re.sub(r'\s+', ' ', text)
-        text = re.sub(r'\n\s*\n', '\n\n', text)
+        text = unicodedata.normalize("NFKC", text)
+        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"\n\s*\n", "\n\n", text)
         return text.strip()
 
     def remove_patterns(self, text: str) -> str:
         """Удаление шаблонов технической информации"""
         # Первый проход - основные паттерны
         for pattern in self.patterns:
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.MULTILINE)
+            text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.MULTILINE)
 
         # Второй проход - дополнительные паттерны
         for pattern in self.secondary_patterns:
-            text = re.sub(pattern, '', text, flags=re.MULTILINE)
+            text = re.sub(pattern, "", text, flags=re.MULTILINE)
 
         return text
 
@@ -149,19 +144,22 @@ class UltimateOntologyCleaner:
 
     def remove_repeating_blocks(self, text: str) -> str:
         """Удаляет повторяющиеся блоки текста"""
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Находим часто повторяющиеся строки
         line_counter = Counter(lines)
-        common_lines = {line for line, count in line_counter.items()
-                        if count > len(lines) * 0.03 and len(line.strip()) > 3}
+        common_lines = {
+            line
+            for line, count in line_counter.items()
+            if count > len(lines) * 0.03 and len(line.strip()) > 3
+        }
 
         if common_lines:
             cleaned_lines = []
             for line in lines:
                 if line not in common_lines or len(line.strip()) > 40:
                     cleaned_lines.append(line)
-            text = '\n'.join(cleaned_lines)
+            text = "\n".join(cleaned_lines)
 
         return text
 
@@ -182,7 +180,11 @@ class UltimateOntologyCleaner:
                         break
 
                 # Также начинаем содержание при наличии длинного текста
-                if not content_started and len(line_clean) > 80 and any(c.isalpha() for c in line_clean):
+                if (
+                    not content_started
+                    and len(line_clean) > 80
+                    and any(c.isalpha() for c in line_clean)
+                ):
                     content_started = True
                     content_start_line = i
 
@@ -204,7 +206,7 @@ class UltimateOntologyCleaner:
         # Удаление повторяющихся блоков
         text = self.remove_repeating_blocks(text)
 
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Находим начало основного содержания
         content_start = self.find_content_start(lines)
@@ -218,8 +220,8 @@ class UltimateOntologyCleaner:
                 cleaned_lines.append(line)
 
         # Удаляем повторяющиеся пустые строки
-        cleaned_text = '\n'.join(cleaned_lines)
-        cleaned_text = re.sub(r'\n\s*\n', '\n\n', cleaned_text)
+        cleaned_text = "\n".join(cleaned_lines)
+        cleaned_text = re.sub(r"\n\s*\n", "\n\n", cleaned_text)
 
         return cleaned_text.strip()
 
@@ -230,7 +232,7 @@ class UltimateOntologyCleaner:
             target_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Читаем исходный файл
-            with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(source_file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             # Очищаем текст
@@ -238,16 +240,20 @@ class UltimateOntologyCleaner:
 
             # Сохраняем только если достаточно содержания
             if cleaned_content and len(cleaned_content) > 1000:
-                with open(target_file, 'w', encoding='utf-8') as f:
+                with open(target_file, "w", encoding="utf-8") as f:
                     f.write(cleaned_content)
 
                 # Получаем статистику
                 original_size = len(content)
                 cleaned_size = len(cleaned_content)
-                reduction = (1 - cleaned_size / original_size) * 100 if original_size > 0 else 0
+                reduction = (
+                    (1 - cleaned_size / original_size) * 100 if original_size > 0 else 0
+                )
 
-                logger.info(f"Успешно обработан: {source_file} -> {target_file} "
-                            f"({original_size} → {cleaned_size} символов, {reduction:.1f}% reduction)")
+                logger.info(
+                    f"Успешно обработан: {source_file} -> {target_file} "
+                    f"({original_size} → {cleaned_size} символов, {reduction:.1f}% reduction)"
+                )
                 return True
             else:
                 logger.warning(f"Пропущен (мало содержания): {source_file}")
@@ -291,7 +297,9 @@ class UltimateOntologyCleaner:
                 success_count += 1
             processed_count += 1
 
-        logger.info(f"Обработка завершена. Успешно обработано {success_count}/{processed_count} файлов.")
+        logger.info(
+            f"Обработка завершена. Успешно обработано {success_count}/{processed_count} файлов."
+        )
 
 
 def main():

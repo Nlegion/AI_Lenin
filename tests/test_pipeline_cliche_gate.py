@@ -43,6 +43,7 @@ def _pipe(
     pipe.backend = _DummyBackend(text=text)
     pipe.config = SimpleNamespace(
         persona_model="test",
+        provider="llama",
         safety=SimpleNamespace(
             post_filter=False, fallback=SimpleNamespace(enabled=False)
         ),

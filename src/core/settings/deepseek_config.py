@@ -32,9 +32,7 @@ def validate_deepseek_payload(*, payload: dict, normalize_server_url) -> None:
             "(remote API only; do not spawn local llama-server)"
         )
     if not (payload.get("api_key") or "").strip():
-        raise ValueError(
-            "DeepSeek provider requires LLM_API_KEY or DEEPSEEK_API_KEY"
-        )
+        raise ValueError("DeepSeek provider requires LLM_API_KEY or DEEPSEEK_API_KEY")
     persona = payload["persona_model"]
     backends = payload.get("backends") or {}
     active = backends.get(persona) or {}
@@ -43,7 +41,10 @@ def validate_deepseek_payload(*, payload: dict, normalize_server_url) -> None:
         raise ValueError("DeepSeek provider requires a non-empty model_name")
 
     server_url = normalize_server_url(str(payload.get("server_url") or ""))
-    if is_local_or_insecure_url(server_url) and not deepseek_allow_insecure_url_from_env():
+    if (
+        is_local_or_insecure_url(server_url)
+        and not deepseek_allow_insecure_url_from_env()
+    ):
         raise ValueError(
             "DeepSeek provider requires an HTTPS remote URL "
             f"(got {server_url!r}); set GENERATION_SERVER_URL or "

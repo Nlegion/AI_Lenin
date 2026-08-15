@@ -37,4 +37,4 @@ Canonical technical SoT. Prefer these over `.cursor/artifacts/` session notes.
 | [config_ownership.md](config_ownership.md) | Config SoT / ownership for retrieval vs generation knobs |
 | [docker.md](docker.md) | VPS Docker RAG replica (remote LLM seam; no local llama-server) |
 
-Also see root [`README.md`](../README.md) (architecture, business process, RAG principles / data sources), [`AGENTS.md`](../AGENTS.md), [`CHANGELOG.md`](../CHANGELOG.md), and [`scripts/README.md`](../scripts/README.md).
+Also see root [`README.md`](../README.md) (architecture, business process, RAG principles / data sources), [`AGENTS.md`](../AGENTS.md), [`CHANGELOG.md`](../CHANGELOG.md), [`scripts/README.md`](../scripts/README.md), and legal files [`DISCLAIMER.md`](../DISCLAIMER.md), [`LICENSE`](../LICENSE), [`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md), [`NOTICE`](../NOTICE), [`CONTRIBUTING.md`](../CONTRIBUTING.md).

@@ -59,7 +59,9 @@ def write_tarball(*, base_dir: Path, output: Path, paths: dict[str, Path]) -> No
         for path in paths.values():
             arcname = path.relative_to(base_dir).as_posix()
             archive.add(path, arcname=arcname)
-    logger.info("wrote_tarball path=%s size=%s", output, _human_bytes(output.stat().st_size))
+    logger.info(
+        "wrote_tarball path=%s size=%s", output, _human_bytes(output.stat().st_size)
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
