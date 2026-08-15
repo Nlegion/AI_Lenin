@@ -1,6 +1,9 @@
 from src.core.preprocessing.chunker_v2 import chunk_document
 from src.core.preprocessing.chunking_config import ChunkingConfig
-from src.core.preprocessing.chunking_quality import bad_boundary_ratio, token_window_compliance_ratio
+from src.core.preprocessing.chunking_quality import (
+    bad_boundary_ratio,
+    token_window_compliance_ratio,
+)
 
 
 def _config() -> ChunkingConfig:
@@ -58,6 +61,8 @@ def test_chunk_quality_metrics():
         config=_config(),
     )
     ratio = bad_boundary_ratio(chunks=chunks)
-    compliance = token_window_compliance_ratio(chunks=chunks, min_tokens=8, max_tokens=16)
+    compliance = token_window_compliance_ratio(
+        chunks=chunks, min_tokens=8, max_tokens=16
+    )
     assert 0.0 <= ratio <= 1.0
     assert 0.0 <= compliance <= 1.0

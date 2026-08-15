@@ -26,7 +26,11 @@ def brief_digest(brief: EvidenceBrief | None) -> str:
     if brief is None:
         return "none"
     parts: list[str] = []
-    for item in [*brief.r1_core_self, *brief.r2_influence_agree, *brief.r3_influence_critical]:
+    for item in [
+        *brief.r1_core_self,
+        *brief.r2_influence_agree,
+        *brief.r3_influence_critical,
+    ]:
         parts.append(f"{item.chunk_id}:{item.score:.4f}")
     raw = "|".join(parts)
     return hashlib.sha1(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
@@ -72,7 +76,9 @@ async def run_reasoning_engine(
         return DialecticalResult(
             outcome="suppress",
             reason_codes=["timeout"],
-            metadata={"fallback_to_legacy_on_timeout": config.fallback_to_legacy_on_timeout},
+            metadata={
+                "fallback_to_legacy_on_timeout": config.fallback_to_legacy_on_timeout
+            },
         )
 
 
@@ -140,7 +146,13 @@ def apply_post_qc_for_reasoning(
 
 
 def shadow_path(base_dir: Path) -> Path:
-    return base_dir / ".cursor" / "artifacts" / "quality" / "dialectical_reasoning_shadow.jsonl"
+    return (
+        base_dir
+        / ".cursor"
+        / "artifacts"
+        / "quality"
+        / "dialectical_reasoning_shadow.jsonl"
+    )
 
 
 def emit_shadow_if_sampled(

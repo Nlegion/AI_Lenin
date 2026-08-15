@@ -7,7 +7,10 @@ from pathlib import Path
 import time
 from typing import Any
 
-from src.core.analysis.semantic_core_config import SemanticCoreConfig, load_semantic_core_config
+from src.core.analysis.semantic_core_config import (
+    SemanticCoreConfig,
+    load_semantic_core_config,
+)
 from src.core.analysis.semantic_query import compose_abstract_query
 from src.core.analysis.topic_router import TopicRouteResult, route_topics
 

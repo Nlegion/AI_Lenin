@@ -18,7 +18,7 @@ class TextCleaner:
         dict_paths = [
             base_dir / "data" / "dictionaries" / "ru-100k.txt",
             base_dir / "src" / "core" / "data" / "ru-100k.txt",
-            Path(__file__).parent / "ru-100k.txt"
+            Path(__file__).parent / "ru-100k.txt",
         ]
 
         # Пытаемся загрузить словарь
@@ -26,7 +26,9 @@ class TextCleaner:
         for dict_path in dict_paths:
             if dict_path.exists():
                 try:
-                    self.sym_spell.load_dictionary(str(dict_path), term_index=0, count_index=1)
+                    self.sym_spell.load_dictionary(
+                        str(dict_path), term_index=0, count_index=1
+                    )
                     dictionary_loaded = True
                     logger.info(f"Словарь загружен из: {dict_path}")
                     break
@@ -35,7 +37,8 @@ class TextCleaner:
 
         if not dictionary_loaded:
             logger.warning(
-                "Не удалось загрузить словарь для SymSpell. Будет использоваться базовая проверка орфографии.")
+                "Не удалось загрузить словарь для SymSpell. Будет использоваться базовая проверка орфографии."
+            )
 
         # Специфические исправления для марксистской терминологии
         self.special_corrections = {
@@ -78,10 +81,10 @@ class TextCleaner:
         """Корректирует орфографические ошибки в тексте"""
         # Сначала применяем специальные исправления
         for wrong, correct in self.special_corrections.items():
-            text = re.sub(r'\b' + wrong + r'\b', correct, text)
+            text = re.sub(r"\b" + wrong + r"\b", correct, text)
 
         # Разбиваем текст на слова и проверяем каждое
-        words = re.findall(r'\w+|\S+', text)
+        words = re.findall(r"\w+|\S+", text)
         corrected_words = []
 
         for word in words:
@@ -108,26 +111,15 @@ class TextCleaner:
                 corrected_words.append(word)
             else:
                 # Пытаемся исправить с помощью SymSpell
-                suggestions = self.sym_spell.lookup(word, Verbosity.CLOSEST, max_edit_distance=2)
+                suggestions = self.sym_spell.lookup(
+                    word, Verbosity.CLOSEST, max_edit_distance=2
+                )
                 if suggestions:
                     corrected_words.append(suggestions[0].term)
                 else:
                     corrected_words.append(word)
 
-        return ' '.join(corrected_words)
-
-    def truncate_to_last_complete_sentence(self, text: str) -> str:
-        """Обрезает текст до последнего законченного предложения"""
-        if not text:
-            return text
-
-        # Ищем последнюю точку, восклицательный или вопросительный знак
-        for i in range(len(text) - 1, -1, -1):
-            if text[i] in '.!?':
-                return text[:i + 1]
-
-        # Если не нашли знаков препинания, возвращаем как есть
-        return text
+        return " ".join(corrected_words)
 
     def clean_text(self, text: str) -> str:
         """Полная очистка текста с исправлением опечаток"""
@@ -149,14 +141,18 @@ class TextCleaner:
 
         # Удаляем шаблонные фразы
         patterns = [
-            r'Анализ новости с марксистско-ленинской точки зрения[:]?',
-            r'Теперь[^.!?]*[.!?]', r'Рассмотрим[^.!?]*[.!?]',
-            r'Анализируя[^.!?]*[.!?]', r'можно сделать вывод[^.!?]*[.!?]',
-            r'данная ситуация[^.!?]*[.!?]', r'В контексте[^.!?]*[.!?]',
-            r'Как отмечал[^.!?]*[.!?]', r'С точки зрения[^.!?]*[.!?]'
+            r"Анализ новости с марксистско-ленинской точки зрения[:]?",
+            r"Теперь[^.!?]*[.!?]",
+            r"Рассмотрим[^.!?]*[.!?]",
+            r"Анализируя[^.!?]*[.!?]",
+            r"можно сделать вывод[^.!?]*[.!?]",
+            r"данная ситуация[^.!?]*[.!?]",
+            r"В контексте[^.!?]*[.!?]",
+            r"Как отмечал[^.!?]*[.!?]",
+            r"С точки зрения[^.!?]*[.!?]",
         ]
 
         for pattern in patterns:
-            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+            text = re.sub(pattern, "", text, flags=re.IGNORECASE)
 
         return text

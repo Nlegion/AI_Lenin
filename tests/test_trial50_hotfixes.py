@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts._live_news_qa_gate import apply_live_pre_llm_gate
-from scripts._quality_qa_io import QaItem
+from scripts.lib._live_news_qa_gate import apply_live_pre_llm_gate
+from scripts.lib._quality_qa_io import QaItem
 from src.core.generation.output_artifacts import (
     apply_artifact_pass,
     detect_encoding_artifacts,

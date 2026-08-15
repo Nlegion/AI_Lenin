@@ -6,9 +6,13 @@ class _ProviderStub:
     def __init__(self, context: str):
         self.context = context
 
-    def retrieve_context(self, query_text: str, author_filter: str | None = None) -> RetrievalResult:
+    def retrieve_context(
+        self, query_text: str, author_filter: str | None = None
+    ) -> RetrievalResult:
         _ = (query_text, author_filter)
-        return RetrievalResult(context=self.context, candidates_count=1, metadata={"provider": "stub"})
+        return RetrievalResult(
+            context=self.context, candidates_count=1, metadata={"provider": "stub"}
+        )
 
 
 def test_orchestrator_returns_provider_context():

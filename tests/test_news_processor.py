@@ -11,7 +11,9 @@ async def test_processor_initialization_defaults():
         coroutine.close()
         return None
 
-    with patch("src.core.processor.asyncio.create_task", side_effect=_close_created_coroutine) as create_task_mock:
+    with patch(
+        "src.core.processor.asyncio.create_task", side_effect=_close_created_coroutine
+    ) as create_task_mock:
         processor = NewsProcessor()
 
     assert processor.fetch_interval == 300

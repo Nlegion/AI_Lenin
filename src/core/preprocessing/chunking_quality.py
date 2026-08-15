@@ -12,8 +12,12 @@ def bad_boundary_ratio(chunks: list[ChunkRecord]) -> float:
     return bad / len(chunks)
 
 
-def token_window_compliance_ratio(chunks: list[ChunkRecord], min_tokens: int, max_tokens: int) -> float:
+def token_window_compliance_ratio(
+    chunks: list[ChunkRecord], min_tokens: int, max_tokens: int
+) -> float:
     if not chunks:
         return 1.0
-    compliant = sum(1 for chunk in chunks if min_tokens <= chunk.token_count <= max_tokens)
+    compliant = sum(
+        1 for chunk in chunks if min_tokens <= chunk.token_count <= max_tokens
+    )
     return compliant / len(chunks)

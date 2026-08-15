@@ -13,14 +13,20 @@ from src.core.safety.news_guard import NewsGuard
 from src.core.settings.analysis_defaults import ANALYSIS_CACHE_LIMIT, LLAMA_SERVER_URL
 from src.core.settings.config import Settings
 from src.core.generation.postprocess_clean.passthrough import passthrough_pipeline_text
-from src.core.settings.generation_config import PersonaModel, default_generation_config_path, load_generation_config
+from src.core.settings.generation_config import (
+    PersonaModel,
+    default_generation_config_path,
+    load_generation_config,
+)
 from src.core.text_cleaner import TextCleaner
 
 logger = logging.getLogger(__name__)
 
 
 class LeninAnalyzer:
-    def __init__(self, vector_db_path: str = None, persona_model: PersonaModel | None = None):
+    def __init__(
+        self, vector_db_path: str = None, persona_model: PersonaModel | None = None
+    ):
         logger.info("Инициализация EnhancedLeninAnalyzer")
         _ = vector_db_path  # compatibility with legacy initializer signature
         self.config = Settings()
@@ -30,9 +36,13 @@ class LeninAnalyzer:
         self.analysis_cache = {}
         self.text_cleaner = TextCleaner()
         self.persona_model = persona_model
-        self.generation_config = load_generation_config(path=default_generation_config_path(self.base_dir))
+        self.generation_config = load_generation_config(
+            path=default_generation_config_path(self.base_dir)
+        )
         if persona_model is not None:
-            self.generation_config = self.generation_config.with_persona_model(persona_model)
+            self.generation_config = self.generation_config.with_persona_model(
+                persona_model
+            )
         self.server_url = self.generation_config.server_url
         self.retrieval_provider = self._init_retrieval_provider()
         retrieval_config_path = self.base_dir / "config" / "retrieval_pipeline.yaml"
@@ -87,7 +97,9 @@ class LeninAnalyzer:
 
     def _get_pipeline(self) -> AnalysisGenerationPipeline:
         if self._pipeline is None:
-            dialectical_enabled = bool(self.context_orchestrator.dialectical_config.enabled)
+            dialectical_enabled = bool(
+                self.context_orchestrator.dialectical_config.enabled
+            )
             self._pipeline = AnalysisGenerationPipeline(
                 base_dir=self.base_dir,
                 context_builder=self.context_orchestrator.build_context,
@@ -150,14 +162,39 @@ class LeninAnalyzer:
         for term in political_economy_terms:
             if term in text_lower:
                 concepts.append(term)
-        if any(word in text_lower for word in ["экономик", "финанс", "деньг", "рынок", "банк", "валюта"]):
+        if any(
+            word in text_lower
+            for word in ["экономик", "финанс", "деньг", "рынок", "банк", "валюта"]
+        ):
             concepts.extend(["экономика", "капитал", "прибыль", "политэкономия"])
-        if any(word in text_lower for word in ["политик", "власт", "правительств", "государств", "партия"]):
-            concepts.extend(["политика", "государство", "власть", "диктатура пролетариата"])
-        if any(word in text_lower for word in ["международн", "дипломати", "санкц", "договор", "ООН", "НАТО"]):
-            concepts.extend(["империализм", "международные отношения", "колониализм", "международная политэкономия"])
+        if any(
+            word in text_lower
+            for word in ["политик", "власт", "правительств", "государств", "партия"]
+        ):
+            concepts.extend(
+                ["политика", "государство", "власть", "диктатура пролетариата"]
+            )
+        if any(
+            word in text_lower
+            for word in ["международн", "дипломати", "санкц", "договор", "ООН", "НАТО"]
+        ):
+            concepts.extend(
+                [
+                    "империализм",
+                    "международные отношения",
+                    "колониализм",
+                    "международная политэкономия",
+                ]
+            )
         if any(word in text_lower for word in ["войн", "военн", "конфликт", "оруж"]):
-            concepts.extend(["империализм", "война", "мирное сосуществование", "военно-промышленный комплекс"])
+            concepts.extend(
+                [
+                    "империализм",
+                    "война",
+                    "мирное сосуществование",
+                    "военно-промышленный комплекс",
+                ]
+            )
         return list(set(concepts))[:5]
 
     async def generate_analysis(
@@ -171,14 +208,18 @@ class LeninAnalyzer:
     ) -> str:
         try:
             await self.initialize_session()
-            from src.core.settings.runtime_knobs import load_reasoning_config_with_generation_sot
+            from src.core.settings.runtime_knobs import (
+                load_reasoning_config_with_generation_sot,
+            )
 
             if not self.circuit_breaker.allow_request():
                 degraded = template_degrade(reason="circuit_open")
                 self.last_pipeline_metadata = dict(degraded.metadata)
                 return degraded.text
 
-            reasoning_cfg = load_reasoning_config_with_generation_sot(base_dir=self.base_dir)
+            reasoning_cfg = load_reasoning_config_with_generation_sot(
+                base_dir=self.base_dir
+            )
             cache_key = (
                 f"{news_title}_{hash(news_content[:200])}_"
                 f"{reasoning_cfg.mode.value}_{reasoning_cfg.schema_version}"
@@ -187,7 +228,9 @@ class LeninAnalyzer:
                 return self.analysis_cache[cache_key]
 
             key_concepts = self.extract_key_concepts(news_content)
-            enhanced_query = f"{news_title} {news_content[:200]} {' '.join(key_concepts)}"
+            enhanced_query = (
+                f"{news_title} {news_content[:200]} {' '.join(key_concepts)}"
+            )
             pipeline = self._get_pipeline()
             result = await pipeline.generate(
                 news_title=news_title,

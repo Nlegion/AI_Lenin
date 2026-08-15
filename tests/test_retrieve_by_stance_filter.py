@@ -4,7 +4,11 @@ from __future__ import annotations
 
 
 from src.core.retrieval.arbiter import RetrievalCandidate
-from src.core.retrieval.stance_retrieve import dedupe_by_chunk_id, merge_slot_candidates, stance_filter
+from src.core.retrieval.stance_retrieve import (
+    dedupe_by_chunk_id,
+    merge_slot_candidates,
+    stance_filter,
+)
 
 
 def test_stance_filter_match_any():

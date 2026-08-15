@@ -28,8 +28,12 @@ def load_cleaning_config(path: Path) -> CleaningConfig:
         remove_inline_patterns=list(section.get("remove_inline_patterns", [])),
         content_start_markers=list(section.get("content_start_markers", [])),
         min_cleaned_chars=int(section.get("min_cleaned_chars", 600)),
-        min_semantic_paragraph_chars=int(section.get("min_semantic_paragraph_chars", 120)),
-        semantic_overlap_threshold=float(section.get("semantic_overlap_threshold", 0.4)),
+        min_semantic_paragraph_chars=int(
+            section.get("min_semantic_paragraph_chars", 120)
+        ),
+        semantic_overlap_threshold=float(
+            section.get("semantic_overlap_threshold", 0.4)
+        ),
         validation_sample_size=int(section.get("validation_sample_size", 25)),
         max_semantic_damage_ratio=float(section.get("max_semantic_damage_ratio", 0.02)),
     )

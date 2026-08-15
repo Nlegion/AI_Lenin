@@ -18,7 +18,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 import yaml
 
-from src.core.safety.combat_detect import combat_cooccurrence_hit, military_rf_context_hit
+from src.core.safety.combat_detect import (
+    combat_cooccurrence_hit,
+    military_rf_context_hit,
+)
 from src.core.safety.drone_combat_guard import drone_air_raid_hit
 from src.core.safety.fio_guards import fio_spans, should_block_fio
 from src.core.safety.pattern_match import pattern_hits
@@ -34,6 +37,12 @@ from src.core.safety.hotfix_flags import safety_flag_enabled
 Decision = Literal["allow", "deny", "quarantine", "skip"]
 
 SKIP_MESSAGE = "Тема вне сферы марксистско-ленинского анализа новостей."
+
+# Local copy of generation.output_artifacts.LONG_DISCLAIMER_RE — avoids safety→generation import.
+_LONG_DISCLAIMER_RE = re.compile(
+    r"Ответ сгенерирован искусственным интеллектом.{0,200}призывом к действию\.?",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class DisclaimerConfig(BaseModel):
@@ -60,7 +69,9 @@ class InputGateConfig(BaseModel):
     high_risk_topics: list[str] = Field(default_factory=list)
     block_private_pii: bool = True
     public_interest_topics: list[str] = Field(default_factory=list)
-    refusal_message: str = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    refusal_message: str = (
+        "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    )
     skip_message: str = SKIP_MESSAGE
     classify_on_unknown_as: Decision = "quarantine"
     combat: CombatConfig = Field(default_factory=CombatConfig)
@@ -92,7 +103,9 @@ class InputGateResult:
     decision: Decision
     reason: str
     reason_codes: list[str]
-    message: str = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    message: str = (
+        "Анализ данной темы невозможен в соответствии с политикой безопасности."
+    )
     risk_tier: RiskTier = "green"
 
 
@@ -133,7 +146,9 @@ class NewsGuard:
     def from_file(cls, path: Path) -> "NewsGuard":
         return cls(config=load_news_guard_config(path=path))
 
-    def evaluate_input(self, title: str, content: str, source: str | None = None) -> InputGateResult:
+    def evaluate_input(
+        self, title: str, content: str, source: str | None = None
+    ) -> InputGateResult:
         if not self.config.input_gate.enabled:
             return InputGateResult(
                 decision="allow",
@@ -219,11 +234,16 @@ class NewsGuard:
                     risk_tier="red",
                 )
 
-        from src.core.safety.fio_guards import has_public_interest_context, is_private_victim_context
+        from src.core.safety.fio_guards import (
+            has_public_interest_context,
+            is_private_victim_context,
+        )
 
         fio_codes = should_block_fio(text=original, matches=fio_spans(original))
         public_interest = pattern_hits(text=text, patterns=gate.public_interest_topics)
-        if safety_flag_enabled("fio_carveout_enabled") and has_public_interest_context(original):
+        if safety_flag_enabled("fio_carveout_enabled") and has_public_interest_context(
+            original
+        ):
             public_interest = [*public_interest, "public_interest:stem_or_role"]
         other_pii = [
             p
@@ -290,7 +310,9 @@ class NewsGuard:
                 risk_tier="green",
             )
 
-        quarantine = pattern_hits(text=text, patterns=gate.quarantine_topics + gate.quarantine_keywords)
+        quarantine = pattern_hits(
+            text=text, patterns=gate.quarantine_topics + gate.quarantine_keywords
+        )
         if quarantine:
             eligible, econ = yellow_economy_eligible(
                 text=original,
@@ -362,7 +384,11 @@ class NewsGuard:
         extra_block_patterns: list[str] | None = None,
     ) -> OutputGuardResult:
         if not self.config.output_guard.enabled:
-            return OutputGuardResult(blocked=False, moderated_text=self._apply_disclaimer(analysis), reason_codes=[])
+            return OutputGuardResult(
+                blocked=False,
+                moderated_text=self._apply_disclaimer(analysis),
+                reason_codes=[],
+            )
 
         text = analysis
         reason_codes: list[str] = []
@@ -378,20 +404,34 @@ class NewsGuard:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 reason_codes.append(f"block:{pattern}")
 
-        if reason_codes and self.config.output_guard.safe_mode == "strict" and not warn_only:
+        if (
+            reason_codes
+            and self.config.output_guard.safe_mode == "strict"
+            and not warn_only
+        ):
             safe_text = self._apply_disclaimer(self.config.output_guard.safe_template)
-            return OutputGuardResult(blocked=True, moderated_text=safe_text, reason_codes=reason_codes)
+            return OutputGuardResult(
+                blocked=True, moderated_text=safe_text, reason_codes=reason_codes
+            )
 
         for pattern in self.config.output_guard.rewrite_patterns:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 reason_codes.append(f"rewrite:{pattern}")
                 if self.config.output_guard.safe_mode == "moderate":
-                    text = re.sub(pattern, "[отредактировано]", text, flags=re.IGNORECASE)
+                    text = re.sub(
+                        pattern, "[отредактировано]", text, flags=re.IGNORECASE
+                    )
 
         # Redact FIO without IGNORECASE (case-sensitive sub); other PII may use IGNORECASE.
-        pii_hits = _extract_pii_hits(text=text, patterns=self._pii_patterns(output=True))
+        pii_hits = _extract_pii_hits(
+            text=text, patterns=self._pii_patterns(output=True)
+        )
         if pii_hits and source_text:
-            source_pii = set(_extract_pii_hits(text=source_text, patterns=self._pii_patterns(output=True)))
+            source_pii = set(
+                _extract_pii_hits(
+                    text=source_text, patterns=self._pii_patterns(output=True)
+                )
+            )
             for pattern in pii_hits:
                 if pattern in source_pii:
                     continue
@@ -408,16 +448,24 @@ class NewsGuard:
             reason_codes=reason_codes,
         )
 
-    def mark_unverified_facts(self, analysis: str, retrieval_context: str) -> tuple[str, list[str]]:
+    def mark_unverified_facts(
+        self, analysis: str, retrieval_context: str
+    ) -> tuple[str, list[str]]:
         reason_codes: list[str] = []
         context_lower = retrieval_context.lower()
         lines = [line.strip() for line in analysis.split(".") if line.strip()]
         updated: list[str] = []
         for line in lines:
             lowered = line.lower()
-            looks_factual = '"' in line or any(char.isdigit() for char in line) or "как я писал" in lowered
+            looks_factual = (
+                '"' in line
+                or any(char.isdigit() for char in line)
+                or "как я писал" in lowered
+            )
             if looks_factual and lowered not in context_lower:
-                updated.append(f"{self.config.output_guard.hallucination_notice}: {line}")
+                updated.append(
+                    f"{self.config.output_guard.hallucination_notice}: {line}"
+                )
                 reason_codes.append("hallucination_marked")
             else:
                 updated.append(line)
@@ -486,7 +534,9 @@ class NewsGuard:
             "экстремист",
             "разжиг",
         ]
-        keywords = list(dict.fromkeys([*defaults, *self.config.output_guard.classifier_keywords]))
+        keywords = list(
+            dict.fromkeys([*defaults, *self.config.output_guard.classifier_keywords])
+        )
         lowered = text.lower()
         hits = [item for item in keywords if item in lowered]
         if len(hits) >= max(self.config.output_guard.classifier_threshold, 1):
@@ -494,12 +544,11 @@ class NewsGuard:
         return []
 
     def _apply_disclaimer(self, text: str) -> str:
-        from src.core.generation.output_artifacts import LONG_DISCLAIMER_RE
         from src.core.safety.hotfix_flags import generation_flag_enabled
 
         working = text
         if generation_flag_enabled("disclaimer_footer_enabled"):
-            working = LONG_DISCLAIMER_RE.sub("", working).strip()
+            working = _LONG_DISCLAIMER_RE.sub("", working).strip()
             # Prefer short footer from quality config when present.
             cfg = self._quality_config()
             disclaimer = (

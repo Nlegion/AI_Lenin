@@ -30,11 +30,18 @@ def truncate_to_last_complete_sentence(text: str) -> str:
     return text
 
 
-def clamp_answer_length(text: str, *, max_chars: int = _MAX_FINAL_ANSWER_CHARS) -> tuple[str, bool]:
+def clamp_answer_length(
+    text: str, *, max_chars: int = _MAX_FINAL_ANSWER_CHARS
+) -> tuple[str, bool]:
     if not text or len(text) <= max_chars:
         return text, False
     candidate = text[:max_chars].rstrip()
-    last_punct = max(candidate.rfind("."), candidate.rfind("!"), candidate.rfind("?"), candidate.rfind("…"))
+    last_punct = max(
+        candidate.rfind("."),
+        candidate.rfind("!"),
+        candidate.rfind("?"),
+        candidate.rfind("…"),
+    )
     if last_punct >= int(max_chars * 0.6):
         return candidate[: last_punct + 1], True
     return candidate, True

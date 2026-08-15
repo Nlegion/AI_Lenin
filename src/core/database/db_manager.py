@@ -46,11 +46,12 @@ class AsyncDBManager:
         try:
             mapper = inspect(type(instance))
             primary_keys = [key.name for key in mapper.primary_key]
-            existing = await self._session.get(type(instance),
-                                               {key: getattr(instance, key) for key in primary_keys})
+            existing = await self._session.get(
+                type(instance), {key: getattr(instance, key) for key in primary_keys}
+            )
             if existing:
                 for key, value in instance.__dict__.items():
-                    if not key.startswith('_'):
+                    if not key.startswith("_"):
                         setattr(existing, key, value)
             else:
                 self._session.add(instance)
@@ -70,11 +71,11 @@ class AsyncDBManager:
 
     @handle_db_errors
     async def bulk_upsert(
-            self,
-            model: Type[Base],
-            data: list[dict],
-            conflict_columns: Iterable[str],
-            batch_size: int = 1000
+        self,
+        model: Type[Base],
+        data: list[dict],
+        conflict_columns: Iterable[str],
+        batch_size: int = 1000,
     ) -> None:
         """Улучшенный массовый upsert с учетом composite constraints"""
         if not data:
@@ -86,7 +87,7 @@ class AsyncDBManager:
 
         # Анализ структуры модели
         composite_indexes = []
-        if hasattr(table, 'indexes'):
+        if hasattr(table, "indexes"):
             composite_indexes = [
                 [col.name for col in index.columns]
                 for index in table.indexes
@@ -107,7 +108,7 @@ class AsyncDBManager:
         logger.debug(f"Total items to process: {total}")
 
         for index in range(0, total, batch_size):
-            batch = data[index:index + batch_size]
+            batch = data[index : index + batch_size]
             unique_records = {}
 
             for item in batch:
@@ -117,14 +118,22 @@ class AsyncDBManager:
                     unique_records[key] = item
 
             unique_batch = list(unique_records.values())
-            logger.debug(f"Processing batch {index // batch_size + 1}, unique items: {len(unique_batch)}")
+            logger.debug(
+                f"Processing batch {index // batch_size + 1}, unique items: {len(unique_batch)}"
+            )
 
             # Проверка обязательных полей
-            required_columns = [col.name for col in table.columns if not col.nullable and not col.autoincrement]
+            required_columns = [
+                col.name
+                for col in table.columns
+                if not col.nullable and not col.autoincrement
+            ]
             for item in unique_batch:
                 for col in required_columns:
                     if col not in item or item[col] is None:
-                        logger.warning(f"Missing required column '{col}' in item: {item}")
+                        logger.warning(
+                            f"Missing required column '{col}' in item: {item}"
+                        )
 
             # Формирование запроса
             stmt = pg_insert(model).values(unique_batch)
@@ -136,8 +145,7 @@ class AsyncDBManager:
 
             if update_columns:
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=unique_keys,
-                    set_=update_columns
+                    index_elements=unique_keys, set_=update_columns
                 )
             else:
                 stmt = stmt.on_conflict_do_nothing(index_elements=unique_keys)
@@ -161,14 +169,18 @@ class AsyncDBManager:
         await self.commit()
 
     @handle_db_errors
-    async def get_first_by_filter(self, model: type[Base], key: str, value: Any) -> Base | None:
+    async def get_first_by_filter(
+        self, model: type[Base], key: str, value: Any
+    ) -> Base | None:
         stmt = select(model).filter(getattr(model, key) == value)
         self.log_query(stmt)
         result = await self._session.execute(stmt)
         return result.scalars().first()
 
     @handle_db_errors
-    async def bulk_update(self, model: type[Base], data: list[dict], update_key: str = 'id') -> None:
+    async def bulk_update(
+        self, model: type[Base], data: list[dict], update_key: str = "id"
+    ) -> None:
         """
         Массовое обновление данных по ключу
         Пример: await bulk_update(User, [{'id': 1, 'name': 'John'}, {'id': 2, 'name': 'Jane'}])
@@ -176,9 +188,13 @@ class AsyncDBManager:
         stmt = update(model)
         await self._session.execute(
             stmt,
-            [{'values': {k: v for k, v in item.items() if k != update_key},
-              'sync_kwargs': {'synchronize_session': False}}
-             for item in data]
+            [
+                {
+                    "values": {k: v for k, v in item.items() if k != update_key},
+                    "sync_kwargs": {"synchronize_session": False},
+                }
+                for item in data
+            ],
         )
         await self.commit()
 
@@ -190,7 +206,9 @@ class AsyncDBManager:
         return result.scalars().all()
 
     @handle_db_errors
-    async def get_all_by_filter(self, model: type[Base], key: str, value: Any) -> list[Base]:
+    async def get_all_by_filter(
+        self, model: type[Base], key: str, value: Any
+    ) -> list[Base]:
         stmt = select(model).filter(getattr(model, key) == value)
         self.log_query(stmt)
         result = await self._session.execute(stmt)
@@ -205,10 +223,10 @@ class AsyncDBManager:
 
     @handle_db_errors
     async def get_first_by_conditions(
-            self,
-            model: type[Base],
-            *conditions: Any,
-            options: list = None  # Добавляем параметр options
+        self,
+        model: type[Base],
+        *conditions: Any,
+        options: list = None,  # Добавляем параметр options
     ) -> Base | None:
         stmt = select(model).where(and_(*conditions))
 
@@ -258,7 +276,9 @@ class AsyncDBManager:
         await self._session.execute(stmt)
 
     @handle_db_errors
-    async def filter(self, model: type[Base], *conditions: Any, options=None) -> list[Base]:
+    async def filter(
+        self, model: type[Base], *conditions: Any, options=None
+    ) -> list[Base]:
         stmt = select(model).where(and_(*conditions))
         if options:
             stmt = stmt.options(*options)
@@ -271,7 +291,7 @@ class AsyncDBManager:
         try:
             compiled = statement.compile(
                 dialect=self._session.bind.dialect,
-                compile_kwargs={"literal_binds": True}
+                compile_kwargs={"literal_binds": True},
             )
             logger.debug("SQL query", query=str(compiled), params=compiled.params)
         except Exception as e:

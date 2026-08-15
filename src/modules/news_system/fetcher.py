@@ -20,15 +20,20 @@ class NewsFetcher:
             # Основной RSS TASS
             feed = feedparser.parse("https://tass.ru/rss/v2.xml")
 
-            return [{
-                "id": self._generate_id(entry.link),
-                "title": entry.title,
-                "content": entry.get('description', entry.title),
-                "source": "TASS",
-                "date": datetime(*entry.published_parsed[:6]) if hasattr(entry,
-                                                                         'published_parsed') else datetime.utcnow(),
-                "url": entry.link
-            } for entry in feed.entries if entry.link]
+            return [
+                {
+                    "id": self._generate_id(entry.link),
+                    "title": entry.title,
+                    "content": entry.get("description", entry.title),
+                    "source": "TASS",
+                    "date": datetime(*entry.published_parsed[:6])
+                    if hasattr(entry, "published_parsed")
+                    else datetime.utcnow(),
+                    "url": entry.link,
+                }
+                for entry in feed.entries
+                if entry.link
+            ]
         except Exception as e:
             logger.error(f"Ошибка TASS RSS: {str(e)}")
             return []

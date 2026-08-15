@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.core.generation.text_normalize import normalize_for_grounding
-from src.core.settings.quality_postcheck_config import LoopConfig, QualityPostcheckConfig
+from src.core.settings.quality_postcheck_config import (
+    LoopConfig,
+    QualityPostcheckConfig,
+)
 
 _PARA_SPLIT = re.compile(r"\n{2,}|(?<=[.!?…])\s+(?=[А-ЯЁA-Z«\"])")
 _TOKEN = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
@@ -35,8 +38,12 @@ def _paragraphs(text: str, *, min_chars: int) -> list[str]:
     parts = [p.strip() for p in _PARA_SPLIT.split(text.strip()) if p.strip()]
     if len(parts) <= 1:
         # Fallback: sentence-like chunks for single-block loops.
-        parts = [p.strip() for p in re.split(r"(?<=[.!?…])\s+", text.strip()) if p.strip()]
-    return [p for p in parts if len(p) >= min_chars] or ([text.strip()] if text.strip() else [])
+        parts = [
+            p.strip() for p in re.split(r"(?<=[.!?…])\s+", text.strip()) if p.strip()
+        ]
+    return [p for p in parts if len(p) >= min_chars] or (
+        [text.strip()] if text.strip() else []
+    )
 
 
 def detect_and_fix_loops(

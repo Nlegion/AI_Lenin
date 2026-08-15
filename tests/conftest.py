@@ -22,8 +22,10 @@ def ensure_stance_index_if_local(repo_root: Path):
         return None
     import importlib.util
 
-    script_path = repo_root / "scripts" / "ensure_qdrant_stance_index.py"
-    spec = importlib.util.spec_from_file_location("ensure_qdrant_stance_index", script_path)
+    script_path = repo_root / "scripts" / "retrieval" / "ensure_qdrant_stance_index.py"
+    spec = importlib.util.spec_from_file_location(
+        "ensure_qdrant_stance_index", script_path
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

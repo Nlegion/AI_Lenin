@@ -65,7 +65,7 @@ Warn-only, non-mutating (same philosophy as cliché gate):
 When changing `retrieval_terms`, `max_terms_per_topic`, `max_term_tokens`, `max_query_chars`, or title-anchor settings:
 
 ```powershell
-python scripts/calibrate_semantic_core_query.py
+python scripts/dialectics/calibrate_semantic_core_query.py
 ```
 
 Compare token counts to `model_max_tokens - embedder_token_margin` and update `max_query_chars` if needed.
@@ -86,7 +86,7 @@ Primary Lenin metric when known-rate is sufficient: `lenin_share_known` via `is_
 ## Evaluation
 
 ```powershell
-python scripts/evaluate_semantic_core.py
+python scripts/dialectics/evaluate_semantic_core.py
 ```
 
 Fixtures: `data/eval/semantic_core_fixtures.jsonl`.

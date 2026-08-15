@@ -47,9 +47,7 @@ def _run_pre_guard(
     details = None
     if status != "clean":
         flagged = [
-            code
-            for code in (*integrity_codes, *codes)
-            if code.startswith("deny:")
+            code for code in (*integrity_codes, *codes) if code.startswith("deny:")
         ]
         details = ",".join(
             flagged

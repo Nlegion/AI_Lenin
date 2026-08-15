@@ -31,10 +31,13 @@ def routing_rates(rows: list[dict[str, Any]]) -> dict[str, float]:
     skip = sum(
         1
         for r in rows
-        if r.get("skipped_llm_reason") == "out_of_scope_skip" or r.get("decision") == "skip"
+        if r.get("skipped_llm_reason") == "out_of_scope_skip"
+        or r.get("decision") == "skip"
     )
     yellow = sum(1 for r in rows if r.get("risk_tier") == "yellow")
-    allow = sum(1 for r in rows if not r.get("blocked") and r.get("status") != "blocked")
+    allow = sum(
+        1 for r in rows if not r.get("blocked") and r.get("status") != "blocked"
+    )
     lengths = [len(str(r.get("answer") or "")) for r in rows if r.get("answer")]
     redact = sum(1 for r in rows if "[обезличено]" in str(r.get("answer") or ""))
     return {
@@ -51,7 +54,9 @@ def routing_rates(rows: list[dict[str, Any]]) -> dict[str, float]:
     }
 
 
-def quote_grounding_rates(*, answers_and_contexts: list[tuple[str, str]]) -> dict[str, float]:
+def quote_grounding_rates(
+    *, answers_and_contexts: list[tuple[str, str]]
+) -> dict[str, float]:
     """quoted span in answer ⊆ normalized context → grounded."""
     grounded = 0
     halluc = 0
@@ -74,8 +79,11 @@ def quote_grounding_rates(*, answers_and_contexts: list[tuple[str, str]]) -> dic
         "quote_span_grounding_rate": grounded / denom if quoted else 1.0,
         "hallucinated_quote_rate": halluc / denom if quoted else 0.0,
         "quoted_spans": float(quoted),
-        "quote_usage_rate": (1.0 if quoted else 0.0) if len(answers_and_contexts) == 1 else (
-            sum(1 for a, _ in answers_and_contexts if _ANSWER_QUOTE.search(a or "")) / max(len(answers_and_contexts), 1)
+        "quote_usage_rate": (1.0 if quoted else 0.0)
+        if len(answers_and_contexts) == 1
+        else (
+            sum(1 for a, _ in answers_and_contexts if _ANSWER_QUOTE.search(a or ""))
+            / max(len(answers_and_contexts), 1)
         ),
     }
 
@@ -102,13 +110,22 @@ def critical_attribution_rates(*, answers: list[str]) -> dict[str, float]:
 def path_leak_rate(*, answers: list[str]) -> float:
     if not answers:
         return 0.0
-    leaks = sum(1 for a in answers if a and ("/pss/" in a or "[source:" in a.lower() or "\\pss\\" in a))
+    leaks = sum(
+        1
+        for a in answers
+        if a and ("/pss/" in a or "[source:" in a.lower() or "\\pss\\" in a)
+    )
     return leaks / len(answers)
 
 
 def loop_rates(*, rows: list[dict[str, Any]]) -> dict[str, float]:
     total = max(len(rows), 1)
-    loops = sum(1 for r in rows if r.get("paragraph_loop_detected") or r.get("metadata", {}).get("paragraph_loop_detected"))
+    loops = sum(
+        1
+        for r in rows
+        if r.get("paragraph_loop_detected")
+        or r.get("metadata", {}).get("paragraph_loop_detected")
+    )
     return {"paragraph_loop_rate": loops / total}
 
 
@@ -158,7 +175,9 @@ _REASONING_CONNECTORS = (
 )
 
 
-def depth_quality_proxies(*, answers: list[str], news_blobs: list[str] | None = None) -> dict[str, float]:
+def depth_quality_proxies(
+    *, answers: list[str], news_blobs: list[str] | None = None
+) -> dict[str, float]:
     """Automated depth proxies for Stage 3 (calibrate before using as hard gates)."""
     total = max(len(answers), 1)
     connector_hits = 0
@@ -266,6 +285,8 @@ def drift_vs_baseline(
         "sla_hint": (
             "≤15min manual rollback (primary=maintainer, backup=architect)"
             if severity == "critical_gt_40"
-            else "≤1h review" if severity == "warn_20_40" else "none"
+            else "≤1h review"
+            if severity == "warn_20_40"
+            else "none"
         ),
     }

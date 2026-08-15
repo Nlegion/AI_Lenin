@@ -12,7 +12,7 @@ class VersionManager:
         """Получение текущей версии из файла"""
         try:
             if self.version_file.exists():
-                with open(self.version_file, 'r') as f:
+                with open(self.version_file, "r") as f:
                     return f.read().strip()
             else:
                 return "1.0.0"  # Версия по умолчанию

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from scripts._live_news_qa_fetch import news_row_to_qa_item
+from scripts.lib._live_news_qa_fetch import news_row_to_qa_item
 
 
 def test_news_row_to_qa_item() -> None:

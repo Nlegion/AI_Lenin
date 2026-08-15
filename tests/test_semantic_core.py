@@ -9,7 +9,10 @@ import pytest
 
 from src.core.analysis.author_normalize import is_lenin_author, normalize_author
 from src.core.analysis.dialectical_config import DialecticalOrchestrationConfig
-from src.core.analysis.evidence_brief_builder import build_evidence_brief, build_slot_query
+from src.core.analysis.evidence_brief_builder import (
+    build_evidence_brief,
+    build_slot_query,
+)
 from src.core.analysis.semantic_core_config import load_semantic_core_config
 from src.core.analysis.semantic_integration import (
     cliche_gate_blocks_enable,
@@ -22,7 +25,10 @@ from src.core.analysis.semantic_normalize import (
     title_hash,
     tokenize_routing,
 )
-from src.core.analysis.semantic_query import compose_abstract_query, join_terms_with_budget
+from src.core.analysis.semantic_query import (
+    compose_abstract_query,
+    join_terms_with_budget,
+)
 from src.core.analysis.topic_router import route_topics
 from src.core.safety.lacuna_hedge_gate import lacuna_hedge_gate
 
@@ -131,7 +137,9 @@ def test_lacuna_hedge_gate_warns():
 
 
 def test_dialectical_off_skips_abstract_even_if_apply_true():
-    semantic = replace(load_semantic_core_config(), enabled=True, apply_to_dialectical=True)
+    semantic = replace(
+        load_semantic_core_config(), enabled=True, apply_to_dialectical=True
+    )
     route = route_topics(
         news_title="Нейросети",
         news_content="Искусственный интеллект",
@@ -148,7 +156,9 @@ def test_dialectical_off_skips_abstract_even_if_apply_true():
 
 
 def test_evidence_brief_no_abstract_when_dialectical_flag_false(tmp_path: Path):
-    semantic = replace(load_semantic_core_config(), enabled=True, apply_to_dialectical=True)
+    semantic = replace(
+        load_semantic_core_config(), enabled=True, apply_to_dialectical=True
+    )
     dial = DialecticalOrchestrationConfig(enabled=False, include_axes_in_query=False)
 
     class DummyProvider:

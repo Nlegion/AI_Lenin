@@ -34,7 +34,9 @@ def load_fingerprint_meta(checkpoint_path: Path) -> dict[str, Any] | None:
     path = meta_path_for_checkpoint(checkpoint_path=checkpoint_path)
     if not path.exists():
         # Support plan naming: ingestion_giga_v1.meta.json beside .offset
-        alt = checkpoint_path.with_name(checkpoint_path.name.replace(".offset", ".meta.json"))
+        alt = checkpoint_path.with_name(
+            checkpoint_path.name.replace(".offset", ".meta.json")
+        )
         if alt.exists():
             path = alt
         else:
@@ -43,7 +45,9 @@ def load_fingerprint_meta(checkpoint_path: Path) -> dict[str, Any] | None:
 
 
 def write_fingerprint_meta(checkpoint_path: Path, payload: dict[str, Any]) -> Path:
-    path = checkpoint_path.with_name(checkpoint_path.name.replace(".offset", ".meta.json"))
+    path = checkpoint_path.with_name(
+        checkpoint_path.name.replace(".offset", ".meta.json")
+    )
     if not str(checkpoint_path).endswith(".offset"):
         path = meta_path_for_checkpoint(checkpoint_path=checkpoint_path)
     path.parent.mkdir(parents=True, exist_ok=True)

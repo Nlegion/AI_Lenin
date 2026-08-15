@@ -69,7 +69,9 @@ def test_red_suite_zero_leakage() -> None:
         ),
     ]
     for title, content in red_cases:
-        decision = gate.evaluate(GateContext(title=title, content=content, source="TASS"))
+        decision = gate.evaluate(
+            GateContext(title=title, content=content, source="TASS")
+        )
         assert decision.decision != "allow"
         assert decision.risk_tier == "red" or decision.decision == "deny"
 

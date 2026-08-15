@@ -104,7 +104,9 @@ def route_topics(
             extra={
                 "dominant": dominant_id,
                 "secondary": secondary,
-                "scores": {key: scores[key] for key in ranked[: config.max_topics_logged]},
+                "scores": {
+                    key: scores[key] for key in ranked[: config.max_topics_logged]
+                },
                 "max_trigger_weight": {
                     key: max_weights[key] for key in ranked[: config.max_topics_logged]
                 },
@@ -123,7 +125,9 @@ def route_topics(
             dominant_topic_id=dominant_id,
             secondary_topic_ids=secondary,
             retrieval_terms=[],
-            synthesis_hints=[dominant.synthesis_hint] if dominant.synthesis_hint else [],
+            synthesis_hints=[dominant.synthesis_hint]
+            if dominant.synthesis_hint
+            else [],
             matched_triggers=matched_by_topic.get(dominant_id, []),
             hint_only=True,
             warnings=warnings,

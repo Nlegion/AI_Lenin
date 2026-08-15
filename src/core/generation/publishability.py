@@ -42,6 +42,10 @@ def is_publishable_analysis(
     if str(meta.get("orchestration_mode") or "") == "error":
         return False
     grounded = meta.get("news_groundedness")
-    if isinstance(grounded, dict) and grounded.get("ok") is False and bool(meta.get("structure_error")):
+    if (
+        isinstance(grounded, dict)
+        and grounded.get("ok") is False
+        and bool(meta.get("structure_error"))
+    ):
         return False
     return True

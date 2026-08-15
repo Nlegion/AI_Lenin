@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+
+import pytest
 from dotenv import load_dotenv
 from src.core.publisher import TelegramPublisher
 from src.core.settings.log import setup_logging
@@ -13,6 +15,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skip(reason="Live script")
 async def test_telegram_publisher():
     logger.info("Запуск теста Telegram Publisher")
 
@@ -23,11 +26,17 @@ async def test_telegram_publisher():
     admin_id = os.getenv("TELEGRAM_ADMIN_ID")
     if admin_id:
         logger.info(f"Отправка тестового сообщения администратору (ID: {admin_id})")
-        success = await publisher.send_admin_notification("🔧 Тестовое сообщение от системы ИИ-Ленин\n"
-                                                          "Это сообщение подтверждает работоспособность модуля публикации!")
-        logger.info(f"Результат отправки администратору: {'Успешно' if success else 'Ошибка'}")
+        success = await publisher.send_admin_notification(
+            "🔧 Тестовое сообщение от системы ИИ-Ленин\n"
+            "Это сообщение подтверждает работоспособность модуля публикации!"
+        )
+        logger.info(
+            f"Результат отправки администратору: {'Успешно' if success else 'Ошибка'}"
+        )
     else:
-        logger.warning("TELEGRAM_ADMIN_ID не установлен, пропускаем тест администратора")
+        logger.warning(
+            "TELEGRAM_ADMIN_ID не установлен, пропускаем тест администратора"
+        )
 
     # Тест 2: Публикация в канал
     channel_id = os.getenv("TELEGRAM_CHANNEL_ID")
@@ -38,10 +47,12 @@ async def test_telegram_publisher():
             title="Тестовая новость: Работоспособность системы",
             url="https://example.com",
             analysis="✅ Система успешно отправляет сообщения!\n\n"
-                     "Владимир Ильич Ленин одобряет исправную работу революционной техники. "
-                     "Пролетарии всех стран, соединяйтесь в цифровом пространстве!"
+            "Владимир Ильич Ленин одобряет исправную работу революционной техники. "
+            "Пролетарии всех стран, соединяйтесь в цифровом пространстве!",
         )
-        logger.info(f"Результат публикации в канал: {'Успешно' if success else 'Ошибка'}")
+        logger.info(
+            f"Результат публикации в канал: {'Успешно' if success else 'Ошибка'}"
+        )
     else:
         logger.warning("TELEGRAM_CHANNEL_ID не установлен, пропускаем тест канала")
 

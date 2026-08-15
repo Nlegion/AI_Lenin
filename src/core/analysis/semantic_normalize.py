@@ -48,9 +48,5 @@ def build_baseline_query(
         f"{news_title} {lead}",
         normalize_yo_flag=normalize_yo_flag,
     )
-    content = [
-        token
-        for token in tokens
-        if token not in stopwords and len(token) > 1
-    ]
+    content = [token for token in tokens if token not in stopwords and len(token) > 1]
     return " ".join(content[:content_token_limit]).strip()

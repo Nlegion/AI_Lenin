@@ -34,7 +34,9 @@ class SafetyGatePolicy(BaseModel):
         "Анализ данной темы невозможен в соответствии с политикой безопасности."
     )
     skip_message: str = "Тема вне сферы марксистско-ленинского анализа новостей."
-    classify_on_unknown_as: Literal["allow", "deny", "quarantine", "skip"] = "quarantine"
+    classify_on_unknown_as: Literal["allow", "deny", "quarantine", "skip"] = (
+        "quarantine"
+    )
     economy_policy_markers: list[str] = Field(default_factory=list)
     yellow_block_patterns: list[str] = Field(default_factory=list)
     yellow_warning_text: str = (

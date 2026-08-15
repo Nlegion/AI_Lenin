@@ -36,7 +36,11 @@ def content_lemmas(text: str) -> set[str]:
                 out.add(tok)
                 continue
             parsed = morph.parse(tok)[0]
-            if parsed.tag.POS in {"NOUN", "VERB", "INFN", "ADJF", "ADJS", "NUMR", "NPRO"} or tok[0].isupper():
+            if (
+                parsed.tag.POS
+                in {"NOUN", "VERB", "INFN", "ADJF", "ADJS", "NUMR", "NPRO"}
+                or tok[0].isupper()
+            ):
                 out.add(parsed.normal_form)
             elif len(tok) >= 4:
                 out.add(parsed.normal_form)
@@ -97,7 +101,9 @@ def select_quote_mode(
     return "principles", overlaps
 
 
-def chunk_trace_payload(chunks: list[tuple[str, float, str]], *, text_cap: int = 240) -> list[dict]:
+def chunk_trace_payload(
+    chunks: list[tuple[str, float, str]], *, text_cap: int = 240
+) -> list[dict]:
     out: list[dict] = []
     for chunk_id, score, text in chunks[:5]:
         clipped = text[:text_cap]

@@ -5,8 +5,14 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from src.core.dialectics.config import DialecticalReasoningConfig, load_dialectical_reasoning_config
-from src.core.settings.generation_config import default_generation_config_path, load_generation_config
+from src.core.dialectics.config import (
+    DialecticalReasoningConfig,
+    load_dialectical_reasoning_config,
+)
+from src.core.settings.generation_config import (
+    default_generation_config_path,
+    load_generation_config,
+)
 
 
 def load_reasoning_config_with_generation_sot(

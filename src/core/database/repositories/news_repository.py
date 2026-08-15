@@ -19,7 +19,7 @@ class NewsRepository:
             "news_fetched": 0,
             "news_processed": 0,
             "analyses_published": 0,
-            "errors": 0
+            "errors": 0,
         }
 
     async def _execute_with_retry(self, statement, *, retries: int = 3):
@@ -41,11 +41,10 @@ class NewsRepository:
     @handle_db_errors
     async def mark_as_processed_without_analysis(self, news_id: str):
         """Помечает новость как обработанную без сохранения анализа"""
-        stmt = update(News).where(
-            News.id == news_id
-        ).values(
-            processed=True,
-            processed_at=datetime.utcnow()
+        stmt = (
+            update(News)
+            .where(News.id == news_id)
+            .values(processed=True, processed_at=datetime.utcnow())
         )
         await self.session.execute(stmt)
 
@@ -60,21 +59,21 @@ class NewsRepository:
         data = []
         for item in news_items:
             news_data = {
-                "id": item['id'],
-                "title": item['title'],
-                "content": item['content'],
-                "source": item['source'],
-                "date": item['date'],
-                "url": item['url'],
+                "id": item["id"],
+                "title": item["title"],
+                "content": item["content"],
+                "source": item["source"],
+                "date": item["date"],
+                "url": item["url"],
                 "processed": False,
                 "processed_at": None,  # Явно указываем NULL
-                "created_at": datetime.utcnow()  # Текущее время
+                "created_at": datetime.utcnow(),  # Текущее время
             }
             data.append(news_data)
 
         # Исправленный запрос для SQLite
         stmt = sqlite_insert(News).values(data)
-        stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+        stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
         await self._execute_with_retry(stmt)
 
     @handle_db_errors
@@ -82,12 +81,15 @@ class NewsRepository:
         # Фильтруем новости не старше 24 часов
         time_threshold = datetime.utcnow() - timedelta(hours=24)
 
-        stmt = select(News).where(
-            News.processed.is_(False),
-            News.date >= time_threshold  # Только свежие новости
-        ).order_by(
-            News.date.desc()
-        ).limit(limit)
+        stmt = (
+            select(News)
+            .where(
+                News.processed.is_(False),
+                News.date >= time_threshold,  # Только свежие новости
+            )
+            .order_by(News.date.desc())
+            .limit(limit)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -98,56 +100,54 @@ class NewsRepository:
             analysis=analysis,
             published=False,
             published_at=None,  # Явное указание NULL
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
         stmt = stmt.on_conflict_do_update(
-            index_elements=['news_id'],
+            index_elements=["news_id"],
             set_={
                 "analysis": stmt.excluded.analysis,
                 "published": stmt.excluded.published,
-                "published_at": stmt.excluded.published_at
-            }
+                "published_at": stmt.excluded.published_at,
+            },
         )
         await self._execute_with_retry(stmt)
 
-        stmt = update(News).where(
-            News.id == news_id
-        ).values(
-            processed=True,
-            processed_at=datetime.utcnow()
+        stmt = (
+            update(News)
+            .where(News.id == news_id)
+            .values(processed=True, processed_at=datetime.utcnow())
         )
         await self._execute_with_retry(stmt)
 
     @handle_db_errors
     async def get_unpublished_analysis(self, limit: int = 10):  # Увеличили лимит
-        stmt = select(Analysis).join(News).where(
-            Analysis.published.is_(False)
-        ).options(
-            selectinload(Analysis.news)
-        ).order_by(
-            News.date.desc()
-        ).limit(limit)
+        stmt = (
+            select(Analysis)
+            .join(News)
+            .where(Analysis.published.is_(False))
+            .options(selectinload(Analysis.news))
+            .order_by(News.date.desc())
+            .limit(limit)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
     @handle_db_errors
     async def mark_as_published(self, news_id: str):
-        stmt = update(Analysis).where(
-            Analysis.news_id == news_id
-        ).values(
-            published=True,
-            published_at=datetime.utcnow()
+        stmt = (
+            update(Analysis)
+            .where(Analysis.news_id == news_id)
+            .values(published=True, published_at=datetime.utcnow())
         )
         await self.session.execute(stmt)
 
     @handle_db_errors
     async def mark_as_unprocessed(self, news_id: str):
         """Помечает новость как необработанную для повторной попытки"""
-        stmt = update(News).where(
-            News.id == news_id
-        ).values(
-            processed=False,
-            processed_at=None
+        stmt = (
+            update(News)
+            .where(News.id == news_id)
+            .values(processed=False, processed_at=None)
         )
         await self._execute_with_retry(stmt)
 
@@ -236,6 +236,8 @@ class NewsRepository:
     @handle_db_errors
     async def cleanup_censor_cache(self, *, max_age_seconds: int) -> int:
         cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
-        stmt = delete(CensorDecisionCache).where(CensorDecisionCache.last_accessed_at < cutoff)
+        stmt = delete(CensorDecisionCache).where(
+            CensorDecisionCache.last_accessed_at < cutoff
+        )
         result = await self._execute_with_retry(stmt)
         return int(result.rowcount or 0)

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from src.core.generation.adaptive_context import adaptive_max_context_chars
-from src.core.generation.publishability import is_error_placeholder, is_publishable_analysis
+from src.core.generation.publishability import (
+    is_error_placeholder,
+    is_publishable_analysis,
+)
 
 
 def test_adaptive_context_boosts_hard_topics() -> None:

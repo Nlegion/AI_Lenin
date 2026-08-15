@@ -7,7 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from src.core.generation.postprocess_clean import scrub_after_output_guard
-from src.core.generation.publishability import is_error_placeholder, is_publishable_analysis
+from src.core.generation.publishability import (
+    is_error_placeholder,
+    is_publishable_analysis,
+)
 from src.core.safety.pre_rag_censor import PreRagCensor
 from src.core.safety.pre_rag_censor_types import CensorInput
 from src.core.safety.yellow_audit import append_yellow_audit
@@ -25,7 +28,9 @@ def attach_censor_cache_callbacks(*, censor: PreRagCensor, repo: Any) -> None:
             config_version_hash=config_hash,
         )
 
-    async def _save_cached(content_hash: str, config_hash: str, model_hash: str, result):
+    async def _save_cached(
+        content_hash: str, config_hash: str, model_hash: str, result
+    ):
         confidence = dict(result.confidence)
         confidence["__context_hints__"] = [
             str(h.value if hasattr(h, "value") else h) for h in result.context_hints
@@ -124,7 +129,9 @@ async def generate_and_persist_analysis(
         context_hints=getattr(news, "_context_hints", None),
         needs_yellow_warning=bool(getattr(news, "_needs_yellow_warning", False)),
     )
-    if any(phrase in analysis.lower() for phrase in REFUSAL_PHRASES) or is_error_placeholder(analysis):
+    if any(
+        phrase in analysis.lower() for phrase in REFUSAL_PHRASES
+    ) or is_error_placeholder(analysis):
         logger.info("Модель отказалась анализировать новость %s", news.id)
         await repo.mark_as_processed_without_analysis(news.id)
         stats["news_skipped"] += 1
@@ -148,13 +155,19 @@ async def generate_and_persist_analysis(
     validation = validator.validate_analysis(analysis, news.title)
     logger.info("Результат валидации: %s", validation)
     pipeline_meta = dict(getattr(analyzer, "last_pipeline_metadata", None) or {})
-    if validation["is_valid"] and is_publishable_analysis(text=analysis, metadata=pipeline_meta):
+    if validation["is_valid"] and is_publishable_analysis(
+        text=analysis, metadata=pipeline_meta
+    ):
         await repo.save_analysis(news.id, analysis)
         stats["news_processed"] += 1
-        logger.info("Успешный анализ новости %s. Оценка: %.2f", news.id, validation["score"])
+        logger.info(
+            "Успешный анализ новости %s. Оценка: %.2f", news.id, validation["score"]
+        )
         return
 
-    if pipeline_meta.get("timeout_template_degrade") or pipeline_meta.get("dialectical_outcome") in {
+    if pipeline_meta.get("timeout_template_degrade") or pipeline_meta.get(
+        "dialectical_outcome"
+    ) in {
         "hold_review",
         "suppress",
     }:
@@ -163,6 +176,8 @@ async def generate_and_persist_analysis(
         snap = analyzer.circuit_breaker.snapshot()
         stats["generation_timeouts"] = snap.get("total_timeouts", 0)
         stats["circuit_opens"] = snap.get("total_opens", 0)
-    logger.warning("Анализ новости %s отклонен: %s", news.id, ", ".join(validation["reasons"]))
+    logger.warning(
+        "Анализ новости %s отклонен: %s", news.id, ", ".join(validation["reasons"])
+    )
     await repo.mark_as_processed_without_analysis(news.id)
     stats["analyses_rejected"] += 1

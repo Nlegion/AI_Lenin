@@ -2,6 +2,9 @@ import asyncio
 import logging
 import os
 from datetime import datetime
+
+import pytest
+
 from src.modules.news_system.fetcher import NewsFetcher
 from src.core.settings.log import setup_logging
 
@@ -19,7 +22,7 @@ def print_news(news_item):
     print(f"URL: {news_item['url']}")
 
     # Обрезаем длинный текст для удобства просмотра
-    content = news_item['content']
+    content = news_item["content"]
     if len(content) > 300:
         content = content[:300] + "... [truncated]"
 
@@ -28,12 +31,15 @@ def print_news(news_item):
     print("=" * 80)
 
 
+@pytest.mark.skip(reason="Live script")
 async def test_fetcher():
     logger.info("Запуск теста модуля сбора новостей")
 
     # Проверка наличия ключа NewsAPI
     if not os.getenv("NEWSAPI_KEY"):
-        logger.warning("NEWSAPI_KEY не установлен. Будут использоваться только RSS источники")
+        logger.warning(
+            "NEWSAPI_KEY не установлен. Будут использоваться только RSS источники"
+        )
 
     # Создаем экземпляр сборщика новостей
     fetcher = NewsFetcher()
@@ -48,13 +54,15 @@ async def test_fetcher():
     logger.info(f"Время выполнения: {elapsed:.2f} секунд")
 
     if not news_items:
-        logger.error("Не удалось получить новости. Проверьте подключение к интернету и настройки.")
+        logger.error(
+            "Не удалось получить новости. Проверьте подключение к интернету и настройки."
+        )
         return
 
     # Фильтруем новости по источнику для анализа
     sources = {}
     for item in news_items:
-        sources[item['source']] = sources.get(item['source'], 0) + 1
+        sources[item["source"]] = sources.get(item["source"], 0) + 1
 
     # Выводим статистику
     print("\nСтатистика по источникам:")
@@ -63,8 +71,8 @@ async def test_fetcher():
 
     # Проверяем временной диапазон
     now = datetime.now()
-    oldest = min(item['date'] for item in news_items)
-    newest = max(item['date'] for item in news_items)
+    oldest = min(item["date"] for item in news_items)
+    newest = max(item["date"] for item in news_items)
 
     print("\nВременной диапазон новостей:")
     print(f"- Самая старая: {oldest.strftime('%Y-%m-%d %H:%M')}")
@@ -75,7 +83,7 @@ async def test_fetcher():
     non_russian = 0
     for item in news_items:
         text = f"{item['title']} {item['content']}"
-        if not any('\u0400' <= char <= '\u04FF' for char in text):
+        if not any("\u0400" <= char <= "\u04ff" for char in text):
             non_russian += 1
             print("\n⚠️ Обнаружена не русскоязычная новость:")
             print(f"Заголовок: {item['title']}")
@@ -94,7 +102,9 @@ async def test_fetcher():
     # Сохраняем результаты в файл
     output_file = "fetcher_test_results.txt"
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write(f"Тест модуля сбора новостей ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n")
+        f.write(
+            f"Тест модуля сбора новостей ({datetime.now().strftime('%Y-%m-%d %H:%M')})\n"
+        )
         f.write(f"Всего новостей: {len(news_items)}\n\n")
 
         for i, item in enumerate(news_items):

@@ -32,7 +32,9 @@ class ReleaseGatesConfig:
     news_guard_enabled: bool = True
     anti_cliche_enabled: bool = False
     news_guard_delta_enabled: bool = False
-    news_guard_baseline_json: str = ".cursor/artifacts/evaluation/news_guard_eval_baseline.json"
+    news_guard_baseline_json: str = (
+        ".cursor/artifacts/evaluation/news_guard_eval_baseline.json"
+    )
 
 
 def _parse_metrics(raw: dict[str, Any] | None) -> dict[str, MetricThreshold]:
@@ -94,6 +96,9 @@ def load_release_gates(path: str | None = None) -> ReleaseGatesConfig:
         anti_cliche_enabled=bool(anti.get("enabled", False)),
         news_guard_delta_enabled=bool(delta.get("enabled", False)),
         news_guard_baseline_json=str(
-            delta.get("baseline_json", ".cursor/artifacts/evaluation/news_guard_eval_baseline.json")
+            delta.get(
+                "baseline_json",
+                ".cursor/artifacts/evaluation/news_guard_eval_baseline.json",
+            )
         ),
     )

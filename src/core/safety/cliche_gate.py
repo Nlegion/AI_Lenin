@@ -69,7 +69,9 @@ def _evaluate_cliche_gate(
     cliche_hits = tokens & config.lexicon
     lexicon_hits = len(cliche_hits)
     dense = lexicon_hits >= config.lexicon_density_min_hits
-    overlap = jaccard_overlap(left_text=analysis, right_text=r1_text) if r1_text else 0.0
+    overlap = (
+        jaccard_overlap(left_text=analysis, right_text=r1_text) if r1_text else 0.0
+    )
     reasons: list[str] = []
 
     if r1_count == 0:

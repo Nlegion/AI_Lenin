@@ -5,8 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.core.generation.loop_detect import detect_and_fix_loops
-from src.core.generation.quote_allowlist import extract_quote_candidates, quote_allowlist_present
-from src.core.generation.quote_postcheck import apply_quote_postcheck, check_critical_attribution
+from src.core.generation.quote_allowlist import (
+    extract_quote_candidates,
+    quote_allowlist_present,
+)
+from src.core.generation.quote_postcheck import (
+    apply_quote_postcheck,
+    check_critical_attribution,
+)
 from src.core.generation.text_normalize import normalize_for_grounding
 from src.core.safety.fact_opinion import needs_fact_opinion_extra
 from src.core.settings.quality_postcheck_config import load_quality_postcheck_config
@@ -16,14 +22,18 @@ CFG = load_quality_postcheck_config(path=ROOT / "config" / "quality_postcheck.ya
 
 
 def test_normalize_unifies_quotes_and_yo() -> None:
-    a = normalize_for_grounding('«Ёжик» — тест')
+    a = normalize_for_grounding("«Ёжик» — тест")
     b = normalize_for_grounding('"ежик" - тест')
     assert a == b
 
 
 def test_extract_candidates_from_chunk_quotes() -> None:
     chunks = [
-        ("c1", 1.0, 'Ленин писал: «Империализм есть канун социальной революции пролетариата». Далее текст.'),
+        (
+            "c1",
+            1.0,
+            "Ленин писал: «Империализм есть канун социальной революции пролетариата». Далее текст.",
+        ),
     ]
     cands = extract_quote_candidates(chunks=chunks, config=CFG)
     assert quote_allowlist_present(cands)
@@ -51,7 +61,9 @@ def test_ungrounded_quote_stripped() -> None:
 
 
 def test_critical_attribution_invented_volume() -> None:
-    codes = check_critical_attribution("Как писал Ленин, том 99, стр. 1.", candidates=[])
+    codes = check_critical_attribution(
+        "Как писал Ленин, том 99, стр. 1.", candidates=[]
+    )
     assert any("volume" in c or "page" in c for c in codes)
 
 

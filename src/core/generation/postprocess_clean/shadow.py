@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from src.core.utils.jsonl import append_jsonl
+
 logger = logging.getLogger(__name__)
 
-_SHADOW_RELATIVE = Path(".cursor") / "artifacts" / "quality" / "postprocess_clean_shadow.jsonl"
+_SHADOW_RELATIVE = (
+    Path(".cursor") / "artifacts" / "quality" / "postprocess_clean_shadow.jsonl"
+)
 
 
 def shadow_log_path(base_dir: Path | None = None) -> Path:
@@ -42,10 +45,4 @@ def emit_shadow_record(
         "live_len": len(live_text),
         "cloned_len": len(cloned_text),
     }
-    path = shadow_log_path(base_dir=base_dir)
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except OSError:
-        logger.exception("postprocess_clean shadow log failed path=%s", path)
+    append_jsonl(shadow_log_path(base_dir=base_dir), payload)

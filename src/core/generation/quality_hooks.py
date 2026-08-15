@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +17,7 @@ from src.core.generation.quote_allowlist import (
 )
 from src.core.generation.quote_mode import answer_has_quotes, strip_quotes
 from src.core.generation.quote_postcheck import apply_quote_postcheck
+from src.core.generation.postprocess_clean.contract import has_required_triad
 from src.core.settings.quality_postcheck_config import (
     QualityPostcheckConfig,
     default_quality_postcheck_path,
@@ -33,15 +33,7 @@ __all__ = [
 ]
 
 
-def _has_required_structure(text: str) -> bool:
-    return all(
-        re.search(pattern=pattern, string=text, flags=re.IGNORECASE) is not None
-        for pattern in (
-            r"(?:^|\s)\*{0,2}факт\*{0,2}\s*:",
-            r"(?:^|\s)\*{0,2}механизм\*{0,2}\s*:",
-            r"(?:^|\s)\*{0,2}вывод\*{0,2}\s*:",
-        )
-    )
+_has_required_structure = has_required_triad
 
 
 def _enforce_required_structure(text: str) -> tuple[str, bool, bool]:

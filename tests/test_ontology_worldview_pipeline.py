@@ -60,4 +60,7 @@ def test_build_worldview_graph_produces_nodes_and_edges():
 
     assert "doc:s1" in node_ids
     assert "concept:материализм" in node_ids
-    assert any(edge["source"] == "doc:s1" and edge["target"] == "concept:материализм" for edge in graph_payload["edges"])
+    assert any(
+        edge["source"] == "doc:s1" and edge["target"] == "concept:материализм"
+        for edge in graph_payload["edges"]
+    )

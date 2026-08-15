@@ -18,5 +18,7 @@ class RetrievalResult:
 class RetrievalProvider(Protocol):
     """Provider contract used by the analyzer runtime."""
 
-    def retrieve_context(self, query_text: str, author_filter: str | None = None) -> RetrievalResult:
+    def retrieve_context(
+        self, query_text: str, author_filter: str | None = None
+    ) -> RetrievalResult:
         """Return normalized context and minimal retrieval metadata."""

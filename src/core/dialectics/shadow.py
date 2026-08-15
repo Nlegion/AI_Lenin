@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import random
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,9 +9,12 @@ from typing import Any
 
 from src.core.dialectics.config import DialecticalReasoningConfig
 from src.core.dialectics.schemas import DialecticalResult
+from src.core.utils.jsonl import append_jsonl
 
 
-def should_sample_shadow(config: DialecticalReasoningConfig, *, rng: random.Random | None = None) -> bool:
+def should_sample_shadow(
+    config: DialecticalReasoningConfig, *, rng: random.Random | None = None
+) -> bool:
     rate = max(0.0, min(1.0, float(config.shadow_sample_rate)))
     if rate <= 0:
         return False
@@ -30,7 +32,6 @@ def write_shadow_record(
     mode: str,
     live_text: str | None = None,
 ) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
     record: dict[str, Any] = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "mode": mode,
@@ -45,5 +46,4 @@ def write_shadow_record(
         "post_qc_modified": result.post_qc_modified,
         "metadata": dict(result.metadata),
     }
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    append_jsonl(path, record)

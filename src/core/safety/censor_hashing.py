@@ -60,6 +60,7 @@ def canonical_json_hash(payload: Any) -> str:
         value = asdict(payload)
     else:
         value = payload
-    dumped = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    dumped = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
-

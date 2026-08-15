@@ -39,7 +39,10 @@ def test_jaccard_stopwords_stripped_both_sides():
 
 
 def test_lemma_membership_capitalism_forms():
-    assert _lemma("капитализм", enabled=True) == _lemma("капиталистический", enabled=True) or True
+    assert (
+        _lemma("капитализм", enabled=True) == _lemma("капиталистический", enabled=True)
+        or True
+    )
     # soft check: lemmas are non-empty
     assert _lemma("капитализм", enabled=True)
 

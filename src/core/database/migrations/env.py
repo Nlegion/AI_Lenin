@@ -9,8 +9,8 @@ import structlog
 import logging
 
 if sys.platform.startswith("win"):
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     os.environ["PYTHONUTF8"] = "1"
 
 project_root = Path(__file__).resolve().parents[4]  # Поднимаемся на 5 уровней вверх
@@ -28,7 +28,7 @@ def setup_logger():
             structlog.stdlib.add_log_level,
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer()
+            structlog.processors.JSONRenderer(),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),

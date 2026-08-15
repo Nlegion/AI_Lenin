@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-import re
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -15,118 +14,42 @@ from typing import Any, Awaitable, Callable
 from pathlib import Path
 
 from src.core.safety.news_guard import NewsGuard
-from src.core.safety.censor_hashing import NORMALIZER_VERSION, canonical_json_hash, compute_content_hash
-from src.core.safety.manual_terms_loader import ManualTermsLoader, default_censor_terms_dir
+from src.core.safety.censor_hashing import (
+    NORMALIZER_VERSION,
+    canonical_json_hash,
+    compute_content_hash,
+)
+from src.core.safety.censor_constants import (
+    _AIRPORT_TEMPLATE_RE,
+    _ALPHA_RE,
+    _CATEGORY_ALIASES,
+    _CRISIS_TERMS,
+    _DEFAULT_L2_PROTOTYPES,
+    _ETHNO_HATE_ACTION_TERMS,
+    _ETHNO_HATE_HARD_TERMS,
+    _RU_CHAR_RE,
+    _SEPARATOR_RE,
+    _SPECULATIVE_TERMS,
+    _SPORT_TEAM_RE,
+    _SPORT_TOKEN_RE,
+    _ZERO_WIDTH_RE,
+)
+from src.core.safety.manual_terms_loader import (
+    ManualTermsLoader,
+    default_censor_terms_dir,
+)
 from src.core.safety.semantic_l2_classifier import SemanticL2Classifier
 from src.core.safety.safety_gate import SafetyGate
 from src.core.safety.safety_gate_types import GateContext, SafetyHint
-from src.core.safety.pre_rag_censor_types import CensorDecision, CensorInput, CensorResult, NormalizationMeta
+from src.core.safety.pre_rag_censor_types import (
+    CensorDecision,
+    CensorInput,
+    CensorResult,
+    NormalizationMeta,
+)
 
 logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-
-_RU_CHAR_RE = re.compile(r"[а-яёА-ЯЁ]")
-_ALPHA_RE = re.compile(r"[A-Za-zА-Яа-яЁё]")
-_SPORT_TOKEN_RE = re.compile(
-    r"\b(спорт|футбол|хоккей|теннис|волейбол|баскетбол|матч|турнир|чемпионат|"
-    r"атлет|спортсмен|тренер|федерац|лига|кубок|олимп|паралимп|гто)\w*\b",
-    re.IGNORECASE,
-)
-_SPORT_TEAM_RE = re.compile(
-    r"\b(спартак|цска|зенит|локомотив|динамо|торпедо|ростов|рубин|крылья\s+советов|"
-    r"ахмат|авангард|ак\s*барс|ска|трактор|металлург|салават\s+юлаев|"
-    r"первая\s+лига|премьер-?лига|рпл|кхл|нхл)\b",
-    re.IGNORECASE,
-)
-_AIRPORT_TEMPLATE_RE = re.compile(
-    r"(аэропорт\w*).{0,60}(временн\w*\s+ограничени\w*|ограничени\w*|возобновил\w*\s+работ)",
-    re.IGNORECASE,
-)
-_SPECULATIVE_TERMS = (
-    "оценил",
-    "шансы",
-    "прогноз",
-    "вероятность",
-    "ожидается",
-    "может",
-    "угроза",
-    "ужесточение",
-    "обсудил",
-    "предположил",
-)
-_CRISIS_TERMS = (
-    "атака",
-    "бпла",
-    "дрон",
-    "взрыв",
-    "хлопок",
-    "пожар",
-    "чп",
-    "авария",
-    "пострадав",
-    "погиб",
-    "эвакуац",
-    "опасност",
-    "закрыт",
-    "рейс",
-    "угроза",
-    "тревог",
-)
-_ETHNO_HATE_HARD_TERMS = (
-    "русопет",
-    "чурк",
-    "хач",
-    "черножоп",
-    "узкоглаз",
-    "инородц",
-    "нацмен",
-    "малоросс",
-)
-_ETHNO_HATE_ACTION_TERMS = (
-    "ненав",
-    "убива",
-    "изгна",
-    "депорт",
-    "очист",
-    "запрет",
-    "уничтож",
-)
-_SEPARATOR_RE = re.compile(r"[\s\-\._:,;!?/\\|()\[\]{}\"'`~]+")
-_ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\uFEFF]")
-_CATEGORY_ALIASES = {
-    "airport": "AIRPORT",
-    "religion": "RELIGION",
-    "death": "DEATH",
-    "war": "WAR",
-    "fire": "FIRE",
-    "теракт": "TERRACT",
-    "терракт": "TERRACT",
-    "cinema": "CINEMA",
-    "music": "MUSIC",
-    "showbiz": "SHOWBIZ",
-    "pop_culture": "POP_CULTURE",
-    "natural_disaster": "NATURAL_DISASTER",
-    "fashion": "FASHION",
-    "wellness": "WELLNESS",
-    "auto": "AUTO",
-    "gadgets": "GADGETS",
-    "travel": "TRAVEL",
-    "food": "FOOD",
-    "astrology": "ASTROLOGY",
-    "gambling": "GAMBLING",
-    "pets": "PETS",
-    "selfhelp": "SELFHELP",
-    "realestate": "REALESTATE",
-}
-
-_DEFAULT_L2_PROTOTYPES: dict[str, tuple[str, ...]] = {
-    "DIPLOMACY": ("дипломатия", "переговоры", "посол", "международные отношения"),
-    "SANCTIONS": ("санкции", "ограничения", "экспорт", "импорт", "торговля"),
-    "MILITARY_OFFICIAL_STATEMENT": ("минобороны", "заявление", "брифинг", "официально"),
-    "PROTESTS": ("митинг", "протест", "демонстрация", "забастовка"),
-    "ETHNIC_RELIGIOUS": ("национальн", "этническ", "религиозн"),
-    "SENSITIVE_POLITICS": ("власть", "оппозиция", "политическ"),
-}
 
 
 @dataclass
@@ -181,7 +104,9 @@ def compose_decision(
     if l1_decision == "review":
         return l2_decision if l2_decision in {"review", "hard_block"} else "review"
     if l1_decision == "allow":
-        return l2_decision if l2_decision in {"allow", "review", "hard_block"} else "allow"
+        return (
+            l2_decision if l2_decision in {"allow", "review", "hard_block"} else "allow"
+        )
     return l1_decision
 
 
@@ -206,8 +131,10 @@ class PreRagCensor:
         l3_reviewer: Callable[[str, str], Awaitable[dict[str, Any]]] | None = None,
         config_path: str | None = None,
         terms_dir: str | Path | None = None,
-        load_cached_decision: Callable[[str, str], Awaitable[dict[str, Any] | None]] | None = None,
-        save_cached_decision: Callable[[str, str, str, CensorResult], Awaitable[None]] | None = None,
+        load_cached_decision: Callable[[str, str], Awaitable[dict[str, Any] | None]]
+        | None = None,
+        save_cached_decision: Callable[[str, str, str, CensorResult], Awaitable[None]]
+        | None = None,
         cleanup_cached_decisions: Callable[[int], Awaitable[int]] | None = None,
     ):
         self._safety_gate = safety_gate
@@ -229,7 +156,9 @@ class PreRagCensor:
         self._load_cached_decision = load_cached_decision
         self._save_cached_decision = save_cached_decision
         self._cleanup_cached_decisions = cleanup_cached_decisions
-        resolved_terms_dir = Path(terms_dir) if terms_dir else default_censor_terms_dir(_PROJECT_ROOT)
+        resolved_terms_dir = (
+            Path(terms_dir) if terms_dir else default_censor_terms_dir(_PROJECT_ROOT)
+        )
         self._manual_terms_loader = ManualTermsLoader(terms_dir=resolved_terms_dir)
         self._manual_terms = self._manual_terms_loader.get_bundle()
         self._manual_terms_hash = self._manual_terms.content_hash
@@ -271,7 +200,9 @@ class PreRagCensor:
         }
         self._policy_hash = canonical_json_hash(runtime_payload)[:16]
         self._model_version_hash = (
-            "l2_off" if not self._config.l2_similarity_enabled else self._config.l2_model_version
+            "l2_off"
+            if not self._config.l2_similarity_enabled
+            else self._config.l2_model_version
         )
         self._l2_classifier = SemanticL2Classifier(
             model_version=self._model_version_hash,
@@ -292,7 +223,9 @@ class PreRagCensor:
         if self._cleanup_cached_decisions is None:
             return
         now = time.time()
-        if now - self._last_cache_cleanup < max(self._config.cache_cleanup_interval_seconds, 60):
+        if now - self._last_cache_cleanup < max(
+            self._config.cache_cleanup_interval_seconds, 60
+        ):
             return
         self._last_cache_cleanup = now
         try:
@@ -307,11 +240,15 @@ class PreRagCensor:
         normalization = self._normalize(payload=payload)
         lock = self._hash_locks.setdefault(normalization.content_hash, asyncio.Lock())
         async with lock:
-            cached = await self._read_cached_result(normalization=normalization, started=started)
+            cached = await self._read_cached_result(
+                normalization=normalization, started=started
+            )
             if cached is not None:
                 return cached
 
-            result = await self._evaluate_uncached(payload=payload, normalization=normalization, started=started)
+            result = await self._evaluate_uncached(
+                payload=payload, normalization=normalization, started=started
+            )
             await self._write_cached_result(normalization=normalization, result=result)
             return result
 
@@ -323,7 +260,9 @@ class PreRagCensor:
         started: float,
     ) -> CensorResult:
         cfg = self._config
-        manual_override = self._manual_hard_block_override(normalization.normalized_text)
+        manual_override = self._manual_hard_block_override(
+            normalization.normalized_text
+        )
         if manual_override is not None:
             decision, category, code, reason = manual_override
             return self._build_result(
@@ -382,7 +321,9 @@ class PreRagCensor:
             )
             return self._build_result(
                 decision=fallback_decision,
-                category="WAR_OPERATIONAL" if fallback_decision == "hard_block" else "SENSITIVE_POLITICS",
+                category="WAR_OPERATIONAL"
+                if fallback_decision == "hard_block"
+                else "SENSITIVE_POLITICS",
                 reason_codes=["l1_error_fallback"],
                 reason="L1 evaluation failed",
                 normalization=normalization,
@@ -396,7 +337,9 @@ class PreRagCensor:
             extra_l2_error_code = "l2_error_fallback"
         else:
             extra_l2_error_code = None
-        l3_decision = await self._evaluate_l3(payload=payload, base=l1_result.decision, cfg=cfg)
+        l3_decision = await self._evaluate_l3(
+            payload=payload, base=l1_result.decision, cfg=cfg
+        )
         final_decision = compose_decision(
             l1_decision=l1_result.decision,
             l2_signal=l2_signal,
@@ -460,7 +403,9 @@ class PreRagCensor:
     ) -> CensorResult | None:
         if self._load_cached_decision is None:
             return None
-        cached = await self._load_cached_decision(normalization.content_hash, self._config_version_hash)
+        cached = await self._load_cached_decision(
+            normalization.content_hash, self._config_version_hash
+        )
         if cached is None:
             return None
         raw_hints = list(cached.get("context_hints") or [])
@@ -516,11 +461,15 @@ class PreRagCensor:
 
     def _normalize(self, *, payload: CensorInput) -> NormalizationMeta:
         url = str(payload.metadata.get("url", "")) if payload.metadata else ""
-        content_hash, normalized = compute_content_hash(title=payload.title, body=payload.body, url=url)
+        content_hash, normalized = compute_content_hash(
+            title=payload.title, body=payload.body, url=url
+        )
         ru_chars = len(_RU_CHAR_RE.findall(normalized))
         alpha_chars = len(_ALPHA_RE.findall(normalized))
         ru_ratio = float(ru_chars / alpha_chars) if alpha_chars else 0.0
-        duplicate_hit, duplicate_age = self._mark_and_check_duplicate(content_hash=content_hash)
+        duplicate_hit, duplicate_age = self._mark_and_check_duplicate(
+            content_hash=content_hash
+        )
         return NormalizationMeta(
             content_hash=content_hash,
             normalized_text=normalized,
@@ -556,11 +505,15 @@ class PreRagCensor:
                 item_id=payload.news_id,
                 config_version_hash=self._safety_gate.config_version_hash,
             )
-            compare = self._safety_gate.evaluate_with_shadow(ctx, legacy_guard=self._news_guard)
+            compare = self._safety_gate.evaluate_with_shadow(
+                ctx, legacy_guard=self._news_guard
+            )
             base = compare.enforced
             legacy_decision = str(base.decision)
             mapped = self._map_legacy_decision(legacy_decision)
-            category = self._infer_category(reason_codes=base.reason_codes, text=f"{payload.title}\n{payload.body}")
+            category = self._infer_category(
+                reason_codes=base.reason_codes, text=f"{payload.title}\n{payload.body}"
+            )
             return CensorResult(
                 decision=mapped,
                 category=category,
@@ -576,8 +529,12 @@ class PreRagCensor:
                     "legacy_mapping": mapped,
                     "shadow": {
                         "decision_match": compare.decision_match,
-                        "old_decision": compare.old_decision.decision if compare.old_decision else None,
-                        "new_decision": compare.new_decision.decision if compare.new_decision else None,
+                        "old_decision": compare.old_decision.decision
+                        if compare.old_decision
+                        else None,
+                        "new_decision": compare.new_decision.decision
+                        if compare.new_decision
+                        else None,
                         "reason_diff": list(compare.reason_diff),
                     },
                     "config_version_hash": compare.config_version_hash,
@@ -586,12 +543,19 @@ class PreRagCensor:
             )
 
         if self._news_guard is not None:
-            base = self._news_guard.evaluate_input(payload.title, payload.body, source=payload.source)
+            base = self._news_guard.evaluate_input(
+                payload.title, payload.body, source=payload.source
+            )
             mapped = self._map_legacy_decision(str(base.decision))
-            category = self._infer_category(reason_codes=base.reason_codes, text=f"{payload.title}\n{payload.body}")
+            category = self._infer_category(
+                reason_codes=base.reason_codes, text=f"{payload.title}\n{payload.body}"
+            )
             hints = []
             if base.risk_tier == "yellow":
-                hints = [SafetyHint.YELLOW_CONSTRAINED_ANALYSIS, SafetyHint.AVOID_COMBAT_ESTIMATES]
+                hints = [
+                    SafetyHint.YELLOW_CONSTRAINED_ANALYSIS,
+                    SafetyHint.AVOID_COMBAT_ESTIMATES,
+                ]
             return CensorResult(
                 decision=mapped,
                 category=category,
@@ -610,11 +574,15 @@ class PreRagCensor:
             category=None,
             reason_codes=["no_gate_available"],
             reason="No censorship backend available",
-            normalization=NormalizationMeta("", "", NORMALIZER_VERSION, 0.0, False, False, None),
+            normalization=NormalizationMeta(
+                "", "", NORMALIZER_VERSION, 0.0, False, False, None
+            ),
             started=started,
         )
 
-    def _evaluate_l2(self, text: str, *, cfg: CensorRuntimeConfig) -> tuple[CensorDecision, float] | None:
+    def _evaluate_l2(
+        self, text: str, *, cfg: CensorRuntimeConfig
+    ) -> tuple[CensorDecision, float] | None:
         if not cfg.l2_similarity_enabled:
             return None
         if time.time() < self._l2_disabled_until:
@@ -632,7 +600,10 @@ class PreRagCensor:
             return ("hard_block", max(score, war_score))
         if war_score >= cfg.war_review_threshold:
             return ("review", max(score, war_score))
-        if score >= cfg.l2_hard_block_threshold and category not in {"DIPLOMACY", "SANCTIONS"}:
+        if score >= cfg.l2_hard_block_threshold and category not in {
+            "DIPLOMACY",
+            "SANCTIONS",
+        }:
             return ("hard_block", score)
         if score >= cfg.l2_review_threshold:
             return ("review", score)
@@ -694,9 +665,14 @@ class PreRagCensor:
         lowered_codes = [code.lower() for code in reason_codes]
         joined = " ".join(lowered_codes)
         lower = text.lower()
-        if any("sport" in code or "out_of_scope:sport" in code for code in lowered_codes):
+        if any(
+            "sport" in code or "out_of_scope:sport" in code for code in lowered_codes
+        ):
             return "SPORT_BLOCKED"
-        if any(token in joined for token in ("drone", "combat", "military", "сво", "обстрел")):
+        if any(
+            token in joined
+            for token in ("drone", "combat", "military", "сво", "обстрел")
+        ):
             return "WAR_OPERATIONAL"
         if any(token in joined for token in ("pii", "private_victim", "фио", "тел")):
             return "PERSONAL_DATA"
@@ -713,12 +689,17 @@ class PreRagCensor:
     def _is_sport(self, text: str) -> bool:
         return bool(_SPORT_TOKEN_RE.search(text) or _SPORT_TEAM_RE.search(text))
 
-    def _mark_and_check_duplicate(self, *, content_hash: str) -> tuple[bool, float | None]:
+    def _mark_and_check_duplicate(
+        self, *, content_hash: str
+    ) -> tuple[bool, float | None]:
         now = time.time()
         existing = self._seen.get(content_hash)
         duplicate_hit = False
         duplicate_age: float | None = None
-        if existing is not None and now - existing <= self._config.duplicate_ttl_seconds:
+        if (
+            existing is not None
+            and now - existing <= self._config.duplicate_ttl_seconds
+        ):
             duplicate_hit = True
             duplicate_age = now - existing
         self._seen[content_hash] = now
@@ -779,7 +760,9 @@ class PreRagCensor:
         text_lower: str,
     ) -> tuple[CensorDecision, str, str, str] | None:
         # Specials first (before YAML category loop).
-        if self._config.ethno_hate_containment_enabled and self._has_ethno_hate_markers(text_lower):
+        if self._config.ethno_hate_containment_enabled and self._has_ethno_hate_markers(
+            text_lower
+        ):
             return (
                 "hard_block",
                 "ETHNIC_RELIGIOUS",
@@ -798,7 +781,10 @@ class PreRagCensor:
         for rule in self._manual_terms.rules:
             if not rule.enabled:
                 continue
-            if rule.category_id == "SPORT_BLOCKED" and not self._config.sport_block_enabled:
+            if (
+                rule.category_id == "SPORT_BLOCKED"
+                and not self._config.sport_block_enabled
+            ):
                 continue
             if any(term in text_lower for term in rule.terms):
                 return (
@@ -812,12 +798,18 @@ class PreRagCensor:
     def _has_ethno_hate_markers(self, text_lower: str) -> bool:
         cleaned = _ZERO_WIDTH_RE.sub("", text_lower)
         compact = _SEPARATOR_RE.sub("", cleaned)
-        hard_hit = any(term in cleaned or term in compact for term in _ETHNO_HATE_HARD_TERMS)
+        hard_hit = any(
+            term in cleaned or term in compact for term in _ETHNO_HATE_HARD_TERMS
+        )
         if not hard_hit:
             return False
-        action_hit = any(term in cleaned or term in compact for term in _ETHNO_HATE_ACTION_TERMS)
+        action_hit = any(
+            term in cleaned or term in compact for term in _ETHNO_HATE_ACTION_TERMS
+        )
         # Keep containment strict but avoid broad false positives for neutral mentions.
-        return action_hit or any(term in cleaned for term in ("нужно", "должны", "пора", "против"))
+        return action_hit or any(
+            term in cleaned for term in ("нужно", "должны", "пора", "против")
+        )
 
     def _war_signal_score(self, text_lower: str) -> float:
         terms = (
@@ -859,14 +851,23 @@ class PreRagCensor:
         current_decision = decision
         current_category = category
         sensitive_topics = {"SANCTIONS", "DIPLOMACY"}
-        hard_block_overrides = {"sport_blocked", "drone", "combat", "terror", "violence"}
+        hard_block_overrides = {
+            "sport_blocked",
+            "drone",
+            "combat",
+            "terror",
+            "violence",
+        }
         war_score = self._war_signal_score(text_lower)
 
         if (
             cfg.sensitive_topic_guard_enabled
             and current_decision == "hard_block"
             and current_category in sensitive_topics
-            and not any(any(marker in code.lower() for marker in hard_block_overrides) for code in codes)
+            and not any(
+                any(marker in code.lower() for marker in hard_block_overrides)
+                for code in codes
+            )
         ):
             current_decision = "review"
             codes.append("sensitive_topic_guard")
@@ -874,8 +875,11 @@ class PreRagCensor:
         if current_category == "SANCTIONS" and current_decision == "allow":
             speculative = any(token in text_lower for token in _SPECULATIVE_TERMS)
             low_confidence = l2_score is None or l2_score < cfg.sanctions_allow_l2_min
-            if low_confidence or speculative or not self._is_trusted_source(source) or (
-                cfg.require_l3_for_sanctions_allow and not l3_used
+            if (
+                low_confidence
+                or speculative
+                or not self._is_trusted_source(source)
+                or (cfg.require_l3_for_sanctions_allow and not l3_used)
             ):
                 current_decision = "review"
                 codes.append("sanctions_allow_gate")
@@ -895,7 +899,10 @@ class PreRagCensor:
                 "override:unknown_topic_forward_trusted_source",
             ]
 
-        if war_score >= cfg.war_hard_block_threshold and current_decision != "hard_block":
+        if (
+            war_score >= cfg.war_hard_block_threshold
+            and current_decision != "hard_block"
+        ):
             current_decision = "hard_block"
             current_category = "WAR_OPERATIONAL"
             codes.append("war_signal_hard_block")

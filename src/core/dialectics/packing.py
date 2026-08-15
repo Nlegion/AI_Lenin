@@ -37,7 +37,11 @@ def pack_reasoning_context(
     """Priority: output reserve → news → R1 → R2/R3 → errors."""
     limit = int(config.ctx_size * config.ctx_margin_ratio) - int(config.max_tokens_out)
     news_block = f"TITLE:\n{news_title.strip()}\nFACT:\n{news_fact.strip()}"
-    fixed = approx_tokens(system_prompt) + approx_tokens(user_prefix) + approx_tokens(news_block)
+    fixed = (
+        approx_tokens(system_prompt)
+        + approx_tokens(user_prefix)
+        + approx_tokens(news_block)
+    )
     if error_report:
         fixed += approx_tokens(error_report[: config.max_error_report_chars])
 
@@ -55,7 +59,9 @@ def pack_reasoning_context(
         selected.append(card)
         used += cost
 
-    principle_block = "\n".join(_format_card(c) for c in selected) if selected else "(none)"
+    principle_block = (
+        "\n".join(_format_card(c) for c in selected) if selected else "(none)"
+    )
     return PackedContext(
         news_block=news_block,
         principle_block=principle_block,

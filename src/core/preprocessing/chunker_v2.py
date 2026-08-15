@@ -67,7 +67,9 @@ def _split_theses(paragraph: str, markers: list[str]) -> list[str]:
     return theses or [paragraph.strip()]
 
 
-def _build_chunk_id(source_id: str, chunk_index: int, char_start: int, char_end: int) -> str:
+def _build_chunk_id(
+    source_id: str, chunk_index: int, char_start: int, char_end: int
+) -> str:
     base = f"{source_id}:{chunk_index}:{char_start}:{char_end}"
     digest = hashlib.sha1(base.encode("utf-8"), usedforsecurity=False).hexdigest()[:20]
     return f"chunk_{digest}"
@@ -78,7 +80,9 @@ def _boundary_ok(text: str) -> bool:
     return bool(stripped and stripped[-1] in ".!?;:")
 
 
-def _split_tokens_with_overlap(tokens: list[str], max_tokens: int, overlap_tokens: int) -> list[list[str]]:
+def _split_tokens_with_overlap(
+    tokens: list[str], max_tokens: int, overlap_tokens: int
+) -> list[list[str]]:
     if len(tokens) <= max_tokens:
         return [tokens]
     result: list[list[str]] = []
@@ -153,7 +157,9 @@ def chunk_document(
                 char_start=source_start,
                 char_end=char_end,
                 text=text_buffer.strip(),
-                boundary_ok=boundary or token_count >= int(config.max_tokens * 0.95) or _boundary_ok(text_buffer),
+                boundary_ok=boundary
+                or token_count >= int(config.max_tokens * 0.95)
+                or _boundary_ok(text_buffer),
             )
         )
         chunk_index += 1
@@ -203,7 +209,9 @@ def chunk_document(
                     token_buffer.extend(taken)
                     text_buffer = f"{text_buffer} {' '.join(taken)}".strip()
                     if len(token_buffer) >= max_tokens:
-                        flush_buffer(boundary=is_last_segment and not remaining, force=True)
+                        flush_buffer(
+                            boundary=is_last_segment and not remaining, force=True
+                        )
 
             char_cursor += len(thesis) + 1
 

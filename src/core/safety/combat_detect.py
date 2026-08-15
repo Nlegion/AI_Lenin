@@ -53,7 +53,11 @@ def combat_cooccurrence_hit(
 ) -> list[str]:
     """Combat stem near military co-token within ±window tokens → reason codes."""
     lowered = text.lower()
-    if any(b in lowered for b in METAPHOR_BLOCKERS) and "военн" not in lowered and "войск" not in lowered:
+    if (
+        any(b in lowered for b in METAPHOR_BLOCKERS)
+        and "военн" not in lowered
+        and "войск" not in lowered
+    ):
         # Soft metaphor path: still allow explicit force phrases below.
         pass
     else:
@@ -139,7 +143,9 @@ def military_rf_context_hit(text: str) -> bool:
     lowered = text.lower()
     if any(b in lowered for b in METAPHOR_BLOCKERS):
         return False
-    if not any(re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in patterns):
+    if not any(
+        re.search(pattern, lowered, flags=re.IGNORECASE) for pattern in patterns
+    ):
         return False
     # Crime/domestic + no combat → not military_rf hard deny (FIO/силов FP path).
     has_crime = any(m in lowered for m in CRIME_DOMESTIC_MARKERS)

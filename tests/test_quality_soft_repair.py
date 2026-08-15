@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.core.generation.loop_detect import detect_and_fix_loops
-from src.core.generation.output_artifacts import apply_artifact_pass, detect_encoding_artifacts
+from src.core.generation.output_artifacts import (
+    apply_artifact_pass,
+    detect_encoding_artifacts,
+)
 from src.core.generation.quote_allowlist import extract_quote_candidates
 from src.core.generation.quote_postcheck import apply_quote_postcheck
 from src.core.settings.quality_postcheck_config import (
@@ -63,7 +66,9 @@ def test_hard_mode_still_allows_fallback() -> None:
         artifact_enforce_mode="strict",
         hard_fallback_on_broken_output=True,
         static_safe_template="Не удалось сформировать корректный анализ по данной новости.",
-        fallback_templates=["Не удалось сформировать корректный анализ по данной новости."],
+        fallback_templates=[
+            "Не удалось сформировать корректный анализ по данной новости."
+        ],
     )
     text = "Швейцарские СЃ сообщили."
     # Force encoding scrubber path via hotfix flags (defaults true).

@@ -97,7 +97,9 @@ def apply_post_generate_gates(
             extra_block_patterns=yellow_block_patterns,
         )
     else:
-        guard_result = OutputGuardResult(blocked=False, moderated_text=text, reason_codes=[])
+        guard_result = OutputGuardResult(
+            blocked=False, moderated_text=text, reason_codes=[]
+        )
 
     gate_metadata = {
         "cliche_gate": cliche_result.to_metadata(),

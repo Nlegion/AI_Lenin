@@ -47,7 +47,10 @@ def test_fio_toponym_china_tennis_not_deny() -> None:
         source="TASS",
     )
     assert result.decision == "skip"
-    assert any("out_of_scope" in c or "sport" in c for c in result.reason_codes) or result.decision == "skip"
+    assert (
+        any("out_of_scope" in c or "sport" in c for c in result.reason_codes)
+        or result.decision == "skip"
+    )
 
 
 def test_fio_franz_Josef_land_not_deny() -> None:

@@ -38,7 +38,9 @@ def _pipeline_with(*, dialectical_enabled: bool, evidence_builder, context_build
     pipe.backend = _DummyBackend()
     pipe.config = SimpleNamespace(
         persona_model="test",
-        safety=SimpleNamespace(post_filter=False, fallback=SimpleNamespace(enabled=False)),
+        safety=SimpleNamespace(
+            post_filter=False, fallback=SimpleNamespace(enabled=False)
+        ),
         active_backend=lambda: SimpleNamespace(
             api_style="chat_completions",
             max_context_chars=2000,
@@ -96,7 +98,9 @@ def test_error_mode_returns_fixed_message_without_llm():
         context_builder=lambda query: "unused",
     )
     result = asyncio.run(
-        pipe.generate(news_title="t", news_content="c", enhanced_query="q", key_concepts=[])
+        pipe.generate(
+            news_title="t", news_content="c", enhanced_query="q", key_concepts=[]
+        )
     )
     assert result.analysis == CONTEXT_UNAVAILABLE_MESSAGE
     assert result.metadata["orchestration_mode"] == "error"
@@ -120,7 +124,9 @@ def test_inconsistent_legacy_fallback_coerced_to_error():
         context_builder=lambda query: "unused",
     )
     result = asyncio.run(
-        pipe.generate(news_title="t", news_content="c", enhanced_query="q", key_concepts=[])
+        pipe.generate(
+            news_title="t", news_content="c", enhanced_query="q", key_concepts=[]
+        )
     )
     assert result.analysis == CONTEXT_UNAVAILABLE_MESSAGE
     assert result.metadata["orchestration_mode"] == "error"
@@ -132,8 +138,11 @@ def test_prompt_contains_section_headers():
     request = build_dialectical_chat_request(
         news_title="News",
         news_content="Body",
-        context="## R1 — Ленин (core_self)\n[1] (p) \"quote\"",
+        context='## R1 — Ленин (core_self)\n[1] (p) "quote"',
         max_context_chars=2000,
     )
     assert "## R1" in request.user_content
-    assert "не выдумывай" in request.system_prompt.casefold() or "Не выдумывай" in request.system_prompt
+    assert (
+        "не выдумывай" in request.system_prompt.casefold()
+        or "Не выдумывай" in request.system_prompt
+    )

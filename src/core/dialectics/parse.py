@@ -59,5 +59,7 @@ def parse_json_object(text: str) -> ParseResult:
             repaired = repaired + "}"
         data = _try_load(repaired)
         if data is not None:
-            return ParseResult(status="partial", data=data, error="truncated_json_repaired")
+            return ParseResult(
+                status="partial", data=data, error="truncated_json_repaired"
+            )
     return ParseResult(status="fail", data=None, error="json_parse_failed")

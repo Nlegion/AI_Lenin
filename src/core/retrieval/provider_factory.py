@@ -6,7 +6,10 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 import yaml
 
-from src.core.retrieval.qdrant_retrieval_provider import QdrantRetrievalProvider, RetrievalProviderConfig
+from src.core.retrieval.qdrant_retrieval_provider import (
+    QdrantRetrievalProvider,
+    RetrievalProviderConfig,
+)
 
 
 class MigrationSection(BaseModel):

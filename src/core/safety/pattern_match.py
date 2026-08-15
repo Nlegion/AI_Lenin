@@ -31,7 +31,9 @@ SVO_PHRASES = (
 def word_boundary_hit(lowered: str, pattern: str) -> bool:
     """True if pattern appears as a whole token (Cyrillic/Latin aware)."""
     escaped = re.escape(pattern.lower())
-    return re.search(rf"(?<![а-яёa-z0-9]){escaped}(?![а-яёa-z0-9])", lowered) is not None
+    return (
+        re.search(rf"(?<![а-яёa-z0-9]){escaped}(?![а-яёa-z0-9])", lowered) is not None
+    )
 
 
 def pattern_hits(text: str, patterns: list[str]) -> list[str]:
@@ -43,7 +45,9 @@ def pattern_hits(text: str, patterns: list[str]) -> list[str]:
         if not key:
             continue
         if key in EXCLUDE_CONTEXTS:
-            if key in lowered and not any(ctx in lowered for ctx in EXCLUDE_CONTEXTS[key]):
+            if key in lowered and not any(
+                ctx in lowered for ctx in EXCLUDE_CONTEXTS[key]
+            ):
                 hits.append(pattern)
             continue
         if key == "сво":

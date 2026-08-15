@@ -33,5 +33,5 @@ Config section: `dialectical_reasoning` in [`config/retrieval_pipeline.yaml`](..
 ## Dry-run
 
 ```powershell
-python scripts/run_dialectical_reasoning_dryrun.py --fixture neftegaz
+python scripts/dialectics/run_dialectical_reasoning_dryrun.py --fixture neftegaz
 ```

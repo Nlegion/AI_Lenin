@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from src.core.analysis.evidence_brief import EvidenceBrief, EvidenceItem
-from src.core.dialectics.config import DialecticalMode, DialecticalReasoningConfig, load_dialectical_reasoning_config
+from src.core.dialectics.config import (
+    DialecticalMode,
+    DialecticalReasoningConfig,
+    load_dialectical_reasoning_config,
+)
 from src.core.dialectics.engine import DialecticalEngine
 from src.core.dialectics.parse import parse_json_object
 from src.core.dialectics.rag_brief import build_principle_cards
@@ -75,7 +79,9 @@ async def test_engine_valid_publish() -> None:
     cfg = DialecticalReasoningConfig()
     brief = _brief()
     cards = build_principle_cards(brief, config=cfg)
-    backend = MockBackend(mode="valid", principle_id=cards[0].principle_id, chunk_id="c1")
+    backend = MockBackend(
+        mode="valid", principle_id=cards[0].principle_id, chunk_id="c1"
+    )
     engine = DialecticalEngine(backend=backend, config=cfg)
     result = await engine.analyze(
         request=DialecticalRequest(
@@ -115,7 +121,9 @@ async def test_engine_repair_recovers() -> None:
     )
     engine = DialecticalEngine(backend=backend, config=cfg)
     result = await engine.analyze(
-        request=DialecticalRequest(news_title="t", news_content="новость о регулировании"),
+        request=DialecticalRequest(
+            news_title="t", news_content="новость о регулировании"
+        ),
         brief=brief,
         enable_repair=True,
     )
@@ -125,7 +133,9 @@ async def test_engine_repair_recovers() -> None:
 
 @pytest.mark.asyncio
 async def test_engine_missing_brief_suppress() -> None:
-    engine = DialecticalEngine(backend=MockBackend(), config=DialecticalReasoningConfig())
+    engine = DialecticalEngine(
+        backend=MockBackend(), config=DialecticalReasoningConfig()
+    )
     result = await engine.analyze(
         request=DialecticalRequest(news_title="t", news_content="c"),
         brief=None,

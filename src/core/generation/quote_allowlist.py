@@ -112,13 +112,18 @@ def quote_allowlist_present(candidates: list[QuoteCandidate]) -> bool:
     return bool(candidates)
 
 
-def usable_for_context(chunks: list[tuple[str, float, str]], *, min_chars: int = 40) -> bool:
+def usable_for_context(
+    chunks: list[tuple[str, float, str]], *, min_chars: int = 40
+) -> bool:
     return any(len((text or "").strip()) >= min_chars for _cid, _s, text in chunks)
 
 
 def usable_for_attribution(candidates: list[QuoteCandidate]) -> bool:
     for item in candidates:
         meta = item.meta
-        if any(meta.get(k) for k in ("volume", "том", "page", "стр", "work", "title", "author")):
+        if any(
+            meta.get(k)
+            for k in ("volume", "том", "page", "стр", "work", "title", "author")
+        ):
             return True
     return False

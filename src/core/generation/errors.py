@@ -15,7 +15,9 @@ class ErrorKind(str, Enum):
 class GenerationError(Exception):
     """Raised (or wrapped) for recoverable/non-recoverable generation failures."""
 
-    def __init__(self, message: str, *, kind: ErrorKind, cause: BaseException | None = None):
+    def __init__(
+        self, message: str, *, kind: ErrorKind, cause: BaseException | None = None
+    ):
         super().__init__(message)
         self.kind = kind
         self.cause = cause
@@ -32,12 +34,18 @@ def classify_exception(error: BaseException) -> ErrorKind:
 
     if isinstance(error, GenerationError):
         return error.kind
-    if isinstance(error, (asyncio.TimeoutError, TimeoutError, aiohttp.ClientConnectorError)):
+    if isinstance(
+        error, (asyncio.TimeoutError, TimeoutError, aiohttp.ClientConnectorError)
+    ):
         return ErrorKind.TRANSIENT
     if isinstance(error, aiohttp.ServerDisconnectedError):
         return ErrorKind.TRANSIENT
     text = str(error).lower()
-    if "empty choices" in text or "empty_response" in text or "empty model content" in text:
+    if (
+        "empty choices" in text
+        or "empty_response" in text
+        or "empty model content" in text
+    ):
         return ErrorKind.EMPTY
     if "invalid" in text and "json" in text:
         return ErrorKind.INVALID

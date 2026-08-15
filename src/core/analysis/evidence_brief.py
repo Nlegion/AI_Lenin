@@ -35,7 +35,11 @@ class EvidenceBrief:
 
     def mark_multi_stance(self) -> None:
         counts: dict[str, int] = {}
-        for item in [*self.r1_core_self, *self.r2_influence_agree, *self.r3_influence_critical]:
+        for item in [
+            *self.r1_core_self,
+            *self.r2_influence_agree,
+            *self.r3_influence_critical,
+        ]:
             counts[item.chunk_id] = counts.get(item.chunk_id, 0) + 1
         multi_ids = {chunk_id for chunk_id, count in counts.items() if count > 1}
         self.trace["multi_slot_chunk_ids"] = sorted(multi_ids)
@@ -64,7 +68,10 @@ class EvidenceBrief:
         sections = [
             ("## R1 — Ленин (core_self)", self.r1_core_self),
             ("## R2 — Опоры (influence_agree)", self.r2_influence_agree),
-            ("## R3 — Критика / оппозиция (influence_critical)", self.r3_influence_critical),
+            (
+                "## R3 — Критика / оппозиция (influence_critical)",
+                self.r3_influence_critical,
+            ),
         ]
         parts: list[str] = []
         if self.axes:
@@ -78,7 +85,7 @@ class EvidenceBrief:
                 marker = "[multi-stance] " if item.multi_stance else ""
                 source = item.source_path or item.source_id
                 quote = item.text.strip() or "(без текста)"
-                parts.append(f"{marker}[{index}] ({source}) \"{quote}\"")
+                parts.append(f'{marker}[{index}] ({source}) "{quote}"')
         return "\n\n".join(parts)
 
 

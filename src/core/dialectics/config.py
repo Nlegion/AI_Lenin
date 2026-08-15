@@ -72,7 +72,10 @@ def load_dialectical_reasoning_config(
     except ValueError:
         mode = DialecticalMode.ORCHESTRATION_SINGLE_PASS
     kill = bool(section.get("kill_switch", False))
-    if kill and mode in (DialecticalMode.REASONING_SHADOW, DialecticalMode.REASONING_PUBLISH):
+    if kill and mode in (
+        DialecticalMode.REASONING_SHADOW,
+        DialecticalMode.REASONING_PUBLISH,
+    ):
         mode = DialecticalMode.ORCHESTRATION_SINGLE_PASS
     return DialecticalReasoningConfig(
         mode=mode,
@@ -96,7 +99,9 @@ def load_dialectical_reasoning_config(
         per_pass_timeout_sec=float(section.get("per_pass_timeout_sec", 90.0)),
         global_timeout_sec=float(section.get("global_timeout_sec", 180.0)),
         shadow_sample_rate=float(section.get("shadow_sample_rate", 0.1)),
-        fallback_to_legacy_on_timeout=bool(section.get("fallback_to_legacy_on_timeout", False)),
+        fallback_to_legacy_on_timeout=bool(
+            section.get("fallback_to_legacy_on_timeout", False)
+        ),
         require_orchestration=bool(section.get("require_orchestration", True)),
         judge_sample_rate=float(section.get("judge_sample_rate", 0.0)),
     )

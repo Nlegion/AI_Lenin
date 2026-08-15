@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.evaluate_quality_qa_metrics import evaluate_rows
+from scripts.quality.evaluate_quality_qa_metrics import evaluate_rows
 
 
 def test_metrics_expose_generation_denominators_and_quote_applicability() -> None:

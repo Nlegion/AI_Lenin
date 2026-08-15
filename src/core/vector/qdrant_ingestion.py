@@ -97,7 +97,9 @@ class QdrantIngestionPipeline:
         release_embedding_model(self.model)
         self.model = None
 
-    def _read_rows(self, chunks_tsv_path: Path, limit: int | None = None) -> list[dict[str, str]]:
+    def _read_rows(
+        self, chunks_tsv_path: Path, limit: int | None = None
+    ) -> list[dict[str, str]]:
         csv.field_size_limit(min(sys.maxsize, 2_147_483_647))
         with chunks_tsv_path.open("r", encoding="utf-8", newline="") as file_handle:
             rows = list(csv.DictReader(file_handle, delimiter="\t"))
@@ -110,10 +112,14 @@ class QdrantIngestionPipeline:
         self.client.create_collection(
             collection_name=self.config.collection_name,
             vectors_config={
-                "dense": models.VectorParams(size=vector_size, distance=models.Distance.COSINE),
+                "dense": models.VectorParams(
+                    size=vector_size, distance=models.Distance.COSINE
+                ),
             },
             sparse_vectors_config={
-                "sparse": models.SparseVectorParams(index=models.SparseIndexParams(on_disk=False)),
+                "sparse": models.SparseVectorParams(
+                    index=models.SparseIndexParams(on_disk=False)
+                ),
             },
         )
 
@@ -122,7 +128,9 @@ class QdrantIngestionPipeline:
         last_error: Exception | None = None
         while attempt <= self.config.retries:
             try:
-                self.client.upsert(collection_name=self.config.collection_name, points=points)
+                self.client.upsert(
+                    collection_name=self.config.collection_name, points=points
+                )
                 return
             except Exception as error:  # noqa: BLE001
                 last_error = error
@@ -160,8 +168,14 @@ class QdrantIngestionPipeline:
                 log_gpu_memory(tag=f"encode_batch_size_{len(texts)}")
                 return self.model.encode(texts, normalize_embeddings=True).tolist()
             except (RuntimeError, torch.cuda.OutOfMemoryError) as error:
-                if not self.config.adaptive_batch or self.batch_size <= self.config.min_batch_size:
-                    if self.config.fallback_to_cpu and str(getattr(self.model, "device", "")) != "cpu":
+                if (
+                    not self.config.adaptive_batch
+                    or self.batch_size <= self.config.min_batch_size
+                ):
+                    if (
+                        self.config.fallback_to_cpu
+                        and str(getattr(self.model, "device", "")) != "cpu"
+                    ):
                         self.model = load_sentence_transformer(
                             model_path=self.config.dense_model,
                             preferred_device="cpu",
@@ -211,7 +225,9 @@ class QdrantIngestionPipeline:
             )
         return len(points)
 
-    def run(self, chunks_tsv_path: Path, limit: int | None = None) -> dict[str, float | int]:
+    def run(
+        self, chunks_tsv_path: Path, limit: int | None = None
+    ) -> dict[str, float | int]:
         rows = self._read_rows(chunks_tsv_path=chunks_tsv_path, limit=limit)
         documents = [row["text"] for row in rows]
         self.sparse_encoder.fit(documents=documents)
@@ -302,7 +318,6 @@ class QdrantIngestionPipeline:
         line = (
             f"[{prefix}] {offset}/{total} ({pct:5.1f}%) "
             f"batch={batch_size} rate={rate:5.2f} rows/s "
-            f"elapsed={elapsed_sec/60:5.1f}m eta={eta_sec/60:5.1f}m"
+            f"elapsed={elapsed_sec / 60:5.1f}m eta={eta_sec / 60:5.1f}m"
         )
-        print(line, flush=True)
         logger.info(line)

@@ -20,7 +20,9 @@ class OntologyTaxonomy:
 def load_taxonomy(config_path: Path) -> OntologyTaxonomy:
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     section = payload.get("ontology_taxonomy", payload)
-    contradiction_pairs = [tuple(item) for item in section.get("contradiction_pairs", [])]
+    contradiction_pairs = [
+        tuple(item) for item in section.get("contradiction_pairs", [])
+    ]
     return OntologyTaxonomy(
         concepts=dict(section.get("concepts", {})),
         entities=list(section.get("entities", [])),

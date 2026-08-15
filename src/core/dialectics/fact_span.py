@@ -7,7 +7,9 @@ import re
 _WS = re.compile(r"\s+")
 
 
-def extract_fact_span(*, news_title: str, news_content: str, max_chars: int = 320) -> str:
+def extract_fact_span(
+    *, news_title: str, news_content: str, max_chars: int = 320
+) -> str:
     title = _WS.sub(" ", (news_title or "").strip())
     body = _WS.sub(" ", (news_content or "").strip())
     if not body:

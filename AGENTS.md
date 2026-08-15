@@ -85,29 +85,30 @@ pytest tests/test_news_fetcher.py -q
 pytest tests -k "fetcher" -q
 
 # Quality / dry-run / release
-python scripts/run_local_rag_dryrun.py --fixture economy --verbose
-python scripts/evaluate_rag_quality.py
-python scripts/evaluate_news_guard.py
-python scripts/evaluate_anti_cliche.py
-python scripts/run_live_news_qa_batch.py --help
-python scripts/run_live_news_qa_24h.py --help
-python scripts/calibrate_combat_gate.py
-python scripts/rollback_gate_config.py snapshot   # or: restore
-python scripts/release_pass.py --help
-python scripts/collect_anti_cliche_label_batch.py
-python scripts/update_llama_cpp_release.py
-python scripts/run_quality_qa_batch.py --guard-check-only
-python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --allow-legacy-fallback
-python scripts/calibrate_semantic_core_query.py
-python scripts/evaluate_semantic_core.py
-python scripts/run_dialectical_reasoning_dryrun.py --fixture neftegaz
+# Canonical paths live under scripts/<domain>/; root scripts/*.py are thin shims.
+python scripts/quality/run_local_rag_dryrun.py --fixture economy --verbose
+python scripts/retrieval/evaluate_rag_quality.py
+python scripts/safety/evaluate_news_guard.py
+python scripts/quality/evaluate_anti_cliche.py
+python scripts/quality/run_live_news_qa_batch.py --help
+python scripts/quality/run_live_news_qa_24h.py --help
+python scripts/safety/calibrate_combat_gate.py
+python scripts/safety/rollback_gate_config.py snapshot   # or: restore
+python scripts/ops/release_pass.py --help
+python scripts/quality/collect_anti_cliche_label_batch.py
+python scripts/ops/update_llama_cpp_release.py
+python scripts/quality/run_quality_qa_batch.py --guard-check-only
+python scripts/quality/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --allow-legacy-fallback
+python scripts/dialectics/calibrate_semantic_core_query.py
+python scripts/dialectics/evaluate_semantic_core.py
+python scripts/dialectics/run_dialectical_reasoning_dryrun.py --fixture neftegaz
 
 # Version bump
-python scripts/version_update.py patch   # or major / minor
+python scripts/ops/version_update.py patch   # or major / minor
 
 # RAG ontology rebuild (not LLM fine-tune)
-python scripts/build_ontology_worldview.py --help
-python scripts/build_qdrant_index.py --help
+python scripts/corpus/build_ontology_worldview.py --help
+python scripts/retrieval/build_qdrant_index.py --help
 ```
 
 **Required env vars:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`, `TELEGRAM_ADMIN_ID`

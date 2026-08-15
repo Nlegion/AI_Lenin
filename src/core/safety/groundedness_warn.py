@@ -28,7 +28,9 @@ def _tokens(text: str) -> set[str]:
     return {match.group(0).casefold() for match in _TOKEN.finditer(text or "")}
 
 
-def news_groundedness(*, analysis: str, news_title: str, news_content: str) -> GroundednessResult:
+def news_groundedness(
+    *, analysis: str, news_title: str, news_content: str
+) -> GroundednessResult:
     news_tokens = _tokens(f"{news_title} {news_content}")
     answer_tokens = _tokens(analysis)
     if not news_tokens or not answer_tokens:

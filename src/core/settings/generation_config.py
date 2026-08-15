@@ -50,7 +50,9 @@ class GenerationConfig(BaseModel):
     def active_backend(self) -> BackendConfig:
         backend = self.backends.get(self.persona_model)
         if backend is None:
-            raise ValueError(f"Missing backend config for persona_model={self.persona_model}")
+            raise ValueError(
+                f"Missing backend config for persona_model={self.persona_model}"
+            )
         return backend
 
     def with_persona_model(self, persona_model: PersonaModel) -> "GenerationConfig":

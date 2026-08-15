@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from src.core.safety.pre_rag_censor_types import CensorInput, CensorResult
+from src.core.utils.jsonl import append_jsonl
 
 
 @dataclass(frozen=True)
@@ -57,7 +57,5 @@ def enqueue_review_case(
         audit=dict(result.audit),
     )
     path = _queue_path(base_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(asdict(item), ensure_ascii=False) + "\n")
+    append_jsonl(path, asdict(item))
     return review_id

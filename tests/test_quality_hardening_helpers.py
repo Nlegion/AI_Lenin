@@ -8,8 +8,14 @@ from src.core.generation.context_budget import (
     clip_context_by_chunks,
     shrink_budget,
 )
-from src.core.generation.prompt_adapter import FALLBACK_LEGACY_MARKER, build_chat_request
-from src.core.generation.quality_hooks import _enforce_required_structure, _has_required_structure
+from src.core.generation.prompt_adapter import (
+    FALLBACK_LEGACY_MARKER,
+    build_chat_request,
+)
+from src.core.generation.quality_hooks import (
+    _enforce_required_structure,
+    _has_required_structure,
+)
 from src.core.generation.text_postprocess import (
     clamp_answer_length,
     dedupe_consecutive_sentences,
@@ -146,7 +152,9 @@ def test_artifact_pass_repairs_ryo_without_artifact_flag() -> None:
     from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
 
     text = "Рост цен ведёт к снижению Рё реальных доходов."
-    result = apply_artifact_pass(text=text, config=QualityPostcheckConfig(), item_id="ryo")
+    result = apply_artifact_pass(
+        text=text, config=QualityPostcheckConfig(), item_id="ryo"
+    )
     assert "её реальных доходов" in result.text
     assert "artifact:mojibake_ryo" not in result.codes
     assert "detect:encoding_artifact" not in result.codes

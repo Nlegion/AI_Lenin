@@ -9,7 +9,11 @@ from typing import Any
 from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.dialectics.config import DialecticalReasoningConfig
 from src.core.dialectics.fact_span import entity_tokens_in_news, extract_fact_span
-from src.core.dialectics.outcomes import finalize_result, simplified_result, terminal_result
+from src.core.dialectics.outcomes import (
+    finalize_result,
+    simplified_result,
+    terminal_result,
+)
 from src.core.dialectics.packing import pack_reasoning_context
 from src.core.dialectics.parse import parse_json_object
 from src.core.dialectics.prompts import SYSTEM_PROMPT, USER_TEMPLATE
@@ -60,7 +64,11 @@ class DialecticalEngine:
         timings["fact_span_ms"] = (time.perf_counter() - t0) * 1000.0
 
         t0 = time.perf_counter()
-        cards = build_principle_cards(brief, config=self.config) if brief is not None else []
+        cards = (
+            build_principle_cards(brief, config=self.config)
+            if brief is not None
+            else []
+        )
         by_stance = cards_by_stance(cards)
         has_r1 = bool(by_stance.get("core_self"))
         has_r3 = bool(by_stance.get("influence_critical"))
@@ -205,7 +213,9 @@ class DialecticalEngine:
                 continue
             payload = parsed.data
             candidate = build_result_from_payload(payload=payload, cards=cards)
-            candidate.quality = validate_result(result=candidate, cards=cards, has_r3=has_r3)
+            candidate.quality = validate_result(
+                result=candidate, cards=cards, has_r3=has_r3
+            )
             candidate.metadata["repair_attempt"] = attempt
             best = candidate
             if candidate.quality.passed:

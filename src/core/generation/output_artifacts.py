@@ -307,7 +307,9 @@ def apply_artifact_pass(
 
     # Pre-guard body+public via postprocess_clean (single writer; post_guard still
     # runs after NewsGuard/yellow because Guard may insert «[место]»).
-    from src.core.generation.postprocess_clean.adapter import apply_pre_guard_for_artifact
+    from src.core.generation.postprocess_clean.adapter import (
+        apply_pre_guard_for_artifact,
+    )
 
     pre = apply_pre_guard_for_artifact(
         working,

@@ -23,7 +23,7 @@ def test_first_person_tech_warns() -> None:
 
 def test_quoted_expert_passes() -> None:
     result = anachronism_gate(
-        analysis='Эксперт сказал: «Я пользуюсь TikTok каждый день», — сообщает агентство.'
+        analysis="Эксперт сказал: «Я пользуюсь TikTok каждый день», — сообщает агентство."
     )
     assert result.reason_codes == []
 

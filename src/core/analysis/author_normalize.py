@@ -45,7 +45,11 @@ def is_lenin_author(
     normalized = normalize_author(raw)
     if not normalized:
         return False
-    reject = reject_substrings if reject_substrings is not None else DEFAULT_REJECT_SUBSTRINGS
+    reject = (
+        reject_substrings
+        if reject_substrings is not None
+        else DEFAULT_REJECT_SUBSTRINGS
+    )
     for bad in reject:
         if normalize_author(bad) and normalize_author(bad) in normalized:
             return False

@@ -20,8 +20,8 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 os.environ["HF_DATASETS_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
+
 async def async_main():
-    setup_logging()
     logger = logging.getLogger(__name__)
     version_info = version_manager.get_full_version()
     logger.info(f"Запуск системы ИИ-Ленин {version_info} с раздельными циклами")
@@ -30,13 +30,17 @@ async def async_main():
     try:
         # Диагностика GPU
         if torch.cuda.is_available():
-            total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+            total_vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
             logger.info(f"Доступно VRAM: {total_vram:.2f} GB")
         else:
             logger.warning("CUDA недоступна! Работа на CPU будет медленнее")
 
         # Проверка переменных окружения
-        required_envs = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHANNEL_ID", "TELEGRAM_ADMIN_ID"]
+        required_envs = [
+            "TELEGRAM_BOT_TOKEN",
+            "TELEGRAM_CHANNEL_ID",
+            "TELEGRAM_ADMIN_ID",
+        ]
         missing = [env for env in required_envs if not os.getenv(env)]
         if missing:
             logger.error(f"Отсутствуют переменные окружения: {', '.join(missing)}")
@@ -80,21 +84,24 @@ async def async_main():
     except Exception as e:
         logger.exception(f"Критическая ошибка: {str(e)}")
         if processor:
-            await processor.publisher.send_admin_notification(f"💥 Критическая ошибка системы: {str(e)[:300]}")
+            await processor.publisher.send_admin_notification(
+                f"💥 Критическая ошибка системы: {str(e)[:300]}"
+            )
         sys.exit(1)
     finally:
         # Гарантированное закрытие ресурсов
         if processor:
             await processor.close()
 
-if __name__ == "__main__":
 
-    if platform.system() == 'Windows':
+if __name__ == "__main__":
+    if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
+    logger = logging.getLogger(__name__)
     try:
         asyncio.run(async_main())
     except KeyboardInterrupt:
-        print("Приложение остановлено пользователем")
+        logger.info("Приложение остановлено пользователем")
     except Exception as e:
-        print(f"Необработанная ошибка: {str(e)}")
+        logger.exception("Необработанная ошибка: %s", e)

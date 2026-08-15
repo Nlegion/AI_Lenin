@@ -25,4 +25,3 @@ def test_l2_classifier_cache_is_bounded() -> None:
     for idx in range(500):
         classifier.score(f"экономика {idx}")
     assert len(classifier._cache) <= 128  # type: ignore[attr-defined]
-

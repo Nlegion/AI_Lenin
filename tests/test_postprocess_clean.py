@@ -35,14 +35,26 @@ def _pre(text: str, **kwargs) -> object:
 
 
 def test_status_mapping_does_not_override_guard() -> None:
-    assert map_postprocess_status(postprocess_hard_fail=True, structure_error=False) == "blocked"
-    assert map_postprocess_status(postprocess_hard_fail=False, structure_error=True) == "needs_review"
-    assert map_postprocess_status(postprocess_hard_fail=False, structure_error=False) == "clean"
+    assert (
+        map_postprocess_status(postprocess_hard_fail=True, structure_error=False)
+        == "blocked"
+    )
+    assert (
+        map_postprocess_status(postprocess_hard_fail=False, structure_error=True)
+        == "needs_review"
+    )
+    assert (
+        map_postprocess_status(postprocess_hard_fail=False, structure_error=False)
+        == "clean"
+    )
 
 
 def test_default_mode_is_live() -> None:
     assert resolve_clean_mode(QualityPostcheckConfig()) == "live"
-    assert resolve_clean_mode(QualityPostcheckConfig(postprocess_clean_mode="shadow")) == "shadow"
+    assert (
+        resolve_clean_mode(QualityPostcheckConfig(postprocess_clean_mode="shadow"))
+        == "shadow"
+    )
 
 
 def test_pre_guard_fixture_idempotent() -> None:
@@ -67,7 +79,9 @@ def test_post_guard_strips_newsguard_mesto() -> None:
     result = run_postprocess(PostProcessInput(raw_text=guarded, phase="post_guard"))
     assert "«[место]»" not in result.cleaned_text
     assert "strip:mesto_marker" in result.codes
-    again = run_postprocess(PostProcessInput(raw_text=result.cleaned_text, phase="post_guard"))
+    again = run_postprocess(
+        PostProcessInput(raw_text=result.cleaned_text, phase="post_guard")
+    )
     assert again.cleaned_text == result.cleaned_text
 
 

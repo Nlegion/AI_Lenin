@@ -8,7 +8,10 @@ from types import SimpleNamespace
 
 from src.core.analysis.evidence_brief import EvidenceBrief, EvidenceItem
 from src.core.generation.pipeline import AnalysisGenerationPipeline
-from src.core.settings.gate_constants import CLICHE_CODE_NO_R1, CLICHE_CODE_SKIPPED_NO_BRIEF
+from src.core.settings.gate_constants import (
+    CLICHE_CODE_NO_R1,
+    CLICHE_CODE_SKIPPED_NO_BRIEF,
+)
 
 
 class _DummyBackend:
@@ -27,7 +30,9 @@ class _DummyBackend:
         return None
 
 
-def _pipe(*, text: str, brief: EvidenceBrief | None, dialectical: bool) -> AnalysisGenerationPipeline:
+def _pipe(
+    *, text: str, brief: EvidenceBrief | None, dialectical: bool
+) -> AnalysisGenerationPipeline:
     pipe = AnalysisGenerationPipeline.__new__(AnalysisGenerationPipeline)
     pipe.base_dir = Path(".")
     pipe.context_builder = lambda query: "legacy-context"
@@ -38,7 +43,9 @@ def _pipe(*, text: str, brief: EvidenceBrief | None, dialectical: bool) -> Analy
     pipe.backend = _DummyBackend(text=text)
     pipe.config = SimpleNamespace(
         persona_model="test",
-        safety=SimpleNamespace(post_filter=False, fallback=SimpleNamespace(enabled=False)),
+        safety=SimpleNamespace(
+            post_filter=False, fallback=SimpleNamespace(enabled=False)
+        ),
         active_backend=lambda: SimpleNamespace(
             api_style="chat_completions",
             max_context_chars=2000,
@@ -84,18 +91,26 @@ def _brief_with_r1() -> EvidenceBrief:
 def test_legacy_skips_cliche_inside_gate() -> None:
     dense = "революция эксплуатация пролетариат буржуазия классовая диктатура"
     pipe = _pipe(text=dense, brief=None, dialectical=False)
-    result = asyncio.run(pipe.generate(news_title="t", news_content="c", enhanced_query="q"))
+    result = asyncio.run(
+        pipe.generate(news_title="t", news_content="c", enhanced_query="q")
+    )
     assert result.metadata["cliche_gate"]["skipped"] is True
-    assert CLICHE_CODE_SKIPPED_NO_BRIEF in result.metadata["cliche_gate"]["reason_codes"]
+    assert (
+        CLICHE_CODE_SKIPPED_NO_BRIEF in result.metadata["cliche_gate"]["reason_codes"]
+    )
     assert result.hallucination_codes == []
     assert result.analysis == dense
 
 
 def test_warn_only_does_not_mutate_analysis() -> None:
-    dense = "революция эксплуатация пролетариат буржуазия классовая диктатура империализм"
+    dense = (
+        "революция эксплуатация пролетариат буржуазия классовая диктатура империализм"
+    )
     brief = _brief_empty_r1()
     pipe = _pipe(text=dense, brief=brief, dialectical=True)
-    result = asyncio.run(pipe.generate(news_title="t", news_content="c", enhanced_query="q"))
+    result = asyncio.run(
+        pipe.generate(news_title="t", news_content="c", enhanced_query="q")
+    )
     assert result.analysis == dense
     assert CLICHE_CODE_NO_R1 in result.metadata["cliche_gate"]["reason_codes"]
     assert result.hallucination_codes == []
@@ -104,7 +119,9 @@ def test_warn_only_does_not_mutate_analysis() -> None:
 def test_hallucination_codes_not_merged_with_cliche() -> None:
     brief = _brief_with_r1()
     pipe = _pipe(text="краткий анализ фактов новости", brief=brief, dialectical=True)
-    result = asyncio.run(pipe.generate(news_title="t", news_content="c", enhanced_query="q"))
+    result = asyncio.run(
+        pipe.generate(news_title="t", news_content="c", enhanced_query="q")
+    )
     assert result.hallucination_codes == []
     assert "cliche_gate" in result.metadata
     assert result.metadata["r1_count"] == 1

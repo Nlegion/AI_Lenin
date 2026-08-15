@@ -48,7 +48,10 @@ from src.core.generation.quote_mode import (
     has_quote_span,
     select_quote_mode,
 )
-from src.core.generation.text_postprocess import clamp_answer_length, finalize_generated_text
+from src.core.generation.text_postprocess import (
+    clamp_answer_length,
+    finalize_generated_text,
+)
 from src.core.safety.fact_opinion import needs_fact_opinion_extra
 from src.core.safety.news_guard import NewsGuard, OutputGuardResult
 from src.core.safety.post_generate_gates import apply_post_generate_gates
@@ -76,7 +79,9 @@ class PipelineResult:
     user_prompt: str = ""
 
 
-def _chunks_from_brief(brief: EvidenceBrief | None, context: str) -> list[tuple[str, float, str]]:
+def _chunks_from_brief(
+    brief: EvidenceBrief | None, context: str
+) -> list[tuple[str, float, str]]:
     if brief is not None:
         items = [
             *brief.r1_core_self,
@@ -198,7 +203,9 @@ class AnalysisGenerationPipeline:
                 enhanced_query=enhanced_query,
                 run_id=pipeline_id,
             )
-            orchestration_mode = str(brief.trace.get("orchestration_mode", "dialectical_v1"))
+            orchestration_mode = str(
+                brief.trace.get("orchestration_mode", "dialectical_v1")
+            )
             if brief.trace.get("synthesis_hints"):
                 synthesis_hints = list(brief.trace["synthesis_hints"])
             if brief.trace.get("semantic_fallback_exhausted"):
@@ -226,7 +233,9 @@ class AnalysisGenerationPipeline:
         else:
             context = self.context_builder(query_for_context)
 
-        reasoning_cfg = load_reasoning_config_with_generation_sot(base_dir=self.base_dir)
+        reasoning_cfg = load_reasoning_config_with_generation_sot(
+            base_dir=self.base_dir
+        )
         if reasoning_cfg.mode in (
             DialecticalMode.REASONING_SHADOW,
             DialecticalMode.REASONING_PUBLISH,
@@ -251,7 +260,9 @@ class AnalysisGenerationPipeline:
             brief=brief,
             orchestration_mode=orchestration_mode,
             dialectical_prompt=bool(
-                self.dialectical_enabled and brief is not None and orchestration_mode == "dialectical_v1"
+                self.dialectical_enabled
+                and brief is not None
+                and orchestration_mode == "dialectical_v1"
             ),
             synthesis_hints=synthesis_hints if use_hints else None,
             hint_only=hint_only and use_hints,
@@ -273,7 +284,9 @@ class AnalysisGenerationPipeline:
             "persona_model": self.config.persona_model,
             "orchestration_mode": orchestration_mode,
             "pipeline_id": pipeline_id,
-            "semantic_fallback": bool(brief.trace.get("semantic_fallback")) if brief else False,
+            "semantic_fallback": bool(brief.trace.get("semantic_fallback"))
+            if brief
+            else False,
             "semantic_fallback_exhausted": bool(
                 brief.trace.get("semantic_fallback_exhausted")
             )
@@ -388,8 +401,12 @@ class AnalysisGenerationPipeline:
                 result=reasoning_result,
             )
             reasoning_meta["dialectical_outcome"] = reasoning_result.outcome
-            reasoning_meta["dialectical_reason_codes"] = list(reasoning_result.reason_codes)
-            reasoning_meta["dialectical_timings_ms"] = dict(reasoning_result.pass_timings_ms)
+            reasoning_meta["dialectical_reason_codes"] = list(
+                reasoning_result.reason_codes
+            )
+            reasoning_meta["dialectical_timings_ms"] = dict(
+                reasoning_result.pass_timings_ms
+            )
 
         if use_reasoning_publish and reasoning_result is not None:
             if (
@@ -404,7 +421,9 @@ class AnalysisGenerationPipeline:
                     context=working_context,
                     backend=getattr(self.backend, "persona_model", "unknown"),
                     model_name=backend_cfg.model_name,
-                    latency_ms=int(reasoning_result.pass_timings_ms.get("total_ms") or 0),
+                    latency_ms=int(
+                        reasoning_result.pass_timings_ms.get("total_ms") or 0
+                    ),
                     guard_result=OutputGuardResult(
                         blocked=False,
                         moderated_text=CONTEXT_UNAVAILABLE_MESSAGE,
@@ -456,7 +475,9 @@ class AnalysisGenerationPipeline:
                 prompt_builder = "dialectical_reasoning"
                 request_system = ""
                 request_user = ""
-                response_latency = int(reasoning_result.pass_timings_ms.get("total_ms") or 0)
+                response_latency = int(
+                    reasoning_result.pass_timings_ms.get("total_ms") or 0
+                )
                 response_finish = None
                 # Jump to shared post-gates below via local vars
                 working_context = working_context
@@ -745,7 +766,9 @@ class AnalysisGenerationPipeline:
                         brief.trace.get("semantic_fallback_exhausted")
                     ),
                     "semantic_core_dominant": brief.trace.get("semantic_core_dominant"),
-                    "semantic_core_hint_only": brief.trace.get("semantic_core_hint_only"),
+                    "semantic_core_hint_only": brief.trace.get(
+                        "semantic_core_hint_only"
+                    ),
                 }
             )
 

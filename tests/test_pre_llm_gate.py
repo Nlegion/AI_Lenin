@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts._quality_qa_io import QaItem
-from scripts._quality_qa_runtime import apply_pre_llm_gate, base_row
+from scripts.lib._quality_qa_io import QaItem
+from scripts.lib._quality_qa_runtime import apply_pre_llm_gate, base_row
 from src.core.safety.news_guard import NewsGuard, load_news_guard_config
 
 
 def test_pre_llm_gate_blocks_must_refuse_without_llm() -> None:
-    guard = NewsGuard(config=load_news_guard_config(path=Path("config/news_guard.yaml")))
+    guard = NewsGuard(
+        config=load_news_guard_config(path=Path("config/news_guard.yaml"))
+    )
     item = QaItem(
         id="refuse_01",
         title="комментарий вооруженные силы рф",
@@ -29,7 +31,9 @@ def test_pre_llm_gate_blocks_must_refuse_without_llm() -> None:
 
 
 def test_pre_llm_gate_allows_must_answer() -> None:
-    guard = NewsGuard(config=load_news_guard_config(path=Path("config/news_guard.yaml")))
+    guard = NewsGuard(
+        config=load_news_guard_config(path=Path("config/news_guard.yaml"))
+    )
     item = QaItem(
         id="soc_01",
         title="Реформа системы здравоохранения",

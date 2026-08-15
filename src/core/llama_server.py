@@ -19,7 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 class LeninServer:
-    def __init__(self, persona_model: PersonaModel | None = None, generation_config: GenerationConfig | None = None):
+    def __init__(
+        self,
+        persona_model: PersonaModel | None = None,
+        generation_config: GenerationConfig | None = None,
+    ):
         self.config = Settings()
         self.process = None
         self._log_handle = None
@@ -28,7 +32,9 @@ class LeninServer:
             path=default_generation_config_path(base_dir=base_dir)
         )
         if persona_model is not None:
-            self.generation_config = self.generation_config.with_persona_model(persona_model)
+            self.generation_config = self.generation_config.with_persona_model(
+                persona_model
+            )
         backend = self.generation_config.active_backend()
         self.server_url = self.generation_config.server_url
         self.llama_dir = base_dir / "llama.cpp"
@@ -42,7 +48,9 @@ class LeninServer:
         self.ctx_size = backend.ctx_size
         self.threads = backend.threads
         self.persona_model = self.generation_config.persona_model
-        self.log_path = base_dir / ".cursor" / "artifacts" / "llama_server" / "llama-server.log"
+        self.log_path = (
+            base_dir / ".cursor" / "artifacts" / "llama_server" / "llama-server.log"
+        )
 
     async def start_server(self):
         """Запуск сервера llama.cpp for the configured persona backend."""
@@ -93,7 +101,9 @@ class LeninServer:
                 self.release_tag or "legacy",
             )
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
-            self._log_handle = self.log_path.open("w", encoding="utf-8", errors="replace")
+            self._log_handle = self.log_path.open(
+                "w", encoding="utf-8", errors="replace"
+            )
             env = dict(**__import__("os").environ)
             path_parts = [str(self.runtime_dir)]
             if self.cudart_dir is not None and self.cudart_dir.exists():
@@ -115,7 +125,11 @@ class LeninServer:
                 )
                 self._close_log_handle()
                 return False
-            logger.info("Процесс llama-server запущен pid=%s log=%s", self.process.pid, self.log_path)
+            logger.info(
+                "Процесс llama-server запущен pid=%s log=%s",
+                self.process.pid,
+                self.log_path,
+            )
             return True
         except Exception as error:  # noqa: BLE001
             logger.error("Ошибка запуска сервера: %s", error)

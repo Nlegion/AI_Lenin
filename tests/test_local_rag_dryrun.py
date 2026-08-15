@@ -5,7 +5,12 @@ import sys
 
 import pytest
 
-from scripts.run_local_rag_dryrun import _append_audit_log, _load_fixtures, _load_news_text, _recent_high_risk_count
+from scripts.quality.run_local_rag_dryrun import (
+    _append_audit_log,
+    _load_fixtures,
+    _load_news_text,
+    _recent_high_risk_count,
+)
 from src.core.safety.news_guard import NewsGuard, load_news_guard_config
 
 
@@ -38,7 +43,9 @@ def test_script_denies_military_fixture():
         "--fixture",
         "conflict",
     ]
-    result = subprocess.run(command, cwd=Path.cwd(), check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        command, cwd=Path.cwd(), check=False, capture_output=True, text=True
+    )
     assert result.returncode == 2
     assert "политикой безопасности" in (result.stdout + result.stderr)
 
@@ -80,7 +87,9 @@ def test_script_returns_nonzero_on_missing_provider(tmp_path: Path):
         "--retrieval-config",
         str(config_path),
     ]
-    result = subprocess.run(command, cwd=Path.cwd(), check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        command, cwd=Path.cwd(), check=False, capture_output=True, text=True
+    )
     assert result.returncode != 0
     assert "provider unavailable" in (result.stdout + result.stderr).lower()
 
@@ -106,7 +115,9 @@ def test_integration_dryrun_fixture_execution():
         "--skip-judge",
         "--verbose",
     ]
-    result = subprocess.run(command, cwd=Path.cwd(), check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        command, cwd=Path.cwd(), check=False, capture_output=True, text=True
+    )
     stdout = result.stdout
     assert result.returncode == 0
     for section in [

@@ -68,4 +68,3 @@ class SemanticL2Classifier:
         result = L2Score(category=best_category, score=best_score)
         self._cache_set(key, result)
         return result
-

@@ -44,14 +44,25 @@ def _load_rules_from_yaml(config_path: Path) -> SourceRegistryRules:
     return SourceRegistryRules(
         core_authors=set(section.get("core_authors", list(default_rules.core_authors))),
         influence_agree_authors=set(
-            section.get("influence_agree_authors", list(default_rules.influence_agree_authors))
+            section.get(
+                "influence_agree_authors", list(default_rules.influence_agree_authors)
+            )
         ),
         influence_critical_authors=set(
-            section.get("influence_critical_authors", list(default_rules.influence_critical_authors))
+            section.get(
+                "influence_critical_authors",
+                list(default_rules.influence_critical_authors),
+            )
         ),
-        contextual_authors=set(section.get("contextual_authors", list(default_rules.contextual_authors))),
-        path_overrides=dict(section.get("path_overrides", default_rules.path_overrides)),
-        allowed_extensions=tuple(section.get("allowed_extensions", default_rules.allowed_extensions)),
+        contextual_authors=set(
+            section.get("contextual_authors", list(default_rules.contextual_authors))
+        ),
+        path_overrides=dict(
+            section.get("path_overrides", default_rules.path_overrides)
+        ),
+        allowed_extensions=tuple(
+            section.get("allowed_extensions", default_rules.allowed_extensions)
+        ),
     )
 
 
@@ -61,7 +72,9 @@ def load_source_registry_rules(config_path: Path | None = None) -> SourceRegistr
     return _load_rules_from_yaml(config_path=config_path)
 
 
-def classify_stance_type(author: str, relative_path: str, rules: SourceRegistryRules) -> str:
+def classify_stance_type(
+    author: str, relative_path: str, rules: SourceRegistryRules
+) -> str:
     normalized_author = _normalize(author)
     normalized_path = relative_path.lower().replace("\\", "/")
 
@@ -72,15 +85,21 @@ def classify_stance_type(author: str, relative_path: str, rules: SourceRegistryR
 
     if normalized_author in {_normalize(item) for item in rules.core_authors}:
         return "core_self"
-    if normalized_author in {_normalize(item) for item in rules.influence_agree_authors}:
+    if normalized_author in {
+        _normalize(item) for item in rules.influence_agree_authors
+    }:
         return "influence_agree"
-    if normalized_author in {_normalize(item) for item in rules.influence_critical_authors}:
+    if normalized_author in {
+        _normalize(item) for item in rules.influence_critical_authors
+    }:
         return "influence_critical"
     return "contextual"
 
 
 def _build_source_id(source_path: str) -> str:
-    digest = hashlib.sha1(source_path.encode("utf-8"), usedforsecurity=False).hexdigest()
+    digest = hashlib.sha1(
+        source_path.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
     return f"src_{digest[:16]}"
 
 
@@ -93,7 +112,9 @@ def _extract_author(relative_path: str) -> str:
     return parts[0]
 
 
-def _iter_corpus_files(corpus_root: Path, allowed_extensions: tuple[str, ...]) -> list[Path]:
+def _iter_corpus_files(
+    corpus_root: Path, allowed_extensions: tuple[str, ...]
+) -> list[Path]:
     discovered: list[Path] = []
     normalized_ext = {item.lower() for item in allowed_extensions}
     for file_path in corpus_root.rglob("*"):
@@ -102,15 +123,21 @@ def _iter_corpus_files(corpus_root: Path, allowed_extensions: tuple[str, ...]) -
     return sorted(discovered)
 
 
-def build_source_registry(corpus_root: Path, rules: SourceRegistryRules) -> list[SourceRegistryRecord]:
+def build_source_registry(
+    corpus_root: Path, rules: SourceRegistryRules
+) -> list[SourceRegistryRecord]:
     if not corpus_root.exists():
         raise FileNotFoundError(f"Corpus root does not exist: {corpus_root}")
 
     records: list[SourceRegistryRecord] = []
-    for file_path in _iter_corpus_files(corpus_root=corpus_root, allowed_extensions=rules.allowed_extensions):
+    for file_path in _iter_corpus_files(
+        corpus_root=corpus_root, allowed_extensions=rules.allowed_extensions
+    ):
         relative = file_path.relative_to(corpus_root).as_posix()
         author = _extract_author(relative_path=relative)
-        stance_type = classify_stance_type(author=author, relative_path=relative, rules=rules)
+        stance_type = classify_stance_type(
+            author=author, relative_path=relative, rules=rules
+        )
         record = SourceRegistryRecord(
             source_id=_build_source_id(source_path=relative),
             source_path=relative,
@@ -126,9 +153,15 @@ def build_source_registry(corpus_root: Path, rules: SourceRegistryRules) -> list
     return records
 
 
-def export_source_registry_tsv(records: list[SourceRegistryRecord], output_path: Path) -> None:
+def export_source_registry_tsv(
+    records: list[SourceRegistryRecord], output_path: Path
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = list(asdict(records[0]).keys()) if records else list(SourceRegistryRecord.__annotations__.keys())
+    fieldnames = (
+        list(asdict(records[0]).keys())
+        if records
+        else list(SourceRegistryRecord.__annotations__.keys())
+    )
     with output_path.open("w", encoding="utf-8", newline="") as file_handle:
         writer = csv.DictWriter(file_handle, fieldnames=fieldnames, delimiter="\t")
         writer.writeheader()

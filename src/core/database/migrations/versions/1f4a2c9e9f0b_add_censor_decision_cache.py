@@ -50,7 +50,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_censor_decision_cache_last_accessed_at", table_name="censor_decision_cache")
-    op.drop_index("ix_censor_decision_cache_hash_version", table_name="censor_decision_cache")
+    op.drop_index(
+        "ix_censor_decision_cache_last_accessed_at", table_name="censor_decision_cache"
+    )
+    op.drop_index(
+        "ix_censor_decision_cache_hash_version", table_name="censor_decision_cache"
+    )
     op.drop_table("censor_decision_cache")
-

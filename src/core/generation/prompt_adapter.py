@@ -68,7 +68,9 @@ SPORT_ANALOGY_BAN_EXTRA = """
 или свержением строя, если в новости нет прямого политического протеста или классового конфликта.
 """
 
-ALLOWLIST_QUOTE_HEADER = "Допустимые цитаты из RAG (используй только их дословно, без выдуманных том/стр):"
+ALLOWLIST_QUOTE_HEADER = (
+    "Допустимые цитаты из RAG (используй только их дословно, без выдуманных том/стр):"
+)
 
 SOCIAL_FACT_ANCHOR_EXTRA = """
 Тема социальная (здравоохранение/экология/образование). Анализ основан на фактах новости;
@@ -210,13 +212,17 @@ def build_chat_request(
 ) -> GenerationRequest:
     context_block = _truncate_context(context=context, max_chars=max_context_chars)
     if legacy_fallback and context_block:
-        context_block = f"{FALLBACK_LEGACY_MARKER}\n{FALLBACK_LEGACY_FRAME}\n{context_block}"
+        context_block = (
+            f"{FALLBACK_LEGACY_MARKER}\n{FALLBACK_LEGACY_FRAME}\n{context_block}"
+        )
     if allowlist_quotes and quote_mode == "quote":
         bullets = "\n".join(f"- «{q}»" for q in allowlist_quotes if q)
         context_block = f"{ALLOWLIST_QUOTE_HEADER}\n{bullets}\n\n{context_block}"
     system_prompt = GIGACHAT_SYSTEM_PROMPT
     if feedback:
-        system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
+        system_prompt += "\nУчти замечания:\n" + "\n".join(
+            f"- {item}" for item in feedback
+        )
     system_prompt += "\n" + ANACHRONISM_PROMPT_RULE
     hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
     if hint:
@@ -238,7 +244,9 @@ def build_chat_request(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
-    return GenerationRequest(system_prompt=system_prompt, user_content=user_content, messages=messages)
+    return GenerationRequest(
+        system_prompt=system_prompt, user_content=user_content, messages=messages
+    )
 
 
 def build_dialectical_chat_request(
@@ -265,7 +273,9 @@ def build_dialectical_chat_request(
         context_block = f"{ALLOWLIST_QUOTE_HEADER}\n{bullets}\n\n{context_block}"
     system_prompt = GIGACHAT_SYSTEM_PROMPT + "\n" + DIALECTICAL_SYSTEM_EXTRA
     if feedback:
-        system_prompt += "\nУчти замечания:\n" + "\n".join(f"- {item}" for item in feedback)
+        system_prompt += "\nУчти замечания:\n" + "\n".join(
+            f"- {item}" for item in feedback
+        )
     hint = _hint_block(synthesis_hints=synthesis_hints, hint_only=hint_only)
     if hint:
         system_prompt += "\n" + hint
@@ -288,4 +298,6 @@ def build_dialectical_chat_request(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
-    return GenerationRequest(system_prompt=system_prompt, user_content=user_content, messages=messages)
+    return GenerationRequest(
+        system_prompt=system_prompt, user_content=user_content, messages=messages
+    )

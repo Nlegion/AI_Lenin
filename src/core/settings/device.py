@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 GIGA_EMBEDDING_DIM = 2048
 
 
-def resolve_torch_device(preferred: str = "auto", *, fallback_to_cpu: bool = True) -> str:
+def resolve_torch_device(
+    preferred: str = "auto", *, fallback_to_cpu: bool = True
+) -> str:
     normalized = (preferred or "auto").strip().lower()
     if normalized in {"cpu"}:
         return "cpu"
@@ -55,7 +57,9 @@ def log_gpu_memory(tag: str) -> dict[str, float] | None:
     return payload
 
 
-def is_llama_server_active(server_url: str = "http://127.0.0.1:8080", timeout_sec: float = 0.4) -> bool:
+def is_llama_server_active(
+    server_url: str = "http://127.0.0.1:8080", timeout_sec: float = 0.4
+) -> bool:
     parsed = urlparse(server_url)
     if parsed.scheme not in {"http", "https"}:
         return False
@@ -91,7 +95,9 @@ def ensure_exclusive_gpu_for_embeddings(
     if not is_llama_server_active(server_url=server_url):
         return "cuda"
     if stop_llm_callback is not None and not interactive:
-        logger.warning("stopping_llm_for_exclusive_gpu_embeddings server_url=%s", server_url)
+        logger.warning(
+            "stopping_llm_for_exclusive_gpu_embeddings server_url=%s", server_url
+        )
         stop_llm_callback()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -114,7 +120,9 @@ def load_sentence_transformer(
 ) -> Any:
     from sentence_transformers import SentenceTransformer
 
-    device = resolve_torch_device(preferred=preferred_device, fallback_to_cpu=fallback_to_cpu)
+    device = resolve_torch_device(
+        preferred=preferred_device, fallback_to_cpu=fallback_to_cpu
+    )
     attempts = [device]
     if device == "cuda" and fallback_to_cpu:
         attempts.append("cpu")
@@ -173,7 +181,9 @@ def release_embedding_model(model: Any | None) -> None:
         log_gpu_memory(tag="after_release")
 
 
-def hardware_report(*, resolved_device: str, fallback_to_cpu: bool) -> dict[str, str | bool]:
+def hardware_report(
+    *, resolved_device: str, fallback_to_cpu: bool
+) -> dict[str, str | bool]:
     gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "n/a"
     return {
         "torch_version": torch.__version__,

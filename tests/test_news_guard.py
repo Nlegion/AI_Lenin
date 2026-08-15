@@ -103,4 +103,6 @@ def test_disclaimer_is_footer_in_strict_public_mode():
     output = guard.guard_output("Анализ империализма и монополий.")
     assert output.moderated_text.startswith("Анализ империализма")
     assert "образовательных целях" in output.moderated_text
-    assert output.moderated_text.index("Анализ") < output.moderated_text.index("образовательных")
+    assert output.moderated_text.index("Анализ") < output.moderated_text.index(
+        "образовательных"
+    )

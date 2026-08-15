@@ -7,7 +7,7 @@ def setup_logging():
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler()],
-        encoding='utf-8'
+        encoding="utf-8",
     )
 
     # Настройка structlog
@@ -15,7 +15,7 @@ def setup_logging():
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ]
 
     structlog.configure(

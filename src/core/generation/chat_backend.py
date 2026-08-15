@@ -58,7 +58,9 @@ class ChatCompletionsBackend:
         ) as response:
             if response.status != 200:
                 body = await response.text()
-                raise RuntimeError(f"chat completions failed: HTTP {response.status}: {body[:300]}")
+                raise RuntimeError(
+                    f"chat completions failed: HTTP {response.status}: {body[:300]}"
+                )
             result = await response.json()
         latency_ms = int((perf_counter() - started) * 1000)
         choices = result.get("choices") or []

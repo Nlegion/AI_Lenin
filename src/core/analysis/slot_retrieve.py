@@ -57,7 +57,10 @@ def retrieve_slot_with_fallback(
     )
     if primary:
         return (
-            [candidate_to_item(item, stance_type=stance_type, query_used=query_text) for item in primary[:limit]],
+            [
+                candidate_to_item(item, stance_type=stance_type, query_used=query_text)
+                for item in primary[:limit]
+            ],
             "primary",
         )
 
@@ -72,7 +75,10 @@ def retrieve_slot_with_fallback(
     )
     if widened:
         return (
-            [candidate_to_item(item, stance_type=stance_type, query_used=query_text) for item in widened[:limit]],
+            [
+                candidate_to_item(item, stance_type=stance_type, query_used=query_text)
+                for item in widened[:limit]
+            ],
             "widen",
         )
 
@@ -84,7 +90,9 @@ def retrieve_slot_with_fallback(
         if filtered:
             return (
                 [
-                    candidate_to_item(item, stance_type=stance_type, query_used=query_text)
+                    candidate_to_item(
+                        item, stance_type=stance_type, query_used=query_text
+                    )
                     for item in filtered[:limit]
                 ],
                 "rerank",

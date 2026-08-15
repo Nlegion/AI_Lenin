@@ -21,8 +21,12 @@ def shadow_compare_to_log_fields(
         "decision_match": compare.decision_match,
         "reason_diff": list(compare.reason_diff),
         "config_version_hash": compare.config_version_hash,
-        "old_codes": list(compare.old_decision.reason_codes) if compare.old_decision else [],
-        "new_codes": list(compare.new_decision.reason_codes) if compare.new_decision else [],
+        "old_codes": list(compare.old_decision.reason_codes)
+        if compare.old_decision
+        else [],
+        "new_codes": list(compare.new_decision.reason_codes)
+        if compare.new_decision
+        else [],
         "risk_tier": compare.enforced.risk_tier,
         "safety_gate_latency_ms": compare.enforced.latency_ms,
     }
@@ -30,7 +34,9 @@ def shadow_compare_to_log_fields(
 
 def aggregate_gate_shares(rows: list[dict[str, Any]]) -> dict[str, float]:
     total = max(len(rows), 1)
-    decisions = Counter(str(r.get("decision") or r.get("enforced_decision") or "") for r in rows)
+    decisions = Counter(
+        str(r.get("decision") or r.get("enforced_decision") or "") for r in rows
+    )
     tiers = Counter(str(r.get("risk_tier") or "") for r in rows)
     deny_like = decisions.get("deny", 0) + decisions.get("hard_block", 0)
     review_like = decisions.get("quarantine", 0) + decisions.get("review", 0)

@@ -32,11 +32,17 @@ def extract_concepts(text: str, taxonomy: OntologyTaxonomy) -> list[str]:
 
 
 def extract_entities(text: str, taxonomy: OntologyTaxonomy) -> list[str]:
-    hits = [entity for entity in taxonomy.entities if _contains_phrase(text=text, phrase=entity)]
+    hits = [
+        entity
+        for entity in taxonomy.entities
+        if _contains_phrase(text=text, phrase=entity)
+    ]
     return sorted(set(hits))
 
 
-def extract_contradictions(concepts: list[str], taxonomy: OntologyTaxonomy) -> list[str]:
+def extract_contradictions(
+    concepts: list[str], taxonomy: OntologyTaxonomy
+) -> list[str]:
     concept_set = set(concepts)
     hits: list[str] = []
     for left, right in taxonomy.contradiction_pairs:

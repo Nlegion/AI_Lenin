@@ -82,11 +82,18 @@ class ManualTermsLoader:
 
         overrides_payload: dict[str, Any] = {}
         if overrides_path.is_file():
-            overrides_payload = yaml.safe_load(overrides_path.read_text(encoding="utf-8")) or {}
+            overrides_payload = (
+                yaml.safe_load(overrides_path.read_text(encoding="utf-8")) or {}
+            )
 
-        force_include = _parse_override_entries(overrides_payload.get("force_include") or [])
+        force_include = _parse_override_entries(
+            overrides_payload.get("force_include") or []
+        )
         force_exclude = {
-            (str(item.get("category", "")).strip().upper(), str(item.get("term", "")).strip().casefold())
+            (
+                str(item.get("category", "")).strip().upper(),
+                str(item.get("term", "")).strip().casefold(),
+            )
             for item in (overrides_payload.get("force_exclude") or [])
             if isinstance(item, dict)
         }
@@ -110,12 +117,16 @@ class ManualTermsLoader:
             if not category_id or not file_name or not reason_code:
                 raise ValueError(f"Invalid category entry: {entry!r}")
             if decision_raw not in ALLOWED_DECISIONS:
-                raise ValueError(f"Unsupported decision for {category_id}: {decision_raw}")
+                raise ValueError(
+                    f"Unsupported decision for {category_id}: {decision_raw}"
+                )
             decision: CensorDecision = decision_raw  # type: ignore[assignment]
 
             terms_path = terms_dir / file_name
             if not terms_path.is_file():
-                raise FileNotFoundError(f"Missing terms file for {category_id}: {terms_path}")
+                raise FileNotFoundError(
+                    f"Missing terms file for {category_id}: {terms_path}"
+                )
             hash_parts.append(terms_path.read_bytes())
             payload = yaml.safe_load(terms_path.read_text(encoding="utf-8")) or {}
             raw_terms = payload.get("terms") or []

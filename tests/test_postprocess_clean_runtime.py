@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from src.core.generation.postprocess_clean.adapter import apply_pre_guard_for_artifact
 from src.core.generation.postprocess_clean.passthrough import passthrough_pipeline_text
-from src.core.generation.postprocess_clean.shadow import emit_shadow_record, shadow_log_path
+from src.core.generation.postprocess_clean.shadow import (
+    emit_shadow_record,
+    shadow_log_path,
+)
 from src.core.generation.publishability import is_error_placeholder
 from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
 
 
 def test_shadow_does_not_change_live_writer() -> None:
-    text = (
-        "Факт: событие. Механизм: анализ. Вывод: итог. "
-        "— Ленин (core_approval)"
-    )
+    text = "Факт: событие. Механизм: анализ. Вывод: итог. — Ленин (core_approval)"
     off_cfg = QualityPostcheckConfig(postprocess_clean_mode="off")
     shadow_cfg = QualityPostcheckConfig(postprocess_clean_mode="shadow")
     live_cfg = QualityPostcheckConfig(postprocess_clean_mode="live")

@@ -111,7 +111,9 @@ async def test_duplicate_decision_is_stable_via_cache() -> None:
     async def _load_cached(content_hash: str, config_hash: str):
         return cache.get((content_hash, config_hash))
 
-    async def _save_cached(content_hash: str, config_hash: str, model_hash: str, result):
+    async def _save_cached(
+        content_hash: str, config_hash: str, model_hash: str, result
+    ):
         cache[(content_hash, config_hash)] = {
             "decision": result.decision,
             "category": result.category,
@@ -141,11 +143,19 @@ async def test_duplicate_decision_is_stable_via_cache() -> None:
 @pytest.mark.parametrize(
     ("title", "body"),
     [
-        ("Переговоры МИД и послов", "Дипломатические переговоры прошли в рабочем формате."),
-        ("Новые экономические санкции", "Обсуждаются санкции и внешнеторговые ограничения."),
+        (
+            "Переговоры МИД и послов",
+            "Дипломатические переговоры прошли в рабочем формате.",
+        ),
+        (
+            "Новые экономические санкции",
+            "Обсуждаются санкции и внешнеторговые ограничения.",
+        ),
     ],
 )
-async def test_diplomacy_and_sanctions_not_auto_hard_block(title: str, body: str) -> None:
+async def test_diplomacy_and_sanctions_not_auto_hard_block(
+    title: str, body: str
+) -> None:
     censor = _censor()
     result = await censor.evaluate(
         CensorInput(news_id="4", title=title, body=body, source="TASS")

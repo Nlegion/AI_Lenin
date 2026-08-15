@@ -33,7 +33,9 @@ def _remove_line_noise(lines: list[str], patterns: list[str]) -> list[str]:
         if not stripped:
             cleaned.append("")
             continue
-        if any(re.search(pattern, stripped, flags=re.IGNORECASE) for pattern in patterns):
+        if any(
+            re.search(pattern, stripped, flags=re.IGNORECASE) for pattern in patterns
+        ):
             continue
         cleaned.append(line)
     return cleaned
@@ -50,7 +52,9 @@ def clean_document(text: str, config: CleaningConfig) -> str:
     lines = normalized.split("\n")
     start_index = _find_content_start(lines=lines, markers=config.content_start_markers)
     content_lines = lines[start_index:]
-    content_lines = _remove_line_noise(lines=content_lines, patterns=config.remove_line_patterns)
+    content_lines = _remove_line_noise(
+        lines=content_lines, patterns=config.remove_line_patterns
+    )
     cleaned = "\n".join(content_lines)
     cleaned = _remove_inline_noise(text=cleaned, patterns=config.remove_inline_patterns)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)

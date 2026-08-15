@@ -100,8 +100,10 @@ def _drone_token_hit(text: str) -> bool:
 
 
 def _civil_negative_active(text: str) -> bool:
-    if "центр" in text and _drone_token_hit(text) and (
-        "технолог" in text or "разработк" in text or "беспилотн" in text
+    if (
+        "центр" in text
+        and _drone_token_hit(text)
+        and ("технолог" in text or "разработк" in text or "беспилотн" in text)
     ):
         return True
     return _has_any(text, CIVIL_NEGATIVES)
@@ -138,7 +140,10 @@ def drone_air_raid_hit(text: str) -> GuardHit:
         codes.append("drone_cooccurrence")
     if re.search(r"(сбил|сбит).{0,40}(бпла|беспилот|дрон)", lowered) and geo:
         codes.append("shot_down_drone")
-    if re.search(r"(бпла|беспилот|дрон).{0,40}(сбил|сбит|атак|удар|опасност)", lowered) and geo:
+    if (
+        re.search(r"(бпла|беспилот|дрон).{0,40}(сбил|сбит|атак|удар|опасност)", lowered)
+        and geo
+    ):
         codes.append("drone_attack_context")
 
     if not codes:
@@ -167,7 +172,11 @@ def combat_adjacent_hit(text: str) -> GuardHit:
         codes.append("combat_adjacent:obstrel")
 
     if "фронт" in lowered and not any(fp in lowered for fp in FRONT_FP):
-        if word_boundary_hit(lowered, "фронт") or "фронте" in lowered or "фронту" in lowered:
+        if (
+            word_boundary_hit(lowered, "фронт")
+            or "фронте" in lowered
+            or "фронту" in lowered
+        ):
             codes.append("combat_adjacent:front")
 
     if "теракт" in lowered:
@@ -187,8 +196,16 @@ def combat_adjacent_hit(text: str) -> GuardHit:
 
     if "взрыв" in lowered and not _has_any(lowered, EXPLOSION_CIVIL):
         siloviki = bool(re.search(r"силов\w*", lowered))
-        if "террорист" in lowered or (geo and siloviki) or (
-            geo and any(g in lowered for g in ("украин", "харьков", "херсон", "одесс", "донбас"))
+        if (
+            "террорист" in lowered
+            or (geo and siloviki)
+            or (
+                geo
+                and any(
+                    g in lowered
+                    for g in ("украин", "харьков", "херсон", "одесс", "донбас")
+                )
+            )
         ):
             codes.append("combat_adjacent:explosion")
 
@@ -204,7 +221,9 @@ def combat_adjacent_hit(text: str) -> GuardHit:
             "combat_adjacent:explosion",
         }
         if not any(c in hard_codes for c in codes):
-            return GuardHit(hit=False, codes=[*codes, "combat_adjacent:training_negative"])
+            return GuardHit(
+                hit=False, codes=[*codes, "combat_adjacent:training_negative"]
+            )
 
     return GuardHit(hit=True, codes=codes)
 

@@ -13,6 +13,11 @@ def test_routing_rates_and_drift() -> None:
     ]
     rates = routing_rates(rows)
     assert rates["n"] == 3
-    baseline = {"deny_rate": 0.1, "skip_rate": 0.1, "allow_rate": 0.8, "redact_artifact_rate": 0.0}
+    baseline = {
+        "deny_rate": 0.1,
+        "skip_rate": 0.1,
+        "allow_rate": 0.8,
+        "redact_artifact_rate": 0.0,
+    }
     drift = drift_vs_baseline(rates, baseline)
     assert drift["severity"] in {"warn_20_40", "critical_gt_40", "ok"}

@@ -68,11 +68,35 @@ ACTION_VERBS = (
 
 # Token-bound sport stems (avoid «паспорта»⊃«спорт»). Latin «sport» included.
 SKIP_SPORT_TOKEN = ("спорт", "sport")
-SKIP_SPORT_STEM = ("футбол", "теннис", "матч", "чемпионат", "олимп", "хоккей", "баскетбол")
-SKIP_SCIENCE = ("палеонтолог", "динозавр", "археолог", "астроном", "погода", "прогноз погоды")
+SKIP_SPORT_STEM = (
+    "футбол",
+    "теннис",
+    "матч",
+    "чемпионат",
+    "олимп",
+    "хоккей",
+    "баскетбол",
+)
+SKIP_SCIENCE = (
+    "палеонтолог",
+    "динозавр",
+    "археолог",
+    "астроном",
+    "погода",
+    "прогноз погоды",
+)
 SKIP_CRIME = ("дтп", "авария", "уголовное дело", "кража", "ограбление")
 SKIP_DISASTER = ("землетрясен", "наводнен", "ураган", "пожар в")
-SOCIAL = ("здравоохран", "эпидем", "грипп", "медицин", "эколог", "школ", "образован", "университет")
+SOCIAL = (
+    "здравоохран",
+    "эпидем",
+    "грипп",
+    "медицин",
+    "эколог",
+    "школ",
+    "образован",
+    "университет",
+)
 LABOR_ECON = (
     "экономик",
     "инфляц",
@@ -125,7 +149,11 @@ class TopicRouteResult:
 
 
 def _lead(title: str, content: str) -> str:
-    first = re.split(r"(?<=[.!?])\s+", content.strip(), maxsplit=1)[0] if content.strip() else ""
+    first = (
+        re.split(r"(?<=[.!?])\s+", content.strip(), maxsplit=1)[0]
+        if content.strip()
+        else ""
+    )
     return f"{title}\n{first}".lower()
 
 
@@ -210,7 +238,9 @@ def _sport_policy_lift(blob: str, positives: list[str]) -> bool:
     lowered = blob.lower()
     if any(p.startswith("policy_exception") for p in positives):
         pass
-    labor = any(m in lowered for m in ("забастовк", "протест", "митинг", "бойкот", "профсоюз"))
+    labor = any(
+        m in lowered for m in ("забастовк", "протест", "митинг", "бойкот", "профсоюз")
+    )
     if labor:
         return True
     if "госфинанс" in lowered or "финансирован" in lowered and "государств" in lowered:
@@ -221,7 +251,10 @@ def _sport_policy_lift(blob: str, positives: list[str]) -> bool:
     if "санкц" in lowered and any(m in lowered for m in STATE_SANCTION_FRAME):
         return True
     # Non-sport policy markers from policy_exception_markers (corruption etc.)
-    if any(m in lowered for m in ("коррупц", "политик", "бюджет")) and "санкц" not in lowered:
+    if (
+        any(m in lowered for m in ("коррупц", "политик", "бюджет"))
+        and "санкц" not in lowered
+    ):
         return True
     if "санкц" in lowered:
         return any(m in lowered for m in STATE_SANCTION_FRAME)
@@ -234,14 +267,19 @@ def route_topic(
     content: str,
     sport_intra_negatives: list[str] | None = None,
 ) -> TopicRouteResult:
-    from src.core.safety.risk_routing import policy_exception_markers, sport_intra_negative_hit
+    from src.core.safety.risk_routing import (
+        policy_exception_markers,
+        sport_intra_negative_hit,
+    )
 
     codes = title_lead_policy_full(title=title, content=content)
     if codes:
         return TopicRouteResult(route="full", primary="policy", reason_codes=codes)
     body_codes = body_policy_override(content=content)
     if body_codes:
-        return TopicRouteResult(route="full", primary="policy_body", reason_codes=body_codes)
+        return TopicRouteResult(
+            route="full", primary="policy_body", reason_codes=body_codes
+        )
     primary = classify_primary(title=title, content=content)
     blob = f"{title}\n{content}"
     if primary in {"sport", "science", "crime", "disaster"}:
@@ -271,7 +309,11 @@ def route_topic(
                 primary=primary,
                 reason_codes=[f"policy_exception:{primary}", *positives],
             )
-        return TopicRouteResult(route="skip", primary=primary, reason_codes=[f"out_of_scope:{primary}"])
+        return TopicRouteResult(
+            route="skip", primary=primary, reason_codes=[f"out_of_scope:{primary}"]
+        )
     if primary in {"social", "labor_economy", "geopolitics"}:
-        return TopicRouteResult(route="full", primary=primary, reason_codes=[f"primary:{primary}"])
+        return TopicRouteResult(
+            route="full", primary=primary, reason_codes=[f"primary:{primary}"]
+        )
     return TopicRouteResult(route="none", primary=primary, reason_codes=[])

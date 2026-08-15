@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts._quality_qa_io import (
+from scripts.lib._quality_qa_io import (
     QaItem,
     format_txt_block,
     format_txt_header,
@@ -89,7 +89,7 @@ def test_artifact_paths_and_txt_format(tmp_path: Path) -> None:
 
 
 def test_format_answer_for_display_keeps_only_sections() -> None:
-    from scripts._quality_qa_io import format_answer_for_display
+    from scripts.lib._quality_qa_io import format_answer_for_display
 
     raw = (
         "В стилизованной интерпретации: Факт : A. Механизм : B. Вывод : C.\n\n"
@@ -105,7 +105,7 @@ def test_format_answer_for_display_keeps_only_sections() -> None:
 def test_format_answer_for_display_no_orphan_stars_from_bold_labels() -> None:
     from pathlib import Path
 
-    from scripts._quality_qa_io import format_answer_for_display
+    from scripts.lib._quality_qa_io import format_answer_for_display
 
     raw = Path(
         "tests/fixtures/answer_postprocess/bold_section_labels.in.txt"

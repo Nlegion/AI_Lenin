@@ -35,7 +35,9 @@ def decompose_query(text: str) -> tuple[str, str]:
     evaluative_lines: list[str] = []
     for line in sentence_parts:
         lowered = line.lower()
-        if any(marker in lowered for marker in fact_markers) or re.search(r"\d", lowered):
+        if any(marker in lowered for marker in fact_markers) or re.search(
+            r"\d", lowered
+        ):
             fact_lines.append(line)
         else:
             evaluative_lines.append(line)

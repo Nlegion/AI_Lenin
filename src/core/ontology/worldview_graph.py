@@ -18,7 +18,9 @@ class TaggedSource:
     zero_shot_label: str
 
 
-def build_worldview_graph(tagged_sources: list[TaggedSource]) -> dict[str, list[dict[str, str | int]]]:
+def build_worldview_graph(
+    tagged_sources: list[TaggedSource],
+) -> dict[str, list[dict[str, str | int]]]:
     node_map: dict[str, dict[str, str | int]] = {}
     edge_map: dict[tuple[str, str], int] = {}
 
@@ -36,16 +38,23 @@ def build_worldview_graph(tagged_sources: list[TaggedSource]) -> dict[str, list[
         for concept in source.concepts:
             concept_node = f"concept:{concept}"
             node_map.setdefault(concept_node, {"id": concept_node, "type": "concept"})
-            edge_map[(document_node, concept_node)] = edge_map.get((document_node, concept_node), 0) + 1
+            edge_map[(document_node, concept_node)] = (
+                edge_map.get((document_node, concept_node), 0) + 1
+            )
 
         for entity in source.entities:
             entity_node = f"entity:{entity}"
             node_map.setdefault(entity_node, {"id": entity_node, "type": "entity"})
-            edge_map[(document_node, entity_node)] = edge_map.get((document_node, entity_node), 0) + 1
+            edge_map[(document_node, entity_node)] = (
+                edge_map.get((document_node, entity_node), 0) + 1
+            )
 
         for left, right in combinations(sorted(set(source.concepts)), 2):
             key = (f"concept:{left}", f"concept:{right}")
             edge_map[key] = edge_map.get(key, 0) + 1
 
-    edges = [{"source": src, "target": dst, "weight": weight} for (src, dst), weight in edge_map.items()]
+    edges = [
+        {"source": src, "target": dst, "weight": weight}
+        for (src, dst), weight in edge_map.items()
+    ]
     return {"nodes": list(node_map.values()), "edges": edges}

@@ -6,11 +6,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.core.generation.output_artifacts import detect_encoding_artifacts
 from src.core.settings.quality_postcheck_config import QualityPostcheckConfig
-
-_MOJIBAKE_SG = "СЃ"
-_MOJIBAKE_RYO = re.compile(r"(?<![А-Яа-яЁёA-Za-z])Рё(?![А-Яа-яЁёA-Za-z])")
-_LATIN_ISLAND = re.compile(r"[а-яёА-ЯЁ]{2,}[a-zA-Z]{2,}|[a-zA-Z]{2,}[а-яёА-ЯЁ]{2,}")
 
 _STANCE_CORE = (
     r"agreement|disagreement|core_approval|core_criticism|core_self|core_disapproval|"
@@ -243,15 +240,7 @@ def truncate_trailing_triad_restart(text: str) -> tuple[str, list[str]]:
 
 
 def detect_integrity_issues(text: str) -> list[str]:
-    codes: list[str] = []
-    if _MOJIBAKE_SG in text:
-        codes.append("artifact:mojibake_sg")
-    if _MOJIBAKE_RYO.search(text):
-        codes.append("artifact:mojibake_ryo")
-    if _LATIN_ISLAND.search(text):
-        codes.append("artifact:latin_island")
-    if "\ufffd" in text:
-        codes.append("artifact:replacement_char")
+    codes: list[str] = list(detect_encoding_artifacts(text))
     for pattern in _HOLE_PATTERNS:
         if pattern.search(text):
             codes.append("integrity:hole_syntax")

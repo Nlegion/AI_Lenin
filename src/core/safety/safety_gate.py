@@ -36,7 +36,9 @@ def _hints_for_tier(risk_tier: str) -> list[SafetyHint]:
     return []
 
 
-def _from_input_gate(result: InputGateResult, *, latency_ms: float, trace: dict[str, Any]) -> GateDecision:
+def _from_input_gate(
+    result: InputGateResult, *, latency_ms: float, trace: dict[str, Any]
+) -> GateDecision:
     hints = _hints_for_tier(result.risk_tier)
     return GateDecision(
         decision=result.decision,
@@ -47,7 +49,8 @@ def _from_input_gate(result: InputGateResult, *, latency_ms: float, trace: dict[
         context_hints=hints,
         trace=trace,
         latency_ms=latency_ms,
-        needs_yellow_warning=result.risk_tier == "yellow" and result.decision == "allow",
+        needs_yellow_warning=result.risk_tier == "yellow"
+        and result.decision == "allow",
     )
 
 
@@ -117,7 +120,9 @@ class SafetyGate:
         )
         reason_diff: list[str] = []
         if old_decision.decision != new_decision.decision:
-            reason_diff.append(f"decision:{old_decision.decision}->{new_decision.decision}")
+            reason_diff.append(
+                f"decision:{old_decision.decision}->{new_decision.decision}"
+            )
         if set(old_decision.reason_codes) != set(new_decision.reason_codes):
             reason_diff.append(
                 "codes:"
@@ -162,13 +167,17 @@ class SafetyGate:
             self._rule_quarantine_unknown,
         )
         # Full evaluate_input already encodes ordered policy; wrap once for parity.
-        legacy = self.news_guard.evaluate_input(ctx.title, ctx.content, source=ctx.source)
+        legacy = self.news_guard.evaluate_input(
+            ctx.title, ctx.content, source=ctx.source
+        )
         latency_ms = (time.perf_counter() - started) * 1000.0
         rule_hits: list[str] = []
         for rule in rules:
             hit = rule(ctx)
             if hit.hit:
-                rule_hits.append(hit.reason or hit.reason_codes[0] if hit.reason_codes else "hit")
+                rule_hits.append(
+                    hit.reason or hit.reason_codes[0] if hit.reason_codes else "hit"
+                )
         return _from_input_gate(
             legacy,
             latency_ms=latency_ms,
@@ -201,7 +210,10 @@ class SafetyGate:
         )
 
     def _rule_military_risk(self, ctx: GateContext) -> RuleResult:
-        from src.core.safety.combat_detect import combat_cooccurrence_hit, military_rf_context_hit
+        from src.core.safety.combat_detect import (
+            combat_cooccurrence_hit,
+            military_rf_context_hit,
+        )
         from src.core.safety.risk_routing import strong_military_hits
 
         text = f"{ctx.title}\n{ctx.content}"
@@ -222,7 +234,10 @@ class SafetyGate:
     def _rule_fio_pii(self, ctx: GateContext) -> RuleResult:
         from src.core.safety.fio_guards import fio_spans, should_block_fio
 
-        codes = should_block_fio(text=f"{ctx.title}\n{ctx.content}", matches=fio_spans(f"{ctx.title}\n{ctx.content}"))
+        codes = should_block_fio(
+            text=f"{ctx.title}\n{ctx.content}",
+            matches=fio_spans(f"{ctx.title}\n{ctx.content}"),
+        )
         if not codes:
             return RuleResult(hit=False)
         return RuleResult(
@@ -266,7 +281,9 @@ class SafetyGate:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def apply_yellow_warning(*, analysis: str, decision: GateDecision, warning_text: str) -> str:
+def apply_yellow_warning(
+    *, analysis: str, decision: GateDecision, warning_text: str
+) -> str:
     """Inject yellow warning into analysis body (upstream of publisher)."""
     if not decision.needs_yellow_warning:
         return analysis

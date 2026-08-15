@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
+
+from src.core.utils.jsonl import append_jsonl
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,6 @@ def append_yellow_audit(
     if risk_tier != "yellow":
         return
     out_dir = base_dir / ".cursor" / "artifacts" / "quality"
-    out_dir.mkdir(parents=True, exist_ok=True)
     day = datetime.now(timezone.utc).strftime("%Y%m%d")
     path = out_dir / f"yellow_audit_{day}.jsonl"
     payload = {
@@ -38,8 +38,4 @@ def append_yellow_audit(
         "reason_codes": reason_codes,
         **(extra or {}),
     }
-    try:
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except OSError:
-        logger.exception("yellow_audit_write_failed")
+    append_jsonl(path, payload)

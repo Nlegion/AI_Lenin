@@ -46,8 +46,12 @@ def build_result_from_payload(
                     condition=str(item.get("condition") or ""),
                     effect=str(item.get("effect") or ""),
                     theoretical_basis=str(item.get("theoretical_basis") or ""),
-                    evidence_ids=[str(x) for x in (item.get("evidence_ids") or []) if x],
-                    principle_ids=[str(x) for x in (item.get("principle_ids") or []) if x],
+                    evidence_ids=[
+                        str(x) for x in (item.get("evidence_ids") or []) if x
+                    ],
+                    principle_ids=[
+                        str(x) for x in (item.get("principle_ids") or []) if x
+                    ],
                     confidence=float(item.get("confidence") or 0.0),
                 )
             )
@@ -61,12 +65,18 @@ def build_result_from_payload(
             thesis=str(payload.get("thesis") or ""),
             antithesis=str(payload.get("antithesis") or ""),
             synthesis=str(payload.get("synthesis") or ""),
-            thesis_from=(str(payload["thesis_from"]) if payload.get("thesis_from") else None),
+            thesis_from=(
+                str(payload["thesis_from"]) if payload.get("thesis_from") else None
+            ),
             antithesis_from=(
-                str(payload["antithesis_from"]) if payload.get("antithesis_from") else None
+                str(payload["antithesis_from"])
+                if payload.get("antithesis_from")
+                else None
             ),
             synthesis_basis=(
-                str(payload["synthesis_basis"]) if payload.get("synthesis_basis") else None
+                str(payload["synthesis_basis"])
+                if payload.get("synthesis_basis")
+                else None
             ),
         ),
         mechanism_steps=[str(s) for s in steps if s],
@@ -138,7 +148,11 @@ def validate_result(
 
     if not has_r3:
         warnings.append("r3_absent")
-        if (result.metadata or {}).get("r3_handling") not in {"r3_absent", "not_applicable", ""}:
+        if (result.metadata or {}).get("r3_handling") not in {
+            "r3_absent",
+            "not_applicable",
+            "",
+        }:
             warnings.append("r3_handling_mismatch")
 
     # Opposing roles must not share the same chunk_id.

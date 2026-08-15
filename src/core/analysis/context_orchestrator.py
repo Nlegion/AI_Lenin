@@ -12,7 +12,10 @@ from src.core.analysis.dialectical_config import (
 )
 from src.core.analysis.evidence_brief import EvidenceBrief
 from src.core.analysis.evidence_brief_builder import build_evidence_brief
-from src.core.analysis.semantic_core_config import SemanticCoreConfig, load_semantic_core_config
+from src.core.analysis.semantic_core_config import (
+    SemanticCoreConfig,
+    load_semantic_core_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,4 +82,3 @@ class AnalysisContextOrchestrator:
         except Exception as error:  # noqa: BLE001
             logger.error("Error in retrieval provider: %s", error)
             return ""
-

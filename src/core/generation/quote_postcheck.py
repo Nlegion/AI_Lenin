@@ -65,7 +65,9 @@ def _grounded_in_candidates(span: str, candidates: list[QuoteCandidate]) -> bool
     return False
 
 
-def _meta_volumes_pages(candidates: list[QuoteCandidate]) -> tuple[set[str], set[str], set[str]]:
+def _meta_volumes_pages(
+    candidates: list[QuoteCandidate],
+) -> tuple[set[str], set[str], set[str]]:
     volumes: set[str] = set()
     pages: set[str] = set()
     works: set[str] = set()
@@ -83,7 +85,9 @@ def _meta_volumes_pages(candidates: list[QuoteCandidate]) -> tuple[set[str], set
     return volumes, pages, works
 
 
-def check_critical_attribution(text: str, candidates: list[QuoteCandidate]) -> list[str]:
+def check_critical_attribution(
+    text: str, candidates: list[QuoteCandidate]
+) -> list[str]:
     """Return codes if том/стр/work/path in answer disagree with chunk meta."""
     codes: list[str] = []
     if _PATH_LEAK.search(text or ""):
@@ -202,7 +206,10 @@ def apply_quote_postcheck(
                 working = _LENIN_WROTE.sub("", working)
                 working = re.sub(r"\s{2,}", " ", working).strip()
 
-        soft = str(getattr(config, "quote_postcheck_enforce_mode", "soft") or "soft") == "soft"
+        soft = (
+            str(getattr(config, "quote_postcheck_enforce_mode", "soft") or "soft")
+            == "soft"
+        )
         min_tokens = int(getattr(config, "min_recoverable_tokens", 8) or 8)
         token_count = len(re.findall(r"[а-яёa-z0-9]{2,}", working, flags=re.IGNORECASE))
         unrecoverable = _looks_broken(working) and token_count < min_tokens

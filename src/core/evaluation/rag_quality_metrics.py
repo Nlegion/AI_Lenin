@@ -163,7 +163,9 @@ def build_quality_report(
         core_self_ratio=core_self_ratio(candidate_stances=candidate_stances),
         empty_context_rate=empty_context_rate(contexts=contexts),
         ideology_consistency=ideology_consistency_score(texts=analyses),
-        citation_hallucination_rate=citation_hallucination_rate(analyses=analyses, contexts=contexts),
+        citation_hallucination_rate=citation_hallucination_rate(
+            analyses=analyses, contexts=contexts
+        ),
         latency_p50_ms=percentile(values=latencies_ms, p=0.5),
         latency_p95_ms=percentile(values=latencies_ms, p=0.95),
         latency_mean_ms=statistics.mean(latencies_ms) if latencies_ms else 0.0,

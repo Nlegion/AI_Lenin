@@ -60,9 +60,15 @@ def load_anachronism_config(path: str | None = None) -> AnachronismConfig:
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     return AnachronismConfig(
         mode=str(payload.get("mode", "warn_only")),
-        modern_tech_terms=tuple(str(x).casefold() for x in payload.get("modern_tech_terms", [])),
-        first_person_cues=tuple(str(x).casefold() for x in payload.get("first_person_cues", [])),
-        attribution_cues=tuple(str(x).casefold() for x in payload.get("attribution_cues", [])),
+        modern_tech_terms=tuple(
+            str(x).casefold() for x in payload.get("modern_tech_terms", [])
+        ),
+        first_person_cues=tuple(
+            str(x).casefold() for x in payload.get("first_person_cues", [])
+        ),
+        attribution_cues=tuple(
+            str(x).casefold() for x in payload.get("attribution_cues", [])
+        ),
     )
 
 
@@ -70,7 +76,9 @@ def _strip_quoted_spans(text: str) -> str:
     return _QUOTE_RE.sub(" ", text)
 
 
-def _near_attribution(*, text: str, index: int, cues: tuple[str, ...], window: int = 40) -> bool:
+def _near_attribution(
+    *, text: str, index: int, cues: tuple[str, ...], window: int = 40
+) -> bool:
     start = max(0, index - window)
     prefix = text[start:index]
     return any(cue in prefix for cue in cues)
@@ -95,7 +103,9 @@ def _evaluate(
             # Require cue and term in the same rough neighborhood
             if abs(term_idx - cue_idx) > 80:
                 continue
-            if _near_attribution(text=working, index=min(cue_idx, term_idx), cues=config.attribution_cues):
+            if _near_attribution(
+                text=working, index=min(cue_idx, term_idx), cues=config.attribution_cues
+            ):
                 continue
             reasons.append(ANACHRONISM_CODE_FIRST_PERSON_TECH)
             break

@@ -30,7 +30,9 @@ class QualityPostcheckConfig(BaseModel):
     min_recoverable_tokens: int = 8
     min_quote_chars: int = 25
     min_quote_content_tokens: int = 5
-    static_safe_template: str = "Не удалось сформировать корректный анализ по данной новости."
+    static_safe_template: str = (
+        "Не удалось сформировать корректный анализ по данной новости."
+    )
     static_insufficient_template: str = "Недостаточно данных для анализа."
     trivial_quote_stoplist: list[str] = Field(default_factory=list)
     loop: LoopConfig = Field(default_factory=LoopConfig)

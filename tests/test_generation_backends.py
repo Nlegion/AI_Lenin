@@ -7,9 +7,16 @@ from src.core.generation.chat_backend import ChatCompletionsBackend
 from src.core.generation.factory import build_generation_backend
 from src.core.generation.fallback import recommend_persona_model
 from src.core.generation.pipeline import AnalysisGenerationPipeline
-from src.core.generation.prompt_adapter import GIGACHAT_SYSTEM_PROMPT, build_chat_request
+from src.core.generation.prompt_adapter import (
+    GIGACHAT_SYSTEM_PROMPT,
+    build_chat_request,
+)
 from src.core.safety.news_guard import OutputGuardResult
-from src.core.settings.generation_config import FallbackConfig, SafetyConfig, load_generation_config
+from src.core.settings.generation_config import (
+    FallbackConfig,
+    SafetyConfig,
+    load_generation_config,
+)
 
 
 def test_default_persona_is_base_strong():
@@ -22,7 +29,9 @@ def test_default_persona_is_base_strong():
 def test_gigachat_system_prompt_contains_hard_bans():
     assert "насилию" in GIGACHAT_SYSTEM_PROMPT
     assert "образовательн" in GIGACHAT_SYSTEM_PROMPT
-    assert "политика безопасности" in GIGACHAT_SYSTEM_PROMPT  # instruct NOT to use template
+    assert (
+        "политика безопасности" in GIGACHAT_SYSTEM_PROMPT
+    )  # instruct NOT to use template
     assert "Анализ данной темы невозможен" not in GIGACHAT_SYSTEM_PROMPT
     request = build_chat_request(
         news_title="Инфляция",
@@ -36,7 +45,9 @@ def test_gigachat_system_prompt_contains_hard_bans():
 
 
 def test_factory_builds_chat_backend_by_default():
-    backend, cfg = build_generation_backend(base_dir=Path("."), persona_model="base_strong")
+    backend, cfg = build_generation_backend(
+        base_dir=Path("."), persona_model="base_strong"
+    )
     assert isinstance(backend, ChatCompletionsBackend)
     assert cfg.persona_model == "base_strong"
 
@@ -58,15 +69,14 @@ def test_fallback_recommendation_stays_base_strong_when_enabled(tmp_path: Path):
 
 
 def test_cli_persona_model_rejects_fine_tuned():
-    from scripts.run_quality_qa_batch_cli import build_parser as quality_parser
-    from scripts.run_live_news_qa_batch_cli import build_parser as live_parser
-    from scripts.run_live_news_qa_24h_cli import build_parser as live24_parser
+    from scripts.quality.run_quality_qa_batch_cli import build_parser as quality_parser
+    from scripts.quality.run_live_news_qa_batch_cli import build_parser as live_parser
+    from scripts.quality.run_live_news_qa_24h_cli import build_parser as live24_parser
 
     for build in (quality_parser, live_parser, live24_parser):
         parser = build()
         with pytest.raises(SystemExit):
             parser.parse_args(["--persona-model", "fine_tuned"])
-
 
 
 def test_fallback_disabled_keeps_active_model(tmp_path: Path):
@@ -82,7 +92,9 @@ def test_fallback_disabled_keeps_active_model(tmp_path: Path):
 async def test_chat_backend_request_shape_omits_tool_choice():
     backend = ChatCompletionsBackend(
         server_url="http://127.0.0.1:8080",
-        backend_config=load_generation_config(Path("config/generation.yaml")).active_backend(),
+        backend_config=load_generation_config(
+            Path("config/generation.yaml")
+        ).active_backend(),
         persona_model="base_strong",
     )
     response_json = {

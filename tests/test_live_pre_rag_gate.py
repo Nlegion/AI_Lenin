@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from scripts._live_news_qa_censor import apply_live_pre_rag_gate, build_live_pre_rag_censor
-from scripts._live_news_qa_fetch import news_row_to_qa_item
-from scripts._quality_qa_runtime import base_row
+from scripts.lib._live_news_qa_censor import (
+    apply_live_pre_rag_gate,
+    build_live_pre_rag_censor,
+)
+from scripts.lib._live_news_qa_fetch import news_row_to_qa_item
+from scripts.lib._quality_qa_runtime import base_row
 
 
 def _run(coro):
@@ -28,7 +31,10 @@ def test_live_pre_rag_blocks_sport() -> None:
     outcome = _run(apply_live_pre_rag_gate(censor=censor, item=item, row=row))
     assert outcome.blocked_row is not None
     assert outcome.blocked_row["censor_decision"] in {"hard_block", "skip"}
-    assert outcome.blocked_row["skipped_llm_reason"] in {"pre_deny", "out_of_scope_skip"}
+    assert outcome.blocked_row["skipped_llm_reason"] in {
+        "pre_deny",
+        "out_of_scope_skip",
+    }
 
 
 def test_live_pre_rag_blocks_fire() -> None:
@@ -75,7 +81,9 @@ def test_live_pre_rag_review_passes_yellow_context() -> None:
         }
     )
     row = base_row(item, persona_model="base_strong", input_hash=item.input_hash())
-    outcome = _run(apply_live_pre_rag_gate(censor=censor, item=item, row=row, strict_review=False))
+    outcome = _run(
+        apply_live_pre_rag_gate(censor=censor, item=item, row=row, strict_review=False)
+    )
     if outcome.generation is not None:
         assert outcome.generation.censor_decision in {"allow", "review"}
         assert outcome.generation.risk_tier in {"green", "yellow"}

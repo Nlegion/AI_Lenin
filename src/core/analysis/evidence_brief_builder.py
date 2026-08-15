@@ -11,7 +11,10 @@ from typing import Any
 from src.core.analysis.axes_extractor import extract_complementary_axes
 from src.core.analysis.dialectical_config import DialecticalOrchestrationConfig
 from src.core.analysis.evidence_brief import EvidenceBrief, truncate_query_for_trace
-from src.core.analysis.semantic_core_config import SemanticCoreConfig, load_semantic_core_config
+from src.core.analysis.semantic_core_config import (
+    SemanticCoreConfig,
+    load_semantic_core_config,
+)
 from src.core.analysis.semantic_integration import (
     apply_abstract_slot_queries,
     dialectical_uses_abstract,
@@ -23,6 +26,7 @@ from src.core.analysis.semantic_integration import (
 from src.core.analysis.slot_retrieve import retrieve_slot_with_fallback
 
 logger = logging.getLogger(__name__)
+
 
 def build_short_lead(*, news_content: str, short_lead_chars: int) -> str:
     raw = news_content[:short_lead_chars]
@@ -47,7 +51,9 @@ def build_slot_query(
     else:
         warnings.append("key_concepts_empty_using_short_lead")
         logger.warning("key_concepts_empty_using_short_lead")
-        short_lead = build_short_lead(news_content=news_content, short_lead_chars=short_lead_chars)
+        short_lead = build_short_lead(
+            news_content=news_content, short_lead_chars=short_lead_chars
+        )
         base = f"{news_title} {short_lead} {' '.join(axes)}".strip()
     suffix = modality_suffix.strip() if include_modality_suffix else ""
     if suffix:
@@ -81,11 +87,14 @@ def build_evidence_brief(
         warnings.extend(route.warnings)
 
     use_axes = config.include_axes_in_query
-    if dialectical_uses_abstract(
-        semantic=semantic,
-        dialectical_enabled=dialectical_enabled,
-        route=route,
-    ) and not semantic.include_axes_in_semantic_query:
+    if (
+        dialectical_uses_abstract(
+            semantic=semantic,
+            dialectical_enabled=dialectical_enabled,
+            route=route,
+        )
+        and not semantic.include_axes_in_semantic_query
+    ):
         use_axes = False
 
     axes: list[str] = []
@@ -268,7 +277,9 @@ def _apply_empty_policies(
     default_error: str,
 ) -> EvidenceBrief:
     r1_empty = not brief.r1_core_self
-    all_empty = r1_empty and not brief.r2_influence_agree and not brief.r3_influence_critical
+    all_empty = (
+        r1_empty and not brief.r2_influence_agree and not brief.r3_influence_critical
+    )
 
     if config.fail_on_empty_r1 and r1_empty:
         brief.trace["orchestration_mode"] = "error"
@@ -319,7 +330,13 @@ def _parallel_slots(
             )
             return slot_key, items, step, (time.perf_counter() - started) * 1000.0, None
         except Exception as error:  # noqa: BLE001
-            return slot_key, [], "empty", (time.perf_counter() - started) * 1000.0, error
+            return (
+                slot_key,
+                [],
+                "empty",
+                (time.perf_counter() - started) * 1000.0,
+                error,
+            )
 
     # DO NOT call future.cancel() — does not stop running Qdrant work.
     # DO NOT call f.result()/f.exception() on not_done — may block forever.
@@ -355,7 +372,9 @@ def _parallel_slots(
                 try:
                     brief.legacy_context = build_context_fn(query) if query else ""
                 except Exception as error:  # noqa: BLE001
-                    logger.warning("legacy_context_after_wall_timeout_failed error=%s", error)
+                    logger.warning(
+                        "legacy_context_after_wall_timeout_failed error=%s", error
+                    )
                     brief.legacy_context = None
                 if brief.legacy_context and str(brief.legacy_context).strip():
                     brief.trace["orchestration_mode"] = "legacy_fallback"

@@ -33,7 +33,11 @@ def render_analysis_text(
 
     mechanism = f"{mechanism}{principle_hint}".strip()
     fact = result.fact or result.triad.thesis or "Факт новости не извлечён."
-    conclusion = result.conclusion or result.triad.synthesis or "Вывод ограничен доступным контекстом."
+    conclusion = (
+        result.conclusion
+        or result.triad.synthesis
+        or "Вывод ограничен доступным контекстом."
+    )
 
     text = f"Факт: {fact}\nМеханизм: {mechanism}\nВывод: {conclusion}".strip()
     clamped, changed = clamp_answer_length(text, max_chars=config.max_rendered_chars)

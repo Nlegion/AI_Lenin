@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import scripts.release_pass as release_pass
+import scripts.ops.release_pass as release_pass
 
 
 def test_skip_rag_does_not_invoke_rag(tmp_path: Path, monkeypatch) -> None:

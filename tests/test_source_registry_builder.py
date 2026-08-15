@@ -11,9 +11,24 @@ from src.core.utils.source_registry import (
 
 def test_classify_stance_type_with_defaults():
     rules = load_source_registry_rules(config_path=None)
-    assert classify_stance_type(author="Ленин", relative_path="Ленин/work.txt", rules=rules) == "core_self"
-    assert classify_stance_type(author="МарксЭнгельс", relative_path="МарксЭнгельс/work.txt", rules=rules) == "influence_agree"
-    assert classify_stance_type(author="Unknown", relative_path="Unknown/work.txt", rules=rules) == "contextual"
+    assert (
+        classify_stance_type(
+            author="Ленин", relative_path="Ленин/work.txt", rules=rules
+        )
+        == "core_self"
+    )
+    assert (
+        classify_stance_type(
+            author="МарксЭнгельс", relative_path="МарксЭнгельс/work.txt", rules=rules
+        )
+        == "influence_agree"
+    )
+    assert (
+        classify_stance_type(
+            author="Unknown", relative_path="Unknown/work.txt", rules=rules
+        )
+        == "contextual"
+    )
 
 
 def test_build_source_registry_and_tsv_export(tmp_path: Path):

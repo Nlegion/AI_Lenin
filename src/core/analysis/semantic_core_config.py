@@ -150,8 +150,7 @@ def load_semantic_core_config(path: Path | None = None) -> SemanticCoreConfig:
         raise ValueError("semantic_core section must be a mapping")
 
     stopwords = frozenset(
-        str(item).casefold()
-        for item in (section.get("retrieval_term_stopwords") or [])
+        str(item).casefold() for item in (section.get("retrieval_term_stopwords") or [])
     )
     max_term_tokens = int(section.get("max_term_tokens", 5))
     if max_term_tokens <= 0:

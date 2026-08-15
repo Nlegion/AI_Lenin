@@ -90,11 +90,17 @@ def test_yellow_output_blocks_tactics() -> None:
 
 def test_red_gold_no_false_accept() -> None:
     path = ROOT / "data" / "eval" / "red_gold_combat.jsonl"
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert len(rows) >= 50
     false_accept = 0
     for row in rows:
-        result = GUARD.evaluate_input(title=row["title"], content=row["content"], source="TASS")
+        result = GUARD.evaluate_input(
+            title=row["title"], content=row["content"], source="TASS"
+        )
         if result.decision != "deny":
             false_accept += 1
     assert false_accept == 0

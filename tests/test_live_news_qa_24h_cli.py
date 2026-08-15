@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from scripts.run_live_news_qa_24h_cli import build_parser
+from scripts.quality.run_live_news_qa_24h_cli import build_parser
 
 
 def test_24h_cli_defaults() -> None:
