@@ -39,14 +39,19 @@ _INLINE_BOLD_LABEL = re.compile(
 _LABEL_BOLD_JUNK = re.compile(
     r"(?mi)^(\s*\*{0,2})(факт|механизм|вывод)(\*{0,2})\s*:\s*\*+\s*",
 )
+# Any triad label with optional spaces around colon (line or inline).
 _LABEL_SPACING = re.compile(
-    r"(?mi)^(\s*\*{0,2})(факт|механизм|вывод)(\*{0,2})\s*:\s*",
+    r"(?mi)(?<![\wА-Яа-яЁё*])\*{0,2}(факт|механизм|вывод)\*{0,2}[ \t]*:[ \t]*",
 )
+# Any triad label not glued to a preceding word (covers --- debris / flatten).
 _SECTION_LABEL = re.compile(
-    r"(?mi)(?:^|\n)\s*\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
+    r"(?mi)(?<![\wА-Яа-яЁё*])\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
 )
 _INLINE_SECTION_RESTART = re.compile(
-    r"(?mi)(?<=[.!?])[ \t]+\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
+    r"(?mi)(?<=[.!?…])(?:\s|---|\[[^\]]*\])*?\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:",
+)
+_TRAILING_MD_BEFORE_CUT = re.compile(
+    r"(?:\s*---(?:\s*\[[^\]]*\])?\s*)+$",
 )
 # Terminal markdown debris only (not global ---/##).
 _TERMINAL_MD_DEBRIS = re.compile(
@@ -54,6 +59,9 @@ _TERMINAL_MD_DEBRIS = re.compile(
 )
 _INLINE_MD_DEBRIS_CLUSTER = re.compile(
     r"(?<=[.!?])\s*(?:(?:---|##)\s*){2,}(?:\.)?\s*",
+)
+_EMPTY_MD_SCAFFOLD = re.compile(
+    r"(?i)\s*---\s*\[(?:empty|пусто)\]\s*---\s*",
 )
 _HOLE_PATTERNS = (
     re.compile(r"\bчто\s*,", re.IGNORECASE),
@@ -96,10 +104,22 @@ def _protect_safety_tails(text: str) -> tuple[str, str]:
     lines = text.split("\n")
     keep_from = len(lines)
     for idx in range(len(lines) - 1, -1, -1):
-        low = lines[idx].strip().casefold()
+        raw = lines[idx]
+        low = raw.strip().casefold()
         if not low:
             continue
-        if low.startswith(_YELLOW_PREFIX) or _DISCLAIMER_HINT in low:
+        disc_at = low.find(_DISCLAIMER_HINT)
+        is_yellow_line = low.startswith(_YELLOW_PREFIX)
+        if is_yellow_line or disc_at >= 0:
+            # Content + disclaimer on one line (common after sentence flatten).
+            if disc_at > 0:
+                abs_pos = raw.casefold().rfind(_DISCLAIMER_HINT)
+                content_part = raw[:abs_pos].rstrip()
+                disc_part = raw[abs_pos:].lstrip()
+                body_lines = [*lines[:idx], content_part] if content_part else list(lines[:idx])
+                body = "\n".join(body_lines).rstrip()
+                tail = "\n".join([disc_part, *lines[idx + 1 :]]).strip("\n")
+                return body, ("\n" + tail if body and tail else tail)
             keep_from = idx
             continue
         break
@@ -140,6 +160,9 @@ def scrub_instruction_dumps(text: str) -> tuple[str, list[str]]:
 def scrub_markdown_debris(text: str) -> tuple[str, list[str]]:
     codes: list[str] = []
     working = text
+    if _EMPTY_MD_SCAFFOLD.search(working):
+        working = _EMPTY_MD_SCAFFOLD.sub(" ", working)
+        codes.append("strip:empty_md_scaffold")
     if _INLINE_MD_DEBRIS_CLUSTER.search(working):
         working = _INLINE_MD_DEBRIS_CLUSTER.sub(" ", working)
         codes.append("strip:md_debris_cluster")
@@ -179,7 +202,15 @@ def normalize_section_headers(text: str) -> tuple[str, list[str]]:
     if _LABEL_SPACING.search(working):
 
         def _space_sub(match: re.Match[str]) -> str:
-            return f"{match.group(2).capitalize()}: "
+            start = match.start()
+            if start > 0 and working[start - 1] == "\n":
+                prefix = ""
+            elif start == 0:
+                prefix = ""
+            else:
+                # Prefer section break when label follows other content.
+                prefix = "\n"
+            return f"{prefix}{match.group(1).capitalize()}: "
 
         new_text = _LABEL_SPACING.sub(_space_sub, working)
         if new_text != working:
@@ -236,7 +267,9 @@ def truncate_trailing_triad_restart(text: str) -> tuple[str, list[str]]:
             codes.append("strip:trailing_triad_restart")
     else:
         codes.append("strip:trailing_triad_restart")
-    return text[:cut_at].rstrip(), codes
+    cut_text = text[:cut_at].rstrip()
+    cut_text = _TRAILING_MD_BEFORE_CUT.sub("", cut_text).rstrip()
+    return cut_text, codes
 
 
 def detect_integrity_issues(text: str) -> list[str]:

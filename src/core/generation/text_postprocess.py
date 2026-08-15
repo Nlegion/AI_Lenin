@@ -10,9 +10,21 @@ logger = logging.getLogger(__name__)
 
 _TRUNCATION_LEAK = re.compile(r"\n?\.\.\.\[truncated\]", re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
+# After sentence join, restore line breaks before triad labels so quality_hooks
+# section regexes (^ / \\n) still see Факт / Механизм / Вывод as sections.
+_TRIAD_SECTION_BREAK = re.compile(
+    r"(?i)(?<=[.!?…])\s+(?=\*{0,2}(?:факт|механизм|вывод)\*{0,2}\s*:)"
+)
 # Single source of truth for publishable analysis length (Telegram framing ~4096).
 MAX_FINAL_ANSWER_CHARS = 1800
 _MAX_FINAL_ANSWER_CHARS = MAX_FINAL_ANSWER_CHARS  # backward-compatible alias
+
+
+def restore_triad_section_breaks(text: str) -> str:
+    """Re-insert newlines before triad labels flattened by sentence join."""
+    if not text:
+        return text
+    return _TRIAD_SECTION_BREAK.sub("\n", text)
 
 
 def strip_truncation_markers(text: str) -> str:
@@ -74,6 +86,7 @@ def dedupe_consecutive_sentences(text: str) -> tuple[str, dict[str, Any]]:
 def finalize_generated_text(text: str) -> tuple[str, dict[str, Any]]:
     cleaned = strip_truncation_markers(text)
     cleaned, dedupe_meta = dedupe_consecutive_sentences(cleaned)
+    cleaned = restore_triad_section_breaks(cleaned)
     cleaned = truncate_to_last_complete_sentence(cleaned)
     cleaned, clamped = clamp_answer_length(cleaned)
     dedupe_meta["answer_len_clamped"] = clamped

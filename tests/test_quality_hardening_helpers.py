@@ -42,6 +42,16 @@ def test_finalize_strips_and_trims() -> None:
     assert text.endswith(".")
 
 
+def test_finalize_restores_triad_section_breaks() -> None:
+    flat = (
+        "Факт: первое предложение. Механизм: второе предложение. "
+        "Вывод: третье предложение."
+    )
+    text, _meta = finalize_generated_text(flat)
+    assert "\nМеханизм:" in text
+    assert "\nВывод:" in text
+
+
 def test_clamp_answer_length_trims_very_long_text() -> None:
     long_text = ("Факт. " * 400).strip()
     clamped, changed = clamp_answer_length(long_text, max_chars=500)

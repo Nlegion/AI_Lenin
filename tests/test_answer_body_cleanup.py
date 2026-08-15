@@ -164,6 +164,65 @@ def test_negative_single_md_separator_not_global_cut() -> None:
     assert "strip:md_debris_cluster" not in result.codes
 
 
+def test_inline_label_spacing_after_sentence_flatten() -> None:
+    """Live QA failure: finalize joins sentences; labels stay inline with ' : '."""
+    flat = (
+        "Факт: событие произошло. Механизм : класс давит на трудящихся. "
+        "Вывод : нужен контроль масс."
+    )
+    result = cleanup_answer_body(text=flat)
+    assert "Механизм :" not in result.text
+    assert "Вывод :" not in result.text
+    assert "Механизм:" in result.text
+    assert "Вывод:" in result.text
+    assert "fix:label_spacing" in result.codes
+
+
+def test_inline_trailing_triad_restart_after_flatten() -> None:
+    flat = (
+        "Факт: первое. Механизм: анализ. Вывод: итог. "
+        "--- [empty] --- Факт: первое. Механизм: мусор."
+    )
+    result = cleanup_answer_body(text=flat)
+    assert result.text.count("Факт:") == 1
+    assert "--- [empty] ---" not in result.text
+    assert any(
+        code in result.codes
+        for code in ("strip:trailing_exact_fact_dup", "strip:trailing_triad_restart")
+    )
+
+
+def test_finalize_then_cleanup_preserves_triad_breaks() -> None:
+    from src.core.generation.text_postprocess import finalize_generated_text
+
+    raw = (
+        "Факт: событие произошло.\n"
+        "Механизм : класс давит на трудящихся.\n"
+        "Вывод : нужен контроль масс."
+    )
+    finalized, _meta = finalize_generated_text(raw)
+    assert "\nМеханизм" in finalized or finalized.count("\n") >= 2
+    result = cleanup_answer_body(text=finalized)
+    assert "Механизм:" in result.text
+    assert "Вывод:" in result.text
+    assert "Механизм :" not in result.text
+
+
+def test_disclaimer_glued_to_vyvod_still_normalizes_labels() -> None:
+    text = (
+        "Факт: событие.\n"
+        "Механизм : анализ класса.\n"
+        "Вывод : итог для масс. "
+        "Ответ сгенерирован ИИ в образовательных целях "
+        "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
+    )
+    result = cleanup_answer_body(text=text)
+    assert "Вывод :" not in result.text
+    assert "Вывод:" in result.text
+    assert "Ответ сгенерирован ИИ" in result.text
+    assert "fix:label_spacing" in result.codes
+
+
 def test_integrity_residual_codes_for_unscrubbed_debris() -> None:
     from src.core.generation.answer_body_cleanup import detect_integrity_issues
 
