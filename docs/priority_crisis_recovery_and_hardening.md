@@ -106,8 +106,8 @@ generate → text_cleaner → NewsGuard.mark_unverified_facts
 | Тест | Ожидание |
 |------|----------|
 | `tests/test_cliche_gate.py` | Клише-фикстура → warn/block; хороший ответ с R1 → pass |
-| Расширение `scripts/evaluate_rag_quality.py` или новый `scripts/evaluate_anti_cliche.py` | Доля fail на gold set; тренд в артефактах |
-| Опционально в `scripts/release_pass.py` | Gate при `ANTI_CLICHE_GATE=1` |
+| Расширение `scripts/retrieval/evaluate_rag_quality.py` или новый `scripts/quality/evaluate_anti_cliche.py` | Доля fail на gold set; тренд в артефактах |
+| Опционально в `scripts/ops/release_pass.py` | Gate при `ANTI_CLICHE_GATE=1` |
 
 #### H1.4. Фазы H1
 
@@ -133,9 +133,9 @@ generate → text_cleaner → NewsGuard.mark_unverified_facts
 3. Stance-слои: `core_self` / `influence_agree` / `influence_critical`.  
 4. Как запустить: env, llama-server / backend, Qdrant path.  
 5. Как проверить качество:
-   - `scripts/run_local_rag_dryrun.py`
-   - `scripts/evaluate_rag_quality.py`
-   - `scripts/evaluate_news_guard.py`
+   - `scripts/quality/run_local_rag_dryrun.py`
+   - `scripts/retrieval/evaluate_rag_quality.py`
+   - `scripts/safety/evaluate_news_guard.py`
    - (после H1) anti-cliché eval  
 6. Feature-flags: `dialectical_orchestration`, anti-cliché mode.  
 7. Ссылки: этот файл + `dialectical_orchestration_r1_r3.md`.
@@ -161,7 +161,7 @@ generate → text_cleaner → NewsGuard.mark_unverified_facts
 
 | Работа | Детали |
 |--------|--------|
-| Включить в `scripts/release_pass.py` / `run_subplan_gates.py` | Вызов evaluate_rag_quality + (опц.) embedding smoke на фикстурном наборе |
+| Включить в `scripts/ops/release_pass.py` / `scripts/ops/run_subplan_gates.py` | Вызов evaluate_rag_quality + (опц.) embedding smoke на фикстурном наборе |
 | Пороги | Читать `config/release_gates.yaml` → `rag_quality.metrics`; fail job при регрессии ниже baseline |
 | Артефакты | Писать summary в `.cursor/artifacts/evaluation/` с датой |
 | CI (если есть) | Тот же gate в GitHub Action / локальный pre-release |

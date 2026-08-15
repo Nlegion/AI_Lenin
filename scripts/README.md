@@ -24,4 +24,4 @@ Legacy still works via shim:
 python scripts/run_local_rag_dryrun.py --fixture economy --verbose
 ```
 
-Python imports use the package path, e.g. `from scripts.lib._quality_qa_io import QaItem`.
+Python imports use the package path, e.g. `from scripts.lib._quality_qa_io import QaItem`. Docs index: [`docs/README.md`](../docs/README.md).

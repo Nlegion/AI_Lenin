@@ -27,7 +27,7 @@ Config section: `dialectical_reasoning` in [`config/retrieval_pipeline.yaml`](..
 
 - No fake «Механизм: анализ опирается…» stub (`quality_hooks`).
 - Analysis labels `Факт`/`Вывод` are not stripped by artifact scaffold.
-- Render budget ≤ `MAX_FINAL_ANSWER_CHARS` (1000).
+- Render budget ≤ `MAX_FINAL_ANSWER_CHARS` (1800).
 - Extractive PrincipleCards only (`quote ⊆ chunk`).
 
 ## Dry-run

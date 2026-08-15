@@ -27,9 +27,9 @@ Detect-first for `СЃ`, standalone `Рё`, Latin islands. Prefer fallback over 
 ## Shadow / verify
 
 ```powershell
-python scripts/shadow_trial50_safety.py --input .cursor/artifacts/quality/live_news_qa_trial50_20260805-2119.jsonl
+python scripts/safety/shadow_trial50_safety.py --input .cursor/artifacts/quality/live_news_qa_trial50_20260805-2119.jsonl
 pytest tests/test_trial50_hotfixes.py tests/test_publisher_disclaimer.py -q
-python scripts/calibrate_combat_gate.py
+python scripts/safety/calibrate_combat_gate.py
 ```
 
 Rollback: disable offending child flag or master if safe-gold false-deny rises above baseline+2pp, `disclaimer_missing>0`, or fallback share spikes.

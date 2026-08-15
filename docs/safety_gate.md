@@ -11,7 +11,7 @@ duplicate policy deny/skip decisions.
 | `src/core/safety/safety_gate_types.py` | `GateContext`, `GateDecision`, `SafetyHint` |
 | `src/core/settings/safety_gate_config.py` | Config loader + news_guard key fallback |
 | `config/safety_gate_config.yaml` | Policy + feature flags (primary SoT) |
-| `scripts/migrate_news_guard_to_safety_gate.py` | One-shot policy migration |
+| `scripts/safety/migrate_news_guard_to_safety_gate.py` | One-shot policy migration |
 
 ## Feature flags
 
@@ -54,7 +54,7 @@ Rollback is config-only: set `enabled: false` or `enforce_mode: old` and restart
 ## Migration
 
 ```powershell
-.venv\Scripts\python.exe scripts/migrate_news_guard_to_safety_gate.py
+.venv\Scripts\python.exe scripts/safety/migrate_news_guard_to_safety_gate.py
 ```
 
 Missing keys in `safety_gate_config.yaml` temporarily fall back to `news_guard.yaml`

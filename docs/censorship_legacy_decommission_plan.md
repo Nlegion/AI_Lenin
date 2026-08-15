@@ -25,5 +25,5 @@
 
 ## Rollback
 - Immediate switch to `shadow_mode=true`, `enforce_mode=old` in `config/safety_gate_config.yaml`.
-- Run `scripts/rollback_gate_config.py restore` if additional rollback is required.
+- Run `scripts/safety/rollback_gate_config.py restore` if additional rollback is required.
 

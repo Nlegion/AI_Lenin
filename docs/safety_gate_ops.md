@@ -15,7 +15,7 @@
    - `yellow_output_filter_enabled`
    - `quote_postcheck_enforce_mode` / `artifact_enforce_mode`
 2. Safety: `config/safety_gate_config.yaml` flags + `trial50_hotfixes` children
-3. Stable snapshot: `config/stable/news_guard.yaml` via `scripts/rollback_gate_config.py`
+3. Stable snapshot: `config/stable/news_guard.yaml` via `scripts/safety/rollback_gate_config.py`
 
 ## Metrics (must-have)
 

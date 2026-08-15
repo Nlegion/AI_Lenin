@@ -12,7 +12,7 @@ When degraded, rollback action is:
 
 ## Automated command
 ```powershell
-python scripts/auto_rollback_censorship_shadow.py `
+python scripts/safety/auto_rollback_censorship_shadow.py `
   --metrics-json .cursor/artifacts/quality/censorship_dryrun_short.metrics.json `
   --baseline-json .cursor/artifacts/quality/censorship_latency_baseline.json `
   --release-gates config/release_gates.yaml `
@@ -24,10 +24,10 @@ python scripts/auto_rollback_censorship_shadow.py `
    - `shadow_mode: true`
    - `enforce_mode: old`
 2. Re-run replay + gates:
-   - `python scripts/replay_censor_from_artifact.py ...`
-   - `python scripts/check_censorship_gates.py ...`
+   - `python scripts/safety/replay_censor_from_artifact.py ...`
+   - `python scripts/safety/check_censorship_gates.py ...`
 3. If quality remains degraded, restore stable snapshot:
-   - `python scripts/rollback_gate_config.py restore`
+   - `python scripts/safety/rollback_gate_config.py restore`
 
 ## Verification checklist
 - Gate check returns `OK gates passed`.

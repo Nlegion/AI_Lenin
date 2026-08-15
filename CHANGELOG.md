@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-15 — triad-flatten-cleanup — agent
+### Changed
+- Restore triad section breaks after consecutive-sentence join in `finalize_generated_text`.
+- Body cleanup: inline `Факт`/`Механизм`/`Вывод` spacing, same-line disclaimer split, empty `--- [empty] ---` scaffolds, trailing markdown before triad cut.
+### Metrics
+| metric | note |
+|--------|------|
+| triad labels after flatten | re-broken before quality_hooks / cleanup regexes |
+### Artifacts
+- `tests/test_answer_body_cleanup.py`
+- `tests/test_quality_hardening_helpers.py`
+### Notes
+- `postprocess_clean_mode` remains `live`. README / AGENTS / docs index / CLI paths aligned to current runtime.
+
 ## 2026-08-14 — postprocess-clean-v1 — agent
 ### Changed
 - Unified `postprocess_clean` contract (`pre_guard` / `post_guard`) as the live writer for body+public scrub.
@@ -12,6 +26,7 @@
 | late mutation after terminal scrub | removed (`clean_analysis` identity) |
 ### Artifacts
 - `.cursor/artifacts/20260814-2110-postprocess-clean-baseline.md`
+- `.cursor/artifacts/20260814-2130-postprocess-clean-cutover.md`
 ### Notes
 - Quote/loop/NewsGuard stay outside the module. Soft integrity default unchanged.
 

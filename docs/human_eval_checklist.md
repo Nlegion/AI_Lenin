@@ -17,7 +17,7 @@ Until then keep `anti_cliche.mode: warn_only` and `block` experimental.
 
 ## Weekly accumulation loop (owner: maintainer / architect)
 
-1. Collect candidates: `python scripts/collect_anti_cliche_label_batch.py` (and/or recent `run_local_rag_dryrun` / live QA rejects). Prefer real dry-run news over synthetic fixtures.
+1. Collect candidates: `python scripts/quality/collect_anti_cliche_label_batch.py` (and/or recent `run_local_rag_dryrun` / live QA rejects). Prefer real dry-run news over synthetic fixtures.
 2. Stratify by topic (economy / geopolitics / tech / social).
 3. Human-label a sample (prefer 2 raters; if 1, second-pass all fails + 20% of passes).
 4. Merge unique pairs into `.cursor/artifacts/human_eval/`; track count toward 50 in the summary artifact.
@@ -26,7 +26,7 @@ Until then keep `anti_cliche.mode: warn_only` and `block` experimental.
 7. Repeat weekly until the H1-d bar is met.
 
 **Gate rate drift owners:** primary=maintainer, backup=architect.  
-SLA: >40% rate drift ≤15 min manual `rollback_gate_config.py restore`; 20–40% ≤1h review. No auto-rollback.
+SLA: >40% rate drift ≤15 min manual `python scripts/safety/rollback_gate_config.py restore`; 20–40% ≤1h review. No auto-rollback.
 
 ## Scoring questions (per item)
 
@@ -77,11 +77,11 @@ Eval with `dialectical_orchestration` / `semantic_core` **OFF** is **not** a fea
 ### Smoke gates (after each P0 fix)
 
 ```powershell
-python scripts/run_quality_qa_batch.py --input tests/fixtures/quality/must_refuse.jsonl --persona-model base_strong --output-dir .cursor/artifacts/quality --force
-python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_refuse
+python scripts/quality/run_quality_qa_batch.py --input tests/fixtures/quality/must_refuse.jsonl --persona-model base_strong --output-dir .cursor/artifacts/quality --force
+python scripts/quality/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_refuse
 
-python scripts/run_quality_qa_batch.py --input tests/fixtures/quality/must_answer_12.jsonl --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality --force
-python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_answer
+python scripts/quality/run_quality_qa_batch.py --input tests/fixtures/quality/must_answer_12.jsonl --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality --force
+python scripts/quality/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite must_answer
 ```
 
 ### Human score bar (exit criteria)
@@ -98,7 +98,7 @@ python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/
 #   Test-Path models\gigachat3\GigaChat3-10B-A1.8B-q6_k.gguf
 # Telegram env vars are NOT required.
 
-python scripts/run_quality_qa_batch.py --guard-check-only --input tests/fixtures/quality/must_answer_12.jsonl
+python scripts/quality/run_quality_qa_batch.py --guard-check-only --input tests/fixtures/quality/must_answer_12.jsonl
 ```
 
 - Input: `data/eval/quality_qa_batch.jsonl` or fixtures under `tests/fixtures/quality/` — required non-empty `id`, `title`, `content`, `question`; unique `id`; `topic`/`source` optional.
@@ -111,10 +111,10 @@ python scripts/run_quality_qa_batch.py --guard-check-only --input tests/fixtures
 
 ```powershell
 # Install/update newest llama.cpp Windows CUDA build for GigaChat3:
-python scripts/update_llama_cpp_release.py
+python scripts/ops/update_llama_cpp_release.py
 
-python scripts/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback
-python scripts/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite full
+python scripts/quality/run_quality_qa_batch.py --limit 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback
+python scripts/quality/evaluate_quality_qa_metrics.py --input .cursor/artifacts/quality/<stamp>.jsonl --suite full
 ```
 
 Useful flags: `--checkpoint PATH`, `--output-dir .cursor/artifacts/quality`, `--force`, `--retries 2`, `--llm-timeout 300`, `--start-wait 120`, `--save-full-prompts` (large JSONL — audit only), `--txt-max-chars N` (optional txt trim).

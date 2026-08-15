@@ -288,7 +288,7 @@ AnalysisGenerationPipeline(
 ## 6. Фазы внедрения
 
 ### Phase 0 — подготовка (0.5–1 день)
-- [ ] Проверить распределение `stance_type` в коллекции (`scripts/audit_retrieval_foundations.py`).  
+- [ ] Проверить распределение `stance_type` в коллекции (`scripts/retrieval/audit_retrieval_foundations.py`).  
 - [ ] Зафиксировать % пустых слотов на 20–50 реальных новостях (dry-run только retrieval).  
 - [ ] Если `influence_critical` / `agree` слишком редки — план доразметки registry (отдельный трек данных, не блокер кода слотов).
 
@@ -370,7 +370,7 @@ AnalysisGenerationPipeline(
 2. Добавить `EvidenceBrief` + `build_evidence_brief`.  
 3. Протянуть flag в config + `LeninAnalyzer` / pipeline.  
 4. Обновить `prompt_adapter` под секции.  
-5. Dry-run script: `scripts/run_dialectical_dryrun.py` (новость → brief JSON + analysis).  
+5. Dry-run script: `scripts/dialectics/run_dialectical_dryrun.py` (новость → brief JSON + analysis).  
 6. Включить flag на stage/local; prod — после ручной приёмки.  
 7. (Следом) anti-cliché gate и доразметка stance.
 
@@ -394,9 +394,9 @@ AnalysisGenerationPipeline(
 
 - `AnalysisContextOrchestrator.build_evidence_brief(...) -> EvidenceBrief` (always returns brief; modes in `trace.orchestration_mode`: `dialectical_v1` | `legacy_fallback` | `error`).
 - `QdrantRetrievalProvider.retrieve_by_stance(query_text, stance_types=..., limit=...)`.
-- Config: `dialectical_orchestration.*` in `config/retrieval_pipeline.yaml` (`enabled: false` by default).
-- Ops: `scripts/ensure_qdrant_stance_index.py` (one-shot per DB; see README).
-- Dry-run: `scripts/run_dialectical_dryrun.py`.
+- Config: `dialectical_orchestration.*` in `config/retrieval_pipeline.yaml` (`enabled: true` in current YAML; originally shipped default-off).
+- Ops: `scripts/retrieval/ensure_qdrant_stance_index.py` (one-shot per DB; see README).
+- Dry-run: `scripts/dialectics/run_dialectical_dryrun.py`.
 - Anti-cliché (Phase 4 helper): `src/core/safety/cliche_gate.py`.
 
 **Reasoning layer (separate):** see [`dialectical_reasoning_engine.md`](dialectical_reasoning_engine.md) — `dialectical_reasoning.mode` in the same YAML. Orchestration builds EvidenceBrief; reasoning synthesizes grounded analysis.

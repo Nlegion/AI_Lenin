@@ -2,7 +2,7 @@
 
 **Audience:** architects, backend agents, and external models reviewing codebase / business process / quality policy.  
 **Language:** English (technical SoT).  
-**Last aligned with:** `postprocess_clean` two-phase extraction (`pre_guard` / `post_guard`) over `cleanup_answer_body` + `final_public_scrub`.
+**Last aligned with:** triad-flatten restore in `finalize_generated_text` + `postprocess_clean` two-phase writer (`pre_guard` / `post_guard`).
 
 This document describes the **post-generation text quality and public-output scrub stack** for AI_Lenin. It is not a safety-policy doc (see NewsGuard / SafetyGate docs) and not a retrieval doc.
 
@@ -48,7 +48,8 @@ LLM raw text
     │
     ▼
 finalize_generated_text          # text_postprocess.py
-    │  strip truncation leaks, consecutive sentence dedupe, sentence trim, length clamp
+    │  strip truncation, consecutive-sentence dedupe, restore triad breaks,
+    │  sentence trim, length clamp
     ▼
 apply_quality_post_generate      # quality_hooks.py
     │  quote postcheck → loop fix → apply_artifact_pass → structure check
@@ -72,7 +73,7 @@ persist / publish re-guard → scrub_after_output_guard  # mandatory terminal sc
 Telegram / QA jsonl
     │
     ▼
-format_answer_for_display        # scripts/_quality_qa_txt.py — display-only for .txt artifacts
+format_answer_for_display        # scripts/lib/_quality_qa_txt.py — display-only for .txt artifacts
 ```
 
 ### 2.1 Mermaid (canonical order)
@@ -109,7 +110,7 @@ Both paths share **codes channel** via `quality_meta` / `final_public_scrub_code
 
 | Path | Role |
 |------|------|
-| `src/core/generation/text_postprocess.py` | Length / truncation / consecutive-sentence hygiene |
+| `src/core/generation/text_postprocess.py` | Length / truncation / consecutive-sentence hygiene + triad break restore |
 | `src/core/generation/quality_hooks.py` | Orchestrator: quotes → loops → artifacts → structure flags |
 | `src/core/generation/quote_postcheck.py` | Quote grounding, attribution hallucination, path leaks |
 | `src/core/generation/quote_allowlist.py` | Candidate extraction / allowlist flags |
@@ -124,7 +125,7 @@ Both paths share **codes channel** via `quality_meta` / `final_public_scrub_code
 | `src/core/safety/news_guard.py` | May insert `«[место]»` during PII redact |
 | `src/core/settings/quality_postcheck_config.py` | Pydantic config loader |
 | `config/quality_postcheck.yaml` | Runtime SoT for flags/thresholds |
-| `scripts/_quality_qa_txt.py` | Human QA `.txt` formatter (not production Telegram path) |
+| `scripts/lib/_quality_qa_txt.py` | Human QA `.txt` formatter (not production Telegram path) |
 
 **Config SoT ownership:** quality postcheck knobs live in `config/quality_postcheck.yaml` (see also `docs/config_ownership.md`). Hotfix child flags under `trial50_hotfixes` are read via `src/core/safety/hotfix_flags.py` (`generation_flag_enabled`).
 
@@ -166,11 +167,14 @@ Kill-switch practice: set relevant flags false in YAML and restart process (docu
 **Ops:**
 
 1. Strip `...[truncated]` leaks  
-2. Dedupe exact consecutive sentences  
-3. Truncate to last complete sentence  
-4. Clamp to `MAX_FINAL_ANSWER_CHARS` (1800) at sentence boundary when possible  
+2. Dedupe exact consecutive sentences (remaining sentences are joined with a space — this can flatten triad newlines)  
+3. `restore_triad_section_breaks` — re-insert `\n` before `Факт` / `Механизм` / `Вывод` after `.!?…` so later `^` / `\\n` section regexes still match  
+4. Truncate to last complete sentence  
+5. Clamp to `MAX_FINAL_ANSWER_CHARS` (1800) at sentence boundary when possible  
 
 **Outputs:** cleaned text + metadata (`consecutive_repeat_removed`, `answer_len_clamped`).
+
+If restore is skipped, live QA shows inline `Механизм :` / `Вывод :` and cleanup misses trailing triad restarts.
 
 ---
 
@@ -231,15 +235,15 @@ Then:
 ### 5.6 `cleanup_answer_body` (`answer_body_cleanup.py`) — core body scrub
 
 **Timing:** inside artifact pass, conceptually **pre-NewsGuard**.  
-**Invariant:** trailing yellow warning / disclaimer lines are split off (`_protect_safety_tails`) so scrub does not erase them, then reattached.
+**Invariant:** trailing yellow warning / disclaimer are split off (`_protect_safety_tails`) so scrub does not erase them, then reattached. Disclaimer glued onto the same line as `Вывод` (after sentence flatten) is split at the hint, not treated as a whole-line footer.
 
 #### Pipeline inside body cleanup
 
-1. `normalize_section_headers` — stray `*` lines; section-boundary `**Факт:**` / `**Механизм:**` / `**Вывод:**` → plain labels; label spacing  
+1. `normalize_section_headers` — stray `*` lines; section-boundary `**Факт:**` / `**Механизм:**` / `**Вывод:**` → plain labels; **inline or line-start** label spacing (`Механизм :` → `Механизм:`)  
 2. `scrub_synthetic_stance` — Lenin / RU stance tags with `(core_…)` including broken `core_ Lenin`  
 3. `scrub_instruction_dumps` — `Запрещено …` sentences; prompt-task tail `Задача: краткий анализ…` (multi-marker, end-anchored)  
-4. `scrub_markdown_debris` — **terminal** and post-sentence **clusters** of `---` / `##` only (not global separators in prose)  
-5. `truncate_trailing_triad_restart` — after first `Вывод`, cut restart of triad; exact trailing Fact dup coded separately  
+4. `scrub_markdown_debris` — empty `--- [empty] ---` scaffolds; **terminal** and post-sentence **clusters** of `---` / `##` only (not global separators in prose)  
+5. `truncate_trailing_triad_restart` — after first `Вывод`, cut restart of triad (line-start **or** inline after `.!?…` with optional `---` / `[…]` debris); strip trailing markdown before the cut; exact trailing Fact dup coded separately  
 6. Whitespace normalize; re-run stance / instruction / md scrub  
 7. `detect_integrity_issues` → soft/strict enforce  
 
@@ -260,7 +264,7 @@ Then:
 
 #### Mutation codes (examples)
 
-`strip:inline_stance_lenin`, `strip:inline_stance_ru_label`, `strip:stance_debris`, `strip:instruction_dump`, `strip:prompt_task_tail`, `strip:md_debris_cluster`, `strip:terminal_md_debris`, `strip:stray_asterisk_line`, `fix:inline_bold_label`, `fix:label_bold_junk`, `fix:label_spacing`, `strip:trailing_exact_fact_dup`, `strip:trailing_triad_restart`.
+`strip:inline_stance_lenin`, `strip:inline_stance_ru_label`, `strip:stance_debris`, `strip:instruction_dump`, `strip:prompt_task_tail`, `strip:empty_md_scaffold`, `strip:md_debris_cluster`, `strip:terminal_md_debris`, `strip:stray_asterisk_line`, `fix:inline_bold_label`, `fix:label_bold_junk`, `fix:label_spacing`, `strip:trailing_exact_fact_dup`, `strip:trailing_triad_restart`.
 
 #### Negative / safety rules baked into regex design
 
@@ -313,7 +317,7 @@ This is the business gate between “generated” and “allowed to publish / co
 
 ---
 
-### 5.9 Display-only formatter (`scripts/_quality_qa_txt.py`)
+### 5.9 Display-only formatter (`scripts/lib/_quality_qa_txt.py`)
 
 **Not production Telegram formatting.** Used by quality / live QA batch writers.
 
@@ -448,6 +452,8 @@ Targeted verification:
 | `Задача: краткий анализ… /критикой…` | Prompt-task tail scrub |
 | Orphan `*` in `.txt` only | `format_answer_for_display` |
 | Public `«[место]»` | `final_public_scrub` after Guard |
+| Flattened triad (`Факт: …. Механизм : …`) | `restore_triad_section_breaks` + `fix:label_spacing` |
+| `--- [empty] ---` trailing restart | `strip:empty_md_scaffold` + trailing triad restart |
 
 ---
 
@@ -482,5 +488,6 @@ Targeted verification:
 |--------|--------|
 | Initial `answer_body_cleanup` + wiring into artifact pass | Centralize body debris scrub + soft integrity |
 | `postprocess_clean` two-phase module | Single contract; pre_guard + mandatory post_guard; persist/publish re-guard scrub; `clean_analysis` identity |
+| Triad flatten after sentence join | Restore section breaks in finalize; inline label / restart / empty-scaffold cleanup |
 
 When extending the module, update this document in the same PR as code changes.

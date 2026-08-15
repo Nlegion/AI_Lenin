@@ -38,7 +38,7 @@ force_exclude:
 4. Rebuild from draft only when intentionally re-scrubbing:
 
 ```powershell
-.venv\Scripts\python.exe scripts/build_censor_terms_from_draft.py
+.venv\Scripts\python.exe scripts/safety/build_censor_terms_from_draft.py
 ```
 
 Review the scrub artifact under `.cursor/artifacts/*-censor-terms-scrub.md`.

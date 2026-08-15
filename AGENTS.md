@@ -29,9 +29,14 @@ AI_Lenin/
 │   ├── main.py                 # Application entry point
 │   ├── core/
 │   │   ├── processor.py        # News processing orchestrator
+│   │   ├── news_item_pipeline.py
 │   │   ├── lenin_analyzer.py   # LLM analysis via llama.cpp HTTP
 │   │   ├── publisher.py        # Telegram publishing
 │   │   ├── llama_server.py     # Local model server wrapper
+│   │   ├── generation/         # pipeline, prompts, postprocess_clean
+│   │   ├── dialectics/         # reasoning engine
+│   │   ├── analysis/           # EvidenceBrief, semantic core
+│   │   ├── safety/             # PreRagCensor, NewsGuard, gates
 │   │   ├── settings/           # config.py, log.py
 │   │   ├── database/           # SQLAlchemy models, repos, migrations
 │   │   ├── retrieval/          # Qdrant retrieval providers
@@ -40,8 +45,10 @@ AI_Lenin/
 │   └── modules/news_system/    # fetcher, classifier
 ├── tests/                      # Integration test scripts
 ├── training/                   # RAG ontology / worldview (not LLM fine-tune)
-├── scripts/                    # Maintenance utilities
-├── tools/                      # One-off converters and helpers
+├── scripts/                    # Domain CLIs + root shims (see scripts/README.md)
+│   ├── quality/ retrieval/ safety/ dialectics/ corpus/ ops/ lib/
+├── docs/                       # Technical SoT (index: docs/README.md)
+├── config/                     # YAML runtime SoT
 ├── alembic.ini
 ├── requirements.txt
 └── .env                        # Secrets (gitignored)
@@ -174,9 +181,9 @@ Project rules in `.cursor/rules/*.mdc` are adapted from an external baseline (`P
 | `log-incident-registry.mdc` | Optional incident triage workflow |
 | `swarm-collaboration.mdc` | Swarm output contract and handoff rules |
 
-Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (feature flag `dialectical_orchestration` in `config/retrieval_pipeline.yaml`, default off).
-Dialectical reasoning engine: `docs/dialectical_reasoning_engine.md` (`dialectical_reasoning.mode` in the same YAML).
-Semantic core (modern→Lenin abstract topics): `docs/semantic_core.md` (`config/semantic_core.yaml`, default off). Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Answer post-processing / public scrub: `docs/answer_postprocess.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
+Dialectical R1–R3 orchestration SoT: `docs/dialectical_orchestration_r1_r3.md` (`dialectical_orchestration.enabled: true` in `config/retrieval_pipeline.yaml`).
+Dialectical reasoning engine: `docs/dialectical_reasoning_engine.md` (`dialectical_reasoning.mode`, default `orchestration_single_pass`).
+Semantic core (modern→Lenin abstract topics): `docs/semantic_core.md` (`config/semantic_core.yaml`, `enabled: true`). Answer post-processing / public scrub: `docs/answer_postprocess.md` (`postprocess_clean_mode: live`). Crisis recovery / anti-cliché priorities: `docs/priority_crisis_recovery_and_hardening.md`. Human eval loop: `docs/human_eval_checklist.md`. Docs index: `docs/README.md`. Unified release thresholds: `config/release_gates.yaml`.
 
 ## Agent Collaboration Rules
 

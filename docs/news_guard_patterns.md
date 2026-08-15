@@ -2,7 +2,7 @@
 
 Source of truth for pattern strings remains [`config/news_guard.yaml`](../config/news_guard.yaml).
 Stable snapshot for manual rollback: [`config/stable/news_guard.yaml`](../config/stable/news_guard.yaml).
-Rollback: `python scripts/rollback_gate_config.py restore` (primary=maintainer, backup=architect).
+Rollback: `python scripts/safety/rollback_gate_config.py restore` (primary=maintainer, backup=architect).
 
 ## Decision layers
 
@@ -35,7 +35,7 @@ Red gold: `data/eval/red_gold_combat.jsonl` (≥50).
 ## Combat calibration
 
 - Set: `tests/fixtures/quality/combat_calib_30.jsonl`
-- Script: `python scripts/calibrate_combat_gate.py`
+- Script: `python scripts/safety/calibrate_combat_gate.py`
 - Target: F1 ≥ 0.90 for combat deny and indirect non-deny; expand to 50 if miss
 
 ## Conditional quote mode
