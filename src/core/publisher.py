@@ -1,5 +1,6 @@
 import logging
 import re
+from enum import Enum
 from pathlib import Path
 
 from src.core.adapters.telegram.service import TelegramService
@@ -12,13 +13,21 @@ from src.core.settings.quality_postcheck_config import (
 logger = logging.getLogger(__name__)
 
 
+class PublishOutcome(str, Enum):
+    """Distinguish permanent content defects from transient Telegram failures."""
+
+    SUCCESS = "success"
+    PERMANENT_REJECT = "permanent_reject"
+    TRANSIENT_FAIL = "transient_fail"
+
+
 def _load_ai_disclaimer() -> str:
     """Public Telegram footer SoT: quality_postcheck.short_disclaimer."""
     # src/core/publisher.py -> core -> src -> repo root
     root = Path(__file__).resolve().parents[2]
     path = default_quality_postcheck_path(base_dir=root)
     fallback = (
-        "Ответ сгенерирован ИИ в образовательных целях "
+        "Ответ сгенерирован ИИ в исследовательских целях "
         "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
     )
     if not path.is_file():
@@ -74,7 +83,7 @@ class TelegramPublisher:
 
     async def publish_analysis(
         self, news_id: str, title: str, url: str, analysis: str
-    ) -> bool:
+    ) -> PublishOutcome:
         try:
             logger.info(f"Публикация: {title[:30]}...")
 
@@ -94,7 +103,7 @@ class TelegramPublisher:
                         "news_id": news_id,
                     },
                 )
-                return False
+                return PublishOutcome.PERMANENT_REJECT
 
             # Reserve room for body + source + disclaimer (Telegram limit 4096).
             telegram_limit = 4096
@@ -136,14 +145,14 @@ class TelegramPublisher:
 
             # Проверка ответа
             if response and response.get("ok", False):
-                return True
+                return PublishOutcome.SUCCESS
 
             logger.error(f"Ошибка публикации: {response}")
-            return False
+            return PublishOutcome.TRANSIENT_FAIL
 
         except Exception as e:
             logger.exception(f"Ошибка публикации: {str(e)}")
-            return False
+            return PublishOutcome.TRANSIENT_FAIL
 
     async def send_admin_notification(self, message: str) -> bool:
         try:

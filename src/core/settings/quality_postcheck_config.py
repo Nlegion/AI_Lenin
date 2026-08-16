@@ -47,7 +47,7 @@ class QualityPostcheckConfig(BaseModel):
     integrity_enforce_mode: str = "soft"
     postprocess_clean_mode: str = "live"
     short_disclaimer: str = (
-        "Ответ сгенерирован ИИ в образовательных целях "
+        "Ответ сгенерирован ИИ в исследовательских целях "
         "(симуляция на основе трудов В.И. Ленина) и не является призывом к действию."
     )
 

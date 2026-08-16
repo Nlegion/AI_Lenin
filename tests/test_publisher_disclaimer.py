@@ -9,9 +9,9 @@ from src.core.publisher import (
 )
 
 
-def test_ai_disclaimer_matches_educational_sot() -> None:
-    assert "образовательных целях" in AI_DISCLAIMER
-    assert "исследовательских целях" not in AI_DISCLAIMER
+def test_ai_disclaimer_matches_research_sot() -> None:
+    assert "исследовательских целях" in AI_DISCLAIMER
+    assert "образовательных целях" not in AI_DISCLAIMER
     assert "призывом к действию" in AI_DISCLAIMER
 
 

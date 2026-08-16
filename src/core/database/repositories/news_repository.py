@@ -1,4 +1,4 @@
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import OperationalError
 from src.core.database.models.models import Analysis, CensorDecisionCache, News
@@ -49,13 +49,13 @@ class NewsRepository:
         await self.session.execute(stmt)
 
     @handle_db_errors
-    async def save_news(self, news_items: list):
+    async def save_news(self, news_items: list) -> int:
+        """Insert news rows. Returns count of newly inserted rows."""
         if not news_items:
-            return
+            return 0
 
         logger.info(f"Сохранение {len(news_items)} новостей в БД")
 
-        # Подготовка данных для пакетной вставки
         data = []
         for item in news_items:
             news_data = {
@@ -66,15 +66,26 @@ class NewsRepository:
                 "date": item["date"],
                 "url": item["url"],
                 "processed": False,
-                "processed_at": None,  # Явно указываем NULL
-                "created_at": datetime.utcnow(),  # Текущее время
+                "processed_at": None,
+                "created_at": datetime.utcnow(),
             }
             data.append(news_data)
 
-        # Исправленный запрос для SQLite
         stmt = sqlite_insert(News).values(data)
         stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
-        await self._execute_with_retry(stmt)
+        result = await self._execute_with_retry(stmt)
+        inserted = int(getattr(result, "rowcount", None) or 0)
+        # SQLite/aiosqlite may report -1 or the attempt count; prefer changes().
+        if inserted < 0 or inserted > len(news_items):
+            changes = await self.session.execute(text("SELECT changes()"))
+            inserted = int(changes.scalar_one() or 0)
+        return max(0, min(inserted, len(news_items)))
+
+    @handle_db_errors
+    async def get_news_by_id(self, news_id: str):
+        stmt = select(News).where(News.id == news_id)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     @handle_db_errors
     async def get_unprocessed_news(self, limit: int = 10):
@@ -92,6 +103,36 @@ class NewsRepository:
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    @handle_db_errors
+    async def count_unprocessed(self, *, hours: int = 24) -> int:
+        time_threshold = datetime.utcnow() - timedelta(hours=hours)
+        stmt = select(func.count()).select_from(News).where(
+            News.processed.is_(False),
+            News.date >= time_threshold,
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one() or 0)
+
+    @handle_db_errors
+    async def count_stale_unprocessed(self, *, hours: int = 24) -> int:
+        time_threshold = datetime.utcnow() - timedelta(hours=hours)
+        stmt = select(func.count()).select_from(News).where(
+            News.processed.is_(False),
+            News.date < time_threshold,
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one() or 0)
+
+    @handle_db_errors
+    async def count_unpublished(self) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Analysis)
+            .where(Analysis.published.is_(False))
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one() or 0)
 
     @handle_db_errors
     async def save_analysis(self, news_id: str, analysis: str):
@@ -140,6 +181,22 @@ class NewsRepository:
             .values(published=True, published_at=datetime.utcnow())
         )
         await self.session.execute(stmt)
+
+    @handle_db_errors
+    async def mark_analysis_discarded(self, news_id: str) -> None:
+        """Terminal discard: leave unpublished queue without counting as published."""
+        stmt = (
+            update(Analysis)
+            .where(Analysis.news_id == news_id)
+            .values(published=True, published_at=datetime.utcnow())
+        )
+        await self.session.execute(stmt)
+        news_stmt = (
+            update(News)
+            .where(News.id == news_id)
+            .values(processed=True, processed_at=datetime.utcnow())
+        )
+        await self.session.execute(news_stmt)
 
     @handle_db_errors
     async def mark_as_unprocessed(self, news_id: str):

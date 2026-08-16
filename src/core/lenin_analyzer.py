@@ -223,6 +223,7 @@ class LeninAnalyzer:
                 f"{reasoning_cfg.mode.value}_{reasoning_cfg.schema_version}"
             )
             if cache_key in self.analysis_cache and not feedback:
+                self.last_pipeline_metadata = {"cache_hit": True}
                 return self.analysis_cache[cache_key]
 
             key_concepts = self.extract_key_concepts(news_content)
@@ -243,6 +244,7 @@ class LeninAnalyzer:
             )
             self.circuit_breaker.record_success()
             self.last_pipeline_metadata = dict(result.metadata or {})
+            self.last_pipeline_metadata["latency_ms"] = int(result.latency_ms)
             # Terminal post-guard already ran in the pipeline; do not re-mutate.
             cleaned_content = self.clean_analysis(result.analysis)
             suffix = result.metadata.get("cache_suffix")

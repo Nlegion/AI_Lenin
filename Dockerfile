@@ -10,12 +10,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+    for i in 1 2 3 4 5; do \
+      apt-get update \
+      && apt-get install -y --no-install-recommends --fix-missing \
         build-essential \
         curl \
         libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+      && break; \
+      echo "apt install failed (attempt $i), retrying..."; \
+      sleep $((i * 5)); \
+    done; \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements-docker.txt /app/requirements-docker.txt
 

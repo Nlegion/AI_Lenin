@@ -48,10 +48,15 @@ async def test_telegram_publisher():
             url="https://example.com",
             analysis="✅ Система успешно отправляет сообщения!\n\n"
             "Владимир Ильич Ленин одобряет исправную работу революционной техники. "
-            "Пролетарии всех стран, соединяйтесь в цифровом пространстве!",
+            "Пролетарии всех стран, соединяйтесь в цифровом пространстве!\n\n"
+            "Механизм: проверка канала связи.\n\n"
+            "Вывод: модуль публикации работает.",
         )
+        from src.core.publisher import PublishOutcome
+
         logger.info(
-            f"Результат публикации в канал: {'Успешно' if success else 'Ошибка'}"
+            f"Результат публикации в канал: "
+            f"{'Успешно' if success == PublishOutcome.SUCCESS else success}"
         )
     else:
         logger.warning("TELEGRAM_CHANNEL_ID не установлен, пропускаем тест канала")

@@ -9,6 +9,8 @@ services:
       - .env
     environment:
       LLM_SPAWN_LOCAL: "false"
+      LLM_PROVIDER: deepseek
+      LLM_MODEL_NAME: deepseek-v4-flash
       HF_DATASETS_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
       PYTHONPATH: /app

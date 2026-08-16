@@ -183,9 +183,9 @@ def test_short_loop_strip() -> None:
 def test_disclaimer_footer_not_header() -> None:
     out = GUARD.guard_output(analysis="Краткий анализ экономики и санкций.")
     assert out.moderated_text.strip().startswith("Краткий")
-    assert "образовательных целях" in out.moderated_text
+    assert "исследовательских целях" in out.moderated_text
     assert out.moderated_text.index("Краткий") < out.moderated_text.index(
-        "образовательных"
+        "исследовательских"
     )
 
 

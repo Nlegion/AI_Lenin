@@ -30,13 +30,13 @@ def test_output_guard_blocks_extremist_phrase_and_adds_disclaimer():
     guard = _guard()
     output = guard.guard_output("Необходимо к оружию и к свержение власти.")
     assert output.blocked is True
-    assert "образовательных целях" in output.moderated_text
+    assert "исследовательских целях" in output.moderated_text
 
 
 def test_output_guard_adds_disclaimer_for_safe_text():
     guard = _guard()
     output = guard.guard_output("Анализ империализма и монополий.")
-    assert "образовательных целях" in output.moderated_text
+    assert "исследовательских целях" in output.moderated_text
 
 
 def test_input_gate_blocks_military_context_even_without_exact_keyword():
@@ -102,7 +102,7 @@ def test_disclaimer_is_footer_in_strict_public_mode():
     guard = _guard()
     output = guard.guard_output("Анализ империализма и монополий.")
     assert output.moderated_text.startswith("Анализ империализма")
-    assert "образовательных целях" in output.moderated_text
+    assert "исследовательских целях" in output.moderated_text
     assert output.moderated_text.index("Анализ") < output.moderated_text.index(
-        "образовательных"
+        "исследовательских"
     )

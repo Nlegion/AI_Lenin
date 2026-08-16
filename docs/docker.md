@@ -20,7 +20,7 @@ Deploy AI_Lenin on a Linux VPS with a **full copy of the local RAG index** (embe
 - Docker Engine + Compose on Linux (or Docker Desktop with Linux containers)
 - Outbound HTTPS (TASS RSS, Telegram, remote LLM)
 - Roughly **8–16 GB RAM** for CPU embeddings; multi-GB disk for Qdrant + model
-- Same `qdrant-client` major/minor as the snapshot producer (`1.15.1`)
+- Same `qdrant-client` major/minor as the snapshot producer (`1.18.0`)
 
 ## Build the RAG snapshot (on the Windows workstation)
 

@@ -4,7 +4,7 @@
 ### Changed
 - Added root legal pack: `LICENSE` (MIT, repo-authored code/docs only), bilingual `DISCLAIMER.md`, `THIRD_PARTY_LICENSES.md`, `CONTRIBUTING.md`.
 - README: Legal notice, accurate PSS/data paths, DeepSeek provider table; AGENTS Tech Stack + legal SoT link; docs index; NOTICE audit script path.
-- Unified Telegram `AI_DISCLAIMER` with `quality_postcheck.short_disclaimer` («образовательных целях»).
+- Unified Telegram `AI_DISCLAIMER` with `quality_postcheck.short_disclaimer` («исследовательских целях»).
 ### Metrics
 | metric | note |
 |--------|------|

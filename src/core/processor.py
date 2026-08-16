@@ -1,12 +1,14 @@
 import asyncio
-import time
 import logging
 import re
+import time
 from pathlib import Path
+from types import SimpleNamespace
+
 from src.core.database.repositories.news_repository import NewsRepository
 from src.modules.news_system.fetcher import NewsFetcher
 from src.core.lenin_analyzer import LeninAnalyzer
-from src.core.publisher import TelegramPublisher
+from src.core.publisher import PublishOutcome, TelegramPublisher
 from src.core.settings.config import Settings
 from src.core.utils.decorators import handle_errors
 from src.core.database.db_core import session_scope
@@ -19,6 +21,8 @@ from src.core.news_item_pipeline import (
     evaluate_and_annotate_news,
     generate_and_persist_analysis,
 )
+from src.core.ops.report_formatter import format_ops_digest
+from src.core.ops.window_stats import WindowStats
 from src.core.safety.news_guard import NewsGuard
 from src.core.safety.safety_gate import SafetyGate
 from src.core.safety.pre_rag_censor import PreRagCensor
@@ -26,11 +30,37 @@ from src.core.settings.censorship_runtime_config import (
     default_censorship_runtime_config_path,
     load_censorship_runtime_config,
 )
-from src.core.settings.generation_config import llm_spawn_local_from_env
+from src.core.settings.generation_config import (
+    llm_spawn_local_from_env,
+    provider_from_env,
+)
+from src.core.settings.ops_report_config import (
+    default_ops_report_path,
+    load_ops_report_config,
+)
 
 logger = logging.getLogger(__name__)
 db_lock = asyncio.Lock()
 _WS_RE = re.compile(r"\s+")
+
+
+class _LockScopedRepo:
+    """Open a short DB session under db_lock for each write (LLM stays unlocked)."""
+
+    def __init__(self, lock: asyncio.Lock) -> None:
+        self._lock = lock
+
+    async def mark_as_processed_without_analysis(self, news_id: str) -> None:
+        async with self._lock:
+            async with session_scope() as session:
+                await NewsRepository(session).mark_as_processed_without_analysis(
+                    news_id
+                )
+
+    async def save_analysis(self, news_id: str, analysis: str) -> None:
+        async with self._lock:
+            async with session_scope() as session:
+                await NewsRepository(session).save_analysis(news_id, analysis)
 
 
 class NewsProcessor:
@@ -48,31 +78,24 @@ class NewsProcessor:
         self.safety_gate = self._init_safety_gate()
         self.pre_rag_censor = self._init_pre_rag_censor()
         self.analyzer_ready = asyncio.Event()
+        self.ops_config = load_ops_report_config(
+            path=default_ops_report_path(Path(self.config.BASE_DIR))
+        )
+        try:
+            llm_provider = provider_from_env()
+        except ValueError:
+            llm_provider = "unknown"
 
         asyncio.create_task(self.initialize_components())
 
         self.publisher = TelegramPublisher()
-
-        # Время последнего сбора новостей
         self.last_fetch_time = 0
-        self.fetch_interval = 300  # 5 минут между сборами новостей
-
-        # Статистика
-        self.stats = {
-            "news_fetched": 0,
-            "news_processed": 0,
-            "news_skipped": 0,
-            "analyses_published": 0,
-            "analyses_rejected": 0,
-            "errors": 0,
-            "generation_timeouts": 0,
-            "circuit_opens": 0,
-            "degraded_held": 0,
-        }
-
-        # Словарь для хранения замечаний к анализам
+        self.fetch_interval = 300
+        self.stats: WindowStats = WindowStats(
+            max_latency_samples=self.ops_config.max_latency_samples,
+            llm_provider=str(llm_provider),
+        )
         self.analysis_feedback = {}
-        self.failed_attempts = {}
 
     def _init_news_guard(self):
         config_path = Path(self.config.BASE_DIR) / "config" / "news_guard.yaml"
@@ -126,53 +149,46 @@ class NewsProcessor:
             )
         return deduped
 
+    async def _backlog_counts(self) -> tuple[int, int, int]:
+        async with db_lock:
+            async with session_scope() as session:
+                repo = NewsRepository(session)
+                workable = await repo.count_unprocessed(hours=24)
+                stale = await repo.count_stale_unprocessed(hours=24)
+                unpublished = await repo.count_unpublished()
+        return workable, stale, unpublished
+
     async def initialize_components(self):
-        """Параллельная инициализация компонентов с запуском сервера"""
+        """Initialize components; one compact boot Telegram on success."""
         try:
-            # Отправляем уведомление о начале инициализации
-            await self.publisher.send_admin_notification(
-                "🔄 Начало инициализации системы ИИ-Ленин"
-            )
+            logger.info("Начало инициализации системы ИИ-Ленин")
 
             if self.spawn_local:
                 logger.info("Запуск сервера llama.cpp...")
-                await self.publisher.send_admin_notification(
-                    "🔌 Запуск сервера llama.cpp..."
-                )
                 if self.server is None or not await self.server.start_server():
                     error_msg = "Не удалось запустить сервер llama.cpp"
                     await self.publisher.send_admin_notification(f"❌ {error_msg}")
                     raise Exception(error_msg)
-                await self.publisher.send_admin_notification(
-                    "✅ Сервер llama.cpp запущен"
-                )
+                logger.info("Сервер llama.cpp запущен")
+                mode = "local llama"
             else:
                 logger.info("LLM_SPAWN_LOCAL=false; skipping local llama-server")
-                await self.publisher.send_admin_notification(
-                    "🌐 Remote LLM mode (local llama-server skipped)"
-                )
+                mode = f"remote {self.stats.llm_provider}"
 
-            # Default persona_model=base_strong from config/generation.yaml.
-            await self.publisher.send_admin_notification(
-                "🧠 Инициализация анализатора..."
-            )
+            logger.info("Инициализация анализатора...")
             self.analyzer = LeninAnalyzer()
             await self.analyzer.initialize_session()
-            await self.publisher.send_admin_notification(
-                "✅ Анализатор инициализирован"
-            )
+            logger.info("Анализатор инициализирован")
 
             self.analyzer_ready.set()
-            logger.info("Все компоненты инициализированы")
-
-            # Отправляем уведомление о успешном запуске
+            workable, _stale, unpublished = await self._backlog_counts()
             await self.publisher.send_admin_notification(
-                "🚀 Система ИИ-Ленин успешно запущена и готова к работе!"
+                f"Запуск OK | {mode} | backlog workable {workable} / unpublished {unpublished}"
             )
+            logger.info("Все компоненты инициализированы")
 
         except Exception as e:
             logger.exception(f"Ошибка инициализации: {str(e)}")
-            # Устанавливаем флаг готовности даже при ошибке, чтобы циклы не зависали
             self.analyzer_ready.set()
             await self.publisher.send_admin_notification(
                 f"❌ Критическая ошибка инициализации: {str(e)[:300]}"
@@ -185,34 +201,38 @@ class NewsProcessor:
             try:
                 current_time = time.time()
 
-                # Проверяем, прошло ли достаточно времени с последнего сбора
                 if current_time - self.last_fetch_time >= self.fetch_interval:
-                    await self.publisher.send_admin_notification(
-                        "📡 Начало сбора новостей..."
-                    )
-
                     news_items = self.fetcher.fetch_all()
-                    news_items = self._deduplicate_news_batch(news_items)
+                    rss_seen = len(news_items)
+                    deduped = self._deduplicate_news_batch(news_items)
+                    dedup_dropped = rss_seen - len(deduped)
 
-                    if news_items:
-                        await self.publisher.send_admin_notification(
-                            f"📊 Собрано {len(news_items)} новостей из TASS"
-                        )
-
-                    # Используем блокировку для доступа к базе данных
                     async with db_lock:
                         async with session_scope() as session:
                             repo = NewsRepository(session)
-                            await repo.save_news(news_items)
+                            inserted = await repo.save_news(deduped)
 
-                    self.stats["news_fetched"] += len(news_items)
+                    self.stats["rss_seen"] += rss_seen
+                    self.stats["dedup_dropped"] += dedup_dropped
+                    self.stats["inserted"] += inserted
                     self.last_fetch_time = current_time
 
                     logger.info(
-                        f"Сбор новостей завершен. Всего собрано: {self.stats['news_fetched']}"
+                        "Сбор новостей: rss=%s dedup_dropped=%s inserted=%s",
+                        rss_seen,
+                        dedup_dropped,
+                        inserted,
                     )
+                    if (
+                        inserted > 0
+                        and self.ops_config.fetch_notify == "new_only"
+                    ):
+                        db_dupes = max(0, len(deduped) - inserted)
+                        await self.publisher.send_admin_notification(
+                            f"Новых {inserted} из TASS "
+                            f"(RSS {rss_seen}, дубликаты {db_dupes + dedup_dropped})"
+                        )
 
-                # Ждем 1 минуту перед следующей проверкой
                 await asyncio.sleep(60)
 
             except Exception as e:
@@ -220,7 +240,7 @@ class NewsProcessor:
                 await self.publisher.send_admin_notification(
                     f"❌ Ошибка сбора новостей: {str(e)[:200]}"
                 )
-                await asyncio.sleep(60)  # Ждем перед повторной попыткой
+                await asyncio.sleep(60)
 
     @handle_errors
     async def process_news_cycle(self):
@@ -242,8 +262,6 @@ class NewsProcessor:
 
                 processing_tasks = []
                 for news_id in news_ids:
-                    if news_id in self.failed_attempts:
-                        del self.failed_attempts[news_id]
                     task = asyncio.create_task(
                         self.process_single_news_by_id(news_id, processing_semaphore)
                     )
@@ -260,23 +278,69 @@ class NewsProcessor:
                 await asyncio.sleep(30)
 
     async def process_single_news_by_id(
-        self, news_id: int, semaphore: asyncio.Semaphore
+        self, news_id: str | int, semaphore: asyncio.Semaphore
     ) -> None:
-        """Process one news item with an isolated DB session/repository."""
+        """Load by PK under lock; run censor under lock; generate outside lock."""
         async with semaphore:
+            snap: SimpleNamespace | None = None
+            annotate = None
             async with db_lock:
                 async with session_scope() as session:
                     repo = NewsRepository(session)
-                    pending = await repo.get_unprocessed_news(limit=20)
-                    news = next((item for item in pending if item.id == news_id), None)
+                    news = await repo.get_news_by_id(str(news_id))
                     if news is None:
                         logger.warning(
                             "news_id=%s disappeared before processing", news_id
                         )
+                        self.stats["errors"] += 1
                         return
-                    await self._process_loaded_news(news=news, repo=repo)
+                    snap = SimpleNamespace(
+                        id=news.id,
+                        title=news.title,
+                        content=news.content,
+                        source=news.source,
+                        url=news.url,
+                    )
+                    if self.pre_rag_censor is None:
+                        logger.error(
+                            "PreRagCensor unavailable; holding news_id=%s",
+                            news.id,
+                        )
+                        await repo.mark_as_processed_without_analysis(news.id)
+                        self.stats["news_skipped"] += 1
+                        return
+                    attach_censor_cache_callbacks(
+                        censor=self.pre_rag_censor, repo=repo
+                    )
+                    annotate = await evaluate_and_annotate_news(
+                        news=snap,
+                        censor=self.pre_rag_censor,
+                        classifier=self.classifier,
+                        base_dir=Path(self.config.BASE_DIR),
+                    )
+                    if annotate.stop == "skip":
+                        await repo.mark_as_processed_without_analysis(snap.id)
+                        self.stats["news_skipped"] += 1
+                        self.stats.record_skip_reasons(annotate.reason_codes)
+                        return
+                    if annotate.decision == "review":
+                        self.stats["review_continued"] += 1
+
+            try:
+                await generate_and_persist_analysis(
+                    news=snap,
+                    analyzer=self.analyzer,
+                    news_guard=self.news_guard,
+                    validator=self.validator,
+                    repo=_LockScopedRepo(db_lock),
+                    stats=self.stats,
+                )
+            except Exception as e:
+                logger.error("Ошибка обработки новости %s: %s", news_id, e)
+                self.stats["errors"] += 1
 
     async def _process_loaded_news(self, *, news, repo) -> None:
+        """Test-friendly path: caller owns session/lock."""
         logger.info("Обработка новости: %s...", news.title[:50])
         if self.pre_rag_censor is None:
             logger.error(
@@ -287,16 +351,22 @@ class NewsProcessor:
             return
         try:
             attach_censor_cache_callbacks(censor=self.pre_rag_censor, repo=repo)
-            stop = await evaluate_and_annotate_news(
+            annotate = await evaluate_and_annotate_news(
                 news=news,
                 censor=self.pre_rag_censor,
                 classifier=self.classifier,
                 base_dir=Path(self.config.BASE_DIR),
             )
-            if stop == "skip":
+            if annotate.stop == "skip":
                 await repo.mark_as_processed_without_analysis(news.id)
                 self.stats["news_skipped"] += 1
+                if isinstance(self.stats, WindowStats):
+                    self.stats.record_skip_reasons(annotate.reason_codes)
                 return
+            if annotate.decision == "review":
+                self.stats["review_continued"] = (
+                    self.stats.get("review_continued", 0) + 1
+                )
             await generate_and_persist_analysis(
                 news=news,
                 analyzer=self.analyzer,
@@ -316,72 +386,103 @@ class NewsProcessor:
 
     @handle_errors
     async def publish_cycle(self):
-        """Упрощенный цикл публикации анализов с задержкой"""
+        """Publish cycle: short DB critical sections; sleep outside lock."""
         while True:
             try:
+                unpublished = []
                 async with db_lock:
                     async with session_scope() as session:
                         repo = NewsRepository(session)
-                        unpublished = await repo.get_unpublished_analysis(
-                            limit=5
-                        )  # Уменьшили лимит
-
-                        if unpublished:
-                            logger.info(
-                                f"Найдено {len(unpublished)} анализов для публикации"
-                            )
-
-                        for item in unpublished:
-                            # Минимальная проверка перед публикацией
-                            validation = self.validator.validate_analysis(
-                                item.analysis, item.news.title
-                            )
-
-                            # Публикуем ВСЕ анализы, которые не были явно отклонены
-                            if validation["is_valid"]:
-                                try:
-                                    analysis_to_publish = item.analysis
-                                    if self.news_guard is not None:
-                                        guard_result = self.news_guard.guard_output(
-                                            analysis=item.analysis
-                                        )
-                                        analysis_to_publish = scrub_after_output_guard(
-                                            guard_result.moderated_text
-                                        )
-                                    success = await self.publisher.publish_analysis(
-                                        item.news_id,
-                                        item.news.title,
-                                        item.news.url,
-                                        analysis_to_publish,
-                                    )
-                                    if success:
-                                        await repo.mark_as_published(item.news_id)
-                                        self.stats["analyses_published"] += 1
-                                        logger.info(
-                                            f"Анализ {item.news_id} успешно опубликован"
-                                        )
-
-                                        # Задержка между публикациями (30 секунд)
-                                        await asyncio.sleep(30)
-                                    else:
-                                        logger.warning(
-                                            f"Неудачная попытка публикации анализа {item.news_id}"
-                                        )
-                                except Exception as e:
-                                    logger.error(
-                                        f"Ошибка публикации анализа {item.news_id}: {str(e)}"
-                                    )
-                            else:
-                                # Для отклоненных анализов просто помечаем как обработанные
-                                logger.warning(
-                                    f"Анализ {item.news_id} отклонен: {', '.join(validation['reasons'])}"
+                        rows = await repo.get_unpublished_analysis(limit=5)
+                        for item in rows:
+                            unpublished.append(
+                                SimpleNamespace(
+                                    news_id=item.news_id,
+                                    analysis=item.analysis,
+                                    title=item.news.title,
+                                    url=item.news.url,
                                 )
-                                await repo.mark_as_processed_without_analysis(
+                            )
+
+                if unpublished:
+                    logger.info(
+                        "Найдено %s анализов для публикации", len(unpublished)
+                    )
+
+                for item in unpublished:
+                    validation = self.validator.validate_analysis(
+                        item.analysis, item.title
+                    )
+                    if not validation["is_valid"]:
+                        logger.warning(
+                            "Анализ %s отклонен: %s",
+                            item.news_id,
+                            ", ".join(validation["reasons"]),
+                        )
+                        async with db_lock:
+                            async with session_scope() as session:
+                                await NewsRepository(session).mark_analysis_discarded(
                                     item.news_id
                                 )
-                                self.stats["analyses_rejected"] += 1
+                        self.stats["analyses_rejected"] += 1
+                        if isinstance(self.stats, WindowStats):
+                            self.stats.record_reject_reasons(
+                                list(validation.get("reasons") or [])
+                            )
+                        continue
 
-                # Короткая пауза перед следующей проверкой
+                    try:
+                        analysis_to_publish = item.analysis
+                        if self.news_guard is not None:
+                            guard_result = self.news_guard.guard_output(
+                                analysis=item.analysis
+                            )
+                            analysis_to_publish = scrub_after_output_guard(
+                                guard_result.moderated_text
+                            )
+                        outcome = await self.publisher.publish_analysis(
+                            item.news_id,
+                            item.title,
+                            item.url,
+                            analysis_to_publish,
+                        )
+                        if outcome == PublishOutcome.SUCCESS:
+                            async with db_lock:
+                                async with session_scope() as session:
+                                    await NewsRepository(session).mark_as_published(
+                                        item.news_id
+                                    )
+                            self.stats["analyses_published"] += 1
+                            logger.info(
+                                "Анализ %s успешно опубликован", item.news_id
+                            )
+                            await asyncio.sleep(30)
+                        elif outcome == PublishOutcome.PERMANENT_REJECT:
+                            async with db_lock:
+                                async with session_scope() as session:
+                                    await NewsRepository(
+                                        session
+                                    ).mark_analysis_discarded(item.news_id)
+                            self.stats["analyses_rejected"] += 1
+                            if isinstance(self.stats, WindowStats):
+                                self.stats.record_reject_reasons(["triad_missing"])
+                            logger.warning(
+                                "Анализ %s отброшен (permanent)", item.news_id
+                            )
+                        else:
+                            self.stats["publish_failed"] += 1
+                            logger.warning(
+                                "Неудачная попытка публикации анализа %s",
+                                item.news_id,
+                            )
+                    except Exception as e:
+                        self.stats["publish_failed"] += 1
+                        logger.error(
+                            "Ошибка публикации анализа %s: %s",
+                            item.news_id,
+                            str(e),
+                        )
+
                 await asyncio.sleep(15)
 
             except Exception as e:
@@ -389,42 +490,31 @@ class NewsProcessor:
                 await asyncio.sleep(30)
 
     async def report_cycle(self):
-        """Цикл отчетности (запускается каждые 30 минут)"""
+        """Sleep first, then send a real window digest."""
+        interval = max(60, int(self.ops_config.interval_seconds))
         while True:
             try:
-                # Формируем отчет
-                report = (
-                    f"📊 Отчет за последние 30 минут: "
-                    f"Новостей: {self.stats['news_fetched']}, "
-                    f"Обработано: {self.stats['news_processed']}, "
-                    f"Пропущено: {self.stats['news_skipped']}, "
-                    f"Опубликовано: {self.stats['analyses_published']}, "
-                    f"Отклонено: {self.stats['analyses_rejected']}, "
-                    f"Ошибок: {self.stats['errors']}"
+                await asyncio.sleep(interval)
+                workable, stale, unpublished = await self._backlog_counts()
+                snapshot = self.stats.snapshot_and_reset()
+                report = format_ops_digest(
+                    snapshot,
+                    interval_seconds=interval,
+                    workable_backlog=workable,
+                    stale_backlog=stale,
+                    unpublished=unpublished,
+                    top_reasons=self.ops_config.top_reasons,
+                    idle_digest=self.ops_config.idle_digest,
                 )
-
                 logger.info(report)
                 await self.publisher.send_admin_notification(report)
-
-                # Сброс статистики
-                for key in self.stats:
-                    self.stats[key] = 0
-
-                # Ждем 30 минут до следующего отчета
-                await asyncio.sleep(1800)
-
             except Exception as e:
                 logger.error(f"Ошибка в цикле отчетности: {str(e)}")
-                await asyncio.sleep(1800)  # Ждем перед повторной попыткой
+                await asyncio.sleep(interval)
 
     async def start_separated_processing(self):
         """Запуск раздельных циклов обработки"""
         logger.info("Запуск раздельных циклов обработки")
-        await self.publisher.send_admin_notification(
-            "🔄 Запуск раздельных циклов обработки"
-        )
-
-        # Запускаем все циклы параллельно
         await asyncio.gather(
             self.fetch_news_cycle(),
             self.process_news_cycle(),

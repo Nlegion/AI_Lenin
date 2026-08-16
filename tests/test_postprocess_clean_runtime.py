@@ -59,7 +59,7 @@ def test_passthrough_does_not_re_mutate_triad() -> None:
         "Факт: событие произошло.\n"
         "Механизм: концентрация капитала.\n"
         "Вывод: нужен контроль классов.\n"
-        "Ответ сгенерирован ИИ в образовательных целях."
+        "Ответ сгенерирован ИИ в исследовательских целях."
     )
     assert passthrough_pipeline_text(text) == text
     assert passthrough_pipeline_text("") == "Не удалось сгенерировать анализ."
