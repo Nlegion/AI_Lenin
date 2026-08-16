@@ -32,13 +32,14 @@ AI_DISCLAIMER = _load_ai_disclaimer()
 _TRIAD_LINE = re.compile(
     r"(?im)^\s*\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:\s*(.*?)(?=\n|$)"
 )
+_TRIAD_INLINE = re.compile(
+    r"(?im)(?<![\wА-Яа-яЁё*])\*{0,2}(факт|механизм|вывод)\*{0,2}\s*:"
+)
 
 
 def clean_telegram_text(text: str) -> str:
-    """Удаляет проблемные символы для Telegram"""
-    # Удаляем непечатаемые символы
-    text = re.sub(r"[\x00-\x1F\x7F-\x9F]", "", text)
-    # Заменяем проблемные HTML-сущности
+    """Strip non-printable controls; keep newlines so triad labels stay on lines."""
+    text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]", "", text)
     text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return text.strip()
 
@@ -50,7 +51,20 @@ def _extract_triad_sections(text: str) -> dict[str, str]:
         value = match.group(2).strip()
         if value and label not in sections:
             sections[label] = value
-    return sections
+    if sections.get("механизм") and sections.get("вывод"):
+        return sections
+    inline: dict[str, str] = {}
+    matches = list(_TRIAD_INLINE.finditer(text))
+    for index, match in enumerate(matches):
+        label = match.group(1).casefold()
+        if label in inline:
+            continue
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        value = text[match.end() : end].strip()
+        value = value.split("\n\n")[0].strip()
+        if value:
+            inline[label] = value
+    return inline or sections
 
 
 class TelegramPublisher:
