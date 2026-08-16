@@ -15,6 +15,9 @@ class Settings:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID")
     TELEGRAM_ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID")
+    # VPS-only SOCKS exit for Bot API (do not set global HTTP(S)_PROXY)
+    TELEGRAM_PROXY_URL = os.getenv("TELEGRAM_PROXY_URL")
+    TELEGRAM_PROXY_REQUIRED = os.getenv("TELEGRAM_PROXY_REQUIRED", "false")
 
     # База данных
     DB_PATH = "ai_lenin.db"

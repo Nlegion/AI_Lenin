@@ -71,8 +71,12 @@ copy .env.example .env
 | `LLM_API_KEY` | Generic Bearer (wins over `DEEPSEEK_API_KEY`) |
 | `LLM_MODEL_NAME` | DeepSeek default `deepseek-v4-flash`; required for generic remote |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHANNEL_ID` / `TELEGRAM_ADMIN_ID` | Required |
+| `TELEGRAM_PROXY_REQUIRED` | `true` on VPS when Bot API must exit via host SOCKS (Beget VLESS) |
+| `TELEGRAM_PROXY_URL` | e.g. `socks5://user:pass@host.docker.internal:1080` — **only** TelegramClient; never set global `HTTP(S)_PROXY` (TASS/DeepSeek must stay direct) |
 
 `GENERATION_SERVER_URL` is normalized (strip `/` and trailing `/v1`). DeepSeek uses `POST /chat/completions`; the generic llama remote path keeps `POST /v1/chat/completions`. See [`docs/llm_client.md`](llm_client.md).
+
+Compose sets `extra_hosts: host.docker.internal:host-gateway` so the container reaches the host Xray SOCKS listener.
 
 ## Compose up
 

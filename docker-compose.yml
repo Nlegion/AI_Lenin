@@ -11,9 +11,13 @@ services:
       LLM_SPAWN_LOCAL: "false"
       LLM_PROVIDER: deepseek
       LLM_MODEL_NAME: deepseek-v4-flash
+      TELEGRAM_PROXY_REQUIRED: "true"
+      # TELEGRAM_PROXY_URL comes from .env (socks5://user:pass@host.docker.internal:1080)
       HF_DATASETS_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
       PYTHONPATH: /app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # No published ports (Telegram bot + outbound HTTPS only).
     volumes:
       # Complete HF embedding repo (weights + config + tokenizer + custom code).
