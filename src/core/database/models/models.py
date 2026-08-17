@@ -2,6 +2,7 @@ from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import datetime
 from src.core.database.db_core import Base
+from src.core.database.utc import utc_now
 
 
 class News(Base):
@@ -15,7 +16,7 @@ class News(Base):
     url: Mapped[str] = mapped_column(String, nullable=False)
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
     processed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
     analysis: Mapped["Analysis"] = relationship(
         "Analysis", back_populates="news", uselist=False
@@ -31,7 +32,7 @@ class Analysis(Base):
     analysis: Mapped[str] = mapped_column(Text, nullable=False)
     published: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
     news: Mapped["News"] = relationship("News", back_populates="analysis")
 
@@ -47,8 +48,6 @@ class CensorDecisionCache(Base):
     risk_tier: Mapped[str] = mapped_column(String, nullable=False)
     reason_codes_json: Mapped[str] = mapped_column(Text, nullable=False)
     confidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_accessed_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
+    last_accessed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
     hit_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

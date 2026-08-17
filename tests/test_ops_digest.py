@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.core.database.utc import utc_now
 from src.core.ops.report_formatter import format_ops_digest
 from src.core.ops.window_stats import WindowStats
 from src.core.publisher import PublishOutcome, TelegramPublisher
@@ -107,8 +108,8 @@ def test_format_ops_digest_busy_funnel_and_latency() -> None:
 def test_ops_report_config_defaults(tmp_path) -> None:
     missing = tmp_path / "missing.yaml"
     cfg = load_ops_report_config(missing)
-    assert cfg.interval_seconds == 1800
-    assert cfg.fetch_notify == "new_only"
+    assert cfg.interval_seconds == 21600
+    assert cfg.fetch_notify == "never"
 
 
 def test_ops_report_config_yaml(tmp_path) -> None:
@@ -240,9 +241,7 @@ async def test_process_by_id_missing_increments_errors() -> None:
             return False
 
     with patch("src.core.processor.session_scope", return_value=_Scope()):
-        with patch(
-            "src.core.processor.NewsRepository", return_value=fake_repo
-        ):
+        with patch("src.core.processor.NewsRepository", return_value=fake_repo):
             await processor.process_single_news_by_id("missing", asyncio.Semaphore(1))
 
     assert processor.stats["errors"] == 1
@@ -333,7 +332,7 @@ async def test_save_news_returns_inserted_not_conflicts() -> None:
         await conn.run_sync(Base.metadata.create_all)
     Session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    now = datetime.utcnow()
+    now = utc_now()
     item = {
         "id": "n1",
         "title": "t",
@@ -368,7 +367,7 @@ async def test_mark_analysis_discarded_leaves_unpublished_queue() -> None:
         await conn.run_sync(Base.metadata.create_all)
     Session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
-    now = datetime.utcnow()
+    now = utc_now()
     async with Session() as session:
         session.add(
             News(
@@ -467,7 +466,9 @@ async def test_pipeline_output_guard_blocked_bucket() -> None:
             return "Механизм: x.\n\nВывод: y."
 
     processor.analyzer = _Analyzer()
-    processor.classifier = MagicMock(should_analyze=MagicMock(return_value=(True, "ok")))
+    processor.classifier = MagicMock(
+        should_analyze=MagicMock(return_value=(True, "ok"))
+    )
 
     result = CensorResult(
         decision="review",
@@ -480,7 +481,7 @@ async def test_pipeline_output_guard_blocked_bucket() -> None:
         context_hints=[],
         needs_yellow_warning=False,
         audit={},
-        timestamp_utc=datetime.now(timezone.utc),
+        timestamp_utc=datetime.now(UTC),
     )
 
     class _Censor:
@@ -500,10 +501,9 @@ async def test_pipeline_output_guard_blocked_bucket() -> None:
 
     repo = _Repo()
     news = SimpleNamespace(id="3", title="t", content="c", source="TASS", url="u")
-    with patch(
-        "src.core.news_item_pipeline.append_yellow_audit"
-    ), patch(
-        "src.core.news_item_pipeline.is_publishable_analysis", return_value=True
+    with (
+        patch("src.core.news_item_pipeline.append_yellow_audit"),
+        patch("src.core.news_item_pipeline.is_publishable_analysis", return_value=True),
     ):
         await processor.process_single_news(news, repo, asyncio.Semaphore(1))
     assert processor.stats["review_continued"] == 1

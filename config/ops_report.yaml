@@ -1,6 +1,8 @@
 ops_report:
-  interval_seconds: 1800
-  fetch_notify: new_only
+  # Admin digest every 6 hours (funnel / skips / queue / LLM latency).
+  interval_seconds: 21600
+  # Do not spam admin with per-fetch "Новых N из TASS" lines.
+  fetch_notify: never
   top_reasons: 3
   idle_digest: short
   max_latency_samples: 50

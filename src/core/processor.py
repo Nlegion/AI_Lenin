@@ -223,10 +223,7 @@ class NewsProcessor:
                         dedup_dropped,
                         inserted,
                     )
-                    if (
-                        inserted > 0
-                        and self.ops_config.fetch_notify == "new_only"
-                    ):
+                    if inserted > 0 and self.ops_config.fetch_notify == "new_only":
                         db_dupes = max(0, len(deduped) - inserted)
                         await self.publisher.send_admin_notification(
                             f"Новых {inserted} из TASS "
@@ -309,9 +306,7 @@ class NewsProcessor:
                         await repo.mark_as_processed_without_analysis(news.id)
                         self.stats["news_skipped"] += 1
                         return
-                    attach_censor_cache_callbacks(
-                        censor=self.pre_rag_censor, repo=repo
-                    )
+                    attach_censor_cache_callbacks(censor=self.pre_rag_censor, repo=repo)
                     annotate = await evaluate_and_annotate_news(
                         news=snap,
                         censor=self.pre_rag_censor,
@@ -405,9 +400,7 @@ class NewsProcessor:
                             )
 
                 if unpublished:
-                    logger.info(
-                        "Найдено %s анализов для публикации", len(unpublished)
-                    )
+                    logger.info("Найдено %s анализов для публикации", len(unpublished))
 
                 for item in unpublished:
                     validation = self.validator.validate_analysis(
@@ -453,9 +446,7 @@ class NewsProcessor:
                                         item.news_id
                                     )
                             self.stats["analyses_published"] += 1
-                            logger.info(
-                                "Анализ %s успешно опубликован", item.news_id
-                            )
+                            logger.info("Анализ %s успешно опубликован", item.news_id)
                             await asyncio.sleep(30)
                         elif outcome == PublishOutcome.PERMANENT_REJECT:
                             async with db_lock:

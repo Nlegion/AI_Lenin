@@ -2,6 +2,8 @@ import feedparser
 import hashlib
 import logging
 from datetime import datetime
+
+from src.core.database.utc import utc_now
 from src.core.settings.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -28,7 +30,7 @@ class NewsFetcher:
                     "source": "TASS",
                     "date": datetime(*entry.published_parsed[:6])
                     if hasattr(entry, "published_parsed")
-                    else datetime.utcnow(),
+                    else utc_now(),
                     "url": entry.link,
                 }
                 for entry in feed.entries

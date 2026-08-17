@@ -109,8 +109,8 @@ class TelegramPublisher:
             telegram_limit = 4096
             framing_overhead = (
                 len(f"<b>Факт: {title}</b>\n\n")
-                + len("Механизм: \n\n")
                 + len("Вывод: \n\n")
+                + len("Механизм: \n\n")
                 + len(f"<a href='{url}'>источник</a>\n\n")
                 + len(AI_DISCLAIMER)
                 + 48
@@ -118,19 +118,20 @@ class TelegramPublisher:
             max_sections = max(200, telegram_limit - framing_overhead)
             if len(mechanism) + len(conclusion) > max_sections:
                 logger.warning("Слишком длинное сообщение, сокращаем sections")
-                mechanism_budget = max(100, int(max_sections * 0.6))
-                conclusion_budget = max(80, max_sections - mechanism_budget)
-                mechanism = mechanism[:mechanism_budget].rstrip()
+                # Prefer room for Вывод (shown before Механизм in the channel post).
+                conclusion_budget = max(100, int(max_sections * 0.6))
+                mechanism_budget = max(80, max_sections - conclusion_budget)
                 conclusion = conclusion[:conclusion_budget].rstrip()
-                if len(mechanism) == mechanism_budget:
-                    mechanism = mechanism.rstrip(". ") + "..."
+                mechanism = mechanism[:mechanism_budget].rstrip()
                 if len(conclusion) == conclusion_budget:
                     conclusion = conclusion.rstrip(". ") + "..."
+                if len(mechanism) == mechanism_budget:
+                    mechanism = mechanism.rstrip(". ") + "..."
 
             message = (
                 f"<b>Факт: {title}</b>\n\n"
-                f"Механизм: {mechanism}\n\n"
                 f"Вывод: {conclusion}\n\n"
+                f"Механизм: {mechanism}\n\n"
                 f"<a href='{url}'>источник</a>\n\n"
                 f"{AI_DISCLAIMER}"
             )

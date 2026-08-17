@@ -4,10 +4,12 @@ from sqlalchemy.exc import OperationalError
 from src.core.database.models.models import Analysis, CensorDecisionCache, News
 from src.core.utils.decorators import handle_db_errors
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from datetime import datetime, timedelta
+from datetime import timedelta
 import asyncio
 import json
 import logging
+
+from src.core.database.utc import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class NewsRepository:
         stmt = (
             update(News)
             .where(News.id == news_id)
-            .values(processed=True, processed_at=datetime.utcnow())
+            .values(processed=True, processed_at=utc_now())
         )
         await self.session.execute(stmt)
 
@@ -67,7 +69,7 @@ class NewsRepository:
                 "url": item["url"],
                 "processed": False,
                 "processed_at": None,
-                "created_at": datetime.utcnow(),
+                "created_at": utc_now(),
             }
             data.append(news_data)
 
@@ -90,7 +92,7 @@ class NewsRepository:
     @handle_db_errors
     async def get_unprocessed_news(self, limit: int = 10):
         # Фильтруем новости не старше 24 часов
-        time_threshold = datetime.utcnow() - timedelta(hours=24)
+        time_threshold = utc_now() - timedelta(hours=24)
 
         stmt = (
             select(News)
@@ -106,20 +108,28 @@ class NewsRepository:
 
     @handle_db_errors
     async def count_unprocessed(self, *, hours: int = 24) -> int:
-        time_threshold = datetime.utcnow() - timedelta(hours=hours)
-        stmt = select(func.count()).select_from(News).where(
-            News.processed.is_(False),
-            News.date >= time_threshold,
+        time_threshold = utc_now() - timedelta(hours=hours)
+        stmt = (
+            select(func.count())
+            .select_from(News)
+            .where(
+                News.processed.is_(False),
+                News.date >= time_threshold,
+            )
         )
         result = await self.session.execute(stmt)
         return int(result.scalar_one() or 0)
 
     @handle_db_errors
     async def count_stale_unprocessed(self, *, hours: int = 24) -> int:
-        time_threshold = datetime.utcnow() - timedelta(hours=hours)
-        stmt = select(func.count()).select_from(News).where(
-            News.processed.is_(False),
-            News.date < time_threshold,
+        time_threshold = utc_now() - timedelta(hours=hours)
+        stmt = (
+            select(func.count())
+            .select_from(News)
+            .where(
+                News.processed.is_(False),
+                News.date < time_threshold,
+            )
         )
         result = await self.session.execute(stmt)
         return int(result.scalar_one() or 0)
@@ -141,7 +151,7 @@ class NewsRepository:
             analysis=analysis,
             published=False,
             published_at=None,  # Явное указание NULL
-            created_at=datetime.utcnow(),
+            created_at=utc_now(),
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=["news_id"],
@@ -156,7 +166,7 @@ class NewsRepository:
         stmt = (
             update(News)
             .where(News.id == news_id)
-            .values(processed=True, processed_at=datetime.utcnow())
+            .values(processed=True, processed_at=utc_now())
         )
         await self._execute_with_retry(stmt)
 
@@ -178,7 +188,7 @@ class NewsRepository:
         stmt = (
             update(Analysis)
             .where(Analysis.news_id == news_id)
-            .values(published=True, published_at=datetime.utcnow())
+            .values(published=True, published_at=utc_now())
         )
         await self.session.execute(stmt)
 
@@ -188,13 +198,13 @@ class NewsRepository:
         stmt = (
             update(Analysis)
             .where(Analysis.news_id == news_id)
-            .values(published=True, published_at=datetime.utcnow())
+            .values(published=True, published_at=utc_now())
         )
         await self.session.execute(stmt)
         news_stmt = (
             update(News)
             .where(News.id == news_id)
-            .values(processed=True, processed_at=datetime.utcnow())
+            .values(processed=True, processed_at=utc_now())
         )
         await self.session.execute(news_stmt)
 
@@ -230,7 +240,7 @@ class NewsRepository:
                 CensorDecisionCache.config_version_hash == config_version_hash,
             )
             .values(
-                last_accessed_at=datetime.utcnow(),
+                last_accessed_at=utc_now(),
                 hit_count=CensorDecisionCache.hit_count + 1,
             )
         )
@@ -262,7 +272,7 @@ class NewsRepository:
         reason_codes: list[str],
         confidence: dict,
     ) -> None:
-        now = datetime.utcnow()
+        now = utc_now()
         stmt = sqlite_insert(CensorDecisionCache).values(
             content_hash=content_hash,
             config_version_hash=config_version_hash,
@@ -292,7 +302,7 @@ class NewsRepository:
 
     @handle_db_errors
     async def cleanup_censor_cache(self, *, max_age_seconds: int) -> int:
-        cutoff = datetime.utcnow() - timedelta(seconds=max_age_seconds)
+        cutoff = utc_now() - timedelta(seconds=max_age_seconds)
         stmt = delete(CensorDecisionCache).where(
             CensorDecisionCache.last_accessed_at < cutoff
         )

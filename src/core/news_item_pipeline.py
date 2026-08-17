@@ -229,9 +229,7 @@ async def generate_and_persist_analysis(
     reasons = list(validation.get("reasons") or [])
     if guard_blocked and "output_guard_blocked" not in reasons:
         reasons.append("output_guard_blocked")
-    logger.warning(
-        "Анализ новости %s отклонен: %s", news.id, ", ".join(reasons)
-    )
+    logger.warning("Анализ новости %s отклонен: %s", news.id, ", ".join(reasons))
     await repo.mark_as_processed_without_analysis(news.id)
     stats["analyses_rejected"] = stats.get("analyses_rejected", 0) + 1
     if isinstance(stats, WindowStats):

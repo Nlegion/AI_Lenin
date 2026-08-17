@@ -63,9 +63,8 @@ def format_ops_digest(
     errors = c.get("errors", 0)
     guard_blocked = c.get("output_guard_blocked", 0)
 
-    stall = (
-        snapshot.is_idle()
-        and (workable_backlog > 0 or unpublished > 0 or stale_backlog > 0)
+    stall = snapshot.is_idle() and (
+        workable_backlog > 0 or unpublished > 0 or stale_backlog > 0
     )
     if snapshot.is_idle() and idle_digest == "short" and not stall:
         return (

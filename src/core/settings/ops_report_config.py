@@ -15,8 +15,8 @@ IdleDigest = Literal["short", "full"]
 
 
 class OpsReportConfig(BaseModel):
-    interval_seconds: int = 1800
-    fetch_notify: FetchNotify = "new_only"
+    interval_seconds: int = 21600
+    fetch_notify: FetchNotify = "never"
     top_reasons: int = 3
     idle_digest: IdleDigest = "short"
     max_latency_samples: int = 50
