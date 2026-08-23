@@ -1,8 +1,8 @@
 # Диалектический orchestration-слой (слоты R1–R3)
 
 **Проект:** `P:\AI_Lenin`  
-**Дата:** 2026-07-26  
-**Статус:** план реализации (без ломки Qdrant / существующего retrieval)  
+**Дата:** 2026-07-26 (runtime notes updated 2026-08-23)  
+**Статус:** implemented (`dialectical_orchestration.enabled: true` in `config/retrieval_pipeline.yaml`). Sections 1–8 below are the original design notes; § Runtime API is the live contract.  
 **Связь:** ретроспектива `P:\deepseek_history\AI_LENIN_RETROSPECTIVE.md`; разрыв «корпус в RAG → один LLM-вызов» vs модель мышления по позитивным/негативным источникам.
 
 ---
@@ -397,6 +397,8 @@ AnalysisGenerationPipeline(
 - Config: `dialectical_orchestration.*` in `config/retrieval_pipeline.yaml` (`enabled: true` in current YAML; originally shipped default-off).
 - Ops: `scripts/retrieval/ensure_qdrant_stance_index.py` (one-shot per DB; see README).
 - Dry-run: `scripts/dialectics/run_dialectical_dryrun.py`.
+- Example dump (news + slot chunks + LLM answer): `scripts/quality/run_r13_example_trace.py`.
+- Pipeline metadata: `r1_count` / `r2_count` / `r3_count` plus truncated `r1_items` / `r2_items` / `r3_items` (`SLOT_TRACE_TEXT_CAP` in `dialectical_constants.py`). Empty R3 is a valid input (`(пусто)`); do not fabricate opposition.
 - Anti-cliché (Phase 4 helper): `src/core/safety/cliche_gate.py`.
 
 **Reasoning layer (separate):** see [`dialectical_reasoning_engine.md`](dialectical_reasoning_engine.md) — `dialectical_reasoning.mode` in the same YAML. Orchestration builds EvidenceBrief; reasoning synthesizes grounded analysis.

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-08-23 — tass-rss-and-r13-traces — agent
+### Changed
+- TASS RSS: browser User-Agent / Accept headers; HTTP ≥400 and bozo-empty feeds return no items (`tass_rss_http_error` / `tass_rss_parse_failed`).
+- EvidenceBrief slot traces (`r1_items` / `r2_items` / `r3_items`, `SLOT_TRACE_TEXT_CAP=800`) in pipeline metadata; QA runtime copies them into JSONL.
+- CLI: `scripts/quality/run_r13_example_trace.py` dumps news + R1/R2/R3 chunks + LLM answer (empty R3 rendered as `(пусто)`).
+- Docs: architecture PNGs, DeepSeek prompt split vs llama, VPS TASS/StormWall note, R1–R3 status marked implemented.
+### Metrics
+| metric | note |
+|--------|------|
+| StormWall 403 | feedparser default UA blocked; Mozilla/Chrome UA required |
+| R3 empty | valid input; do not fabricate opposition |
+### Artifacts
+- `docs/architecture_offline.png`, `docs/architecture_online.png`
+- `tests/test_tass_rss_headers.py`, `tests/test_r13_example_trace.py`
+### Notes
+- Do not set global `HTTP(S)_PROXY` on VPS (TASS/DeepSeek stay direct; SOCKS is Telegram-only).
+
+## 2026-08-16 — vps-deepseek-publication — agent
+### Changed
+- LLM transport moved to `src/core/llm/`; `LLM_PROVIDER=deepseek` for VPS (no GGUF / llama-server in the container).
+- DeepSeek-only prompt builders, R1 quote allowlist, one regenerate; Telegram triad parser accepts flattened `Факт`/`Механизм`/`Вывод`.
+- Docker RAG replica, Telegram SOCKS egress (`TELEGRAM_PROXY_*`), PreRagCensor sport/lifestyle blocks, quieter admin telemetry.
+- Legal pack already on this branch: MIT + research disclaimer wording.
+### Metrics
+| metric | note |
+|--------|------|
+| VPS generation | DeepSeek API; retrieval/gates unchanged |
+| llama prompt | left intact; DeepSeek does not reuse triad/quote rules |
+### Artifacts
+- `docs/docker.md`, `docs/llm_client.md`, `.env.example`
+### Notes
+- Workstation default remains local GigaChat3 via llama-server.
+
 ## 2026-08-15 — legal-docs-attribution — agent
 ### Changed
 - Added root legal pack: `LICENSE` (MIT, repo-authored code/docs only), bilingual `DISCLAIMER.md`, `THIRD_PARTY_LICENSES.md`, `CONTRIBUTING.md`.

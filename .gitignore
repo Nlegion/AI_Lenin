@@ -38,6 +38,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!scripts/lib/
+!scripts/lib/**
 lib64/
 parts/
 sdist/
@@ -232,3 +234,4 @@ fetcher_test_results.txt
 .cursor/artifacts/quality/*.checkpoint.jsonl
 .cursor/artifacts/quality/quality_qa_batch_*
 .cursor/artifacts/quality/live_news_qa_*
+.cursor/artifacts/quality/r13_example_trace_*

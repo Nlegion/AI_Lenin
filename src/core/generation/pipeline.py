@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import aiohttp
 
-from src.core.analysis.evidence_brief import EvidenceBrief
+from src.core.analysis.evidence_brief import EvidenceBrief, items_trace_payload
 from src.core.analysis.semantic_core_config import load_semantic_core_config
 from src.core.analysis.semantic_integration import maybe_route
 from src.core.analysis.semantic_query import compose_legacy_enriched_query
@@ -106,31 +106,45 @@ def _chunks_from_brief(
     return [("ctx0", 1.0, context)]
 
 
+def _empty_rag_stats() -> dict[str, Any]:
+    return {
+        "r1_count": 0,
+        "r2_count": 0,
+        "r3_count": 0,
+        "rag_chunk_count": 0,
+        "rag_score_mean": None,
+        "r1_items": [],
+        "r2_items": [],
+        "r3_items": [],
+    }
+
+
 def _rag_stats_from_brief(brief: EvidenceBrief | None) -> dict[str, Any]:
     if brief is None:
-        return {
-            "r1_count": 0,
-            "r2_count": 0,
-            "r3_count": 0,
-            "rag_chunk_count": 0,
-            "rag_score_mean": None,
-        }
+        return _empty_rag_stats()
     items = [
         *brief.r1_core_self,
         *brief.r2_influence_agree,
         *brief.r3_influence_critical,
     ]
     scores = [float(item.score) for item in items]
-    return {
-        "r1_count": len(brief.r1_core_self),
-        "r2_count": len(brief.r2_influence_agree),
-        "r3_count": len(brief.r3_influence_critical),
-        "rag_chunk_count": len(items),
-        "rag_score_mean": (sum(scores) / len(scores)) if scores else None,
-        "top_chunks": chunk_trace_payload(
-            [(item.chunk_id, float(item.score), item.text) for item in items]
-        ),
-    }
+    stats = _empty_rag_stats()
+    stats.update(
+        {
+            "r1_count": len(brief.r1_core_self),
+            "r2_count": len(brief.r2_influence_agree),
+            "r3_count": len(brief.r3_influence_critical),
+            "rag_chunk_count": len(items),
+            "rag_score_mean": (sum(scores) / len(scores)) if scores else None,
+            "r1_items": items_trace_payload(brief.r1_core_self),
+            "r2_items": items_trace_payload(brief.r2_influence_agree),
+            "r3_items": items_trace_payload(brief.r3_influence_critical),
+            "top_chunks": chunk_trace_payload(
+                [(item.chunk_id, float(item.score), item.text) for item in items]
+            ),
+        }
+    )
+    return stats
 
 
 class AnalysisGenerationPipeline:

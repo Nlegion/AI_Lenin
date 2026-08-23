@@ -97,6 +97,7 @@ pytest tests -k "fetcher" -q
 # Quality / dry-run / release
 # Canonical paths live under scripts/<domain>/; root scripts/*.py are thin shims.
 python scripts/quality/run_local_rag_dryrun.py --fixture economy --verbose
+python scripts/quality/run_r13_example_trace.py --limit 10 --fixtures
 python scripts/retrieval/evaluate_rag_quality.py
 python scripts/safety/evaluate_news_guard.py
 python scripts/quality/evaluate_anti_cliche.py

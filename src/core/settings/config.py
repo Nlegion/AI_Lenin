@@ -29,6 +29,15 @@ class Settings:
     UPDATE_INTERVAL = 300
     MAX_NEWS_PER_CYCLE = 3
 
+    # TASS RSS: StormWall returns HTTP 403 for feedparser's default User-Agent.
+    TASS_RSS_URL = "https://tass.ru/rss/v2.xml"
+    TASS_RSS_USER_AGENT = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/128.0.0.0 Safari/537.36"
+    )
+    TASS_RSS_ACCEPT = "application/rss+xml, application/xml, text/xml, */*"
+
     NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 
     # settings/config.py -> settings -> core -> src -> repo root

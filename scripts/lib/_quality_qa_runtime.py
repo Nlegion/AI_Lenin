@@ -15,10 +15,14 @@ logger = logging.getLogger("quality_qa_batch")
 
 try:
     from src.core.retrieval.migration_provider import MigrationRetrievalProvider
-except ImportError:  # pragma: no cover - migration provider removed in qdrant_only cutover
+except (
+    ImportError
+):  # pragma: no cover - migration provider removed in qdrant_only cutover
     MigrationRetrievalProvider = None  # type: ignore[misc, assignment]
 
-REFUSAL_FALLBACK = "Анализ данной темы невозможен в соответствии с политикой безопасности."
+REFUSAL_FALLBACK = (
+    "Анализ данной темы невозможен в соответствии с политикой безопасности."
+)
 
 
 def is_transient(error: Exception) -> bool:
@@ -36,16 +40,25 @@ def probe_query(item: QaItem) -> str:
     return item.title.strip() or lead
 
 
-def run_guard_check(*, items: list[QaItem], guard: NewsGuard, max_blocked_ratio: float) -> int:
+def run_guard_check(
+    *, items: list[QaItem], guard: NewsGuard, max_blocked_ratio: float
+) -> int:
     blocked_ids: list[str] = []
     counts = {"allow": 0, "warn": 0, "deny": 0, "quarantine": 0, "skip": 0, "other": 0}
     for item in items:
-        gate = guard.evaluate_input(title=item.title, content=item.content, source=item.source or "unknown")
+        gate = guard.evaluate_input(
+            title=item.title, content=item.content, source=item.source or "unknown"
+        )
         decision = str(gate.decision)
         counts[decision if decision in counts else "other"] += 1
         if decision in {"deny", "quarantine", "skip"}:
             blocked_ids.append(item.id)
-            logger.info("guard id=%s decision=%s codes=%s", item.id, decision, ",".join(gate.reason_codes))
+            logger.info(
+                "guard id=%s decision=%s codes=%s",
+                item.id,
+                decision,
+                ",".join(gate.reason_codes),
+            )
     total = max(len(items), 1)
     ratio = len(blocked_ids) / total
     logger.info(
@@ -64,13 +77,17 @@ def run_guard_check(*, items: list[QaItem], guard: NewsGuard, max_blocked_ratio:
 
 def rag_probe(*, analyzer: LeninAnalyzer, item: QaItem, require_nonempty: bool) -> int:
     provider = analyzer.retrieval_provider
-    if MigrationRetrievalProvider is not None and isinstance(provider, MigrationRetrievalProvider):
+    if MigrationRetrievalProvider is not None and isinstance(
+        provider, MigrationRetrievalProvider
+    ):
         provider = provider.primary
     query = probe_query(item=item)
     chunk_count = 0
     try:
         if provider is not None and hasattr(provider, "retrieve_with_trace"):
-            candidates, _trace = provider.retrieve_with_trace(query_text=query, apply_judge=False)
+            candidates, _trace = provider.retrieve_with_trace(
+                query_text=query, apply_judge=False
+            )
             chunk_count = len(candidates or [])
         elif provider is not None and hasattr(provider, "retrieve_context"):
             result = provider.retrieve_context(query_text=query, author_filter="Ленин")
@@ -134,7 +151,9 @@ def base_row(item: QaItem, *, persona_model: str, input_hash: str) -> dict[str, 
     }
 
 
-def apply_pre_llm_gate(*, guard: NewsGuard, item: QaItem, row: dict[str, Any]) -> dict[str, Any] | None:
+def apply_pre_llm_gate(
+    *, guard: NewsGuard, item: QaItem, row: dict[str, Any]
+) -> dict[str, Any] | None:
     """Return a finished blocked row when deny/quarantine/skip; else None (continue to LLM)."""
     gate = guard.evaluate_input(
         title=item.title,
@@ -182,7 +201,11 @@ async def generate_one(
     needs_yellow_warning: bool = False,
 ) -> dict[str, Any]:
     input_hash = item.input_hash()
-    row = base_row(item, persona_model=analyzer.generation_config.persona_model, input_hash=input_hash)
+    row = base_row(
+        item,
+        persona_model=analyzer.generation_config.persona_model,
+        input_hash=input_hash,
+    )
     if not skip_input_gate:
         guard = news_guard or getattr(analyzer, "news_guard", None)
         if guard is not None:
@@ -210,7 +233,9 @@ async def generate_one(
                 context_hints=context_hints,
                 needs_yellow_warning=needs_yellow_warning,
             )
-            answer = (result.guard_result.moderated_text or result.analysis or "").strip()
+            answer = (
+                result.guard_result.moderated_text or result.analysis or ""
+            ).strip()
             row["latency_ms"] = int(result.latency_ms)
             row["api_style"] = result.metadata.get("api_style")
             row["prompt_builder"] = result.prompt_builder
@@ -220,8 +245,18 @@ async def generate_one(
             if save_full_prompts:
                 row["system_prompt"] = result.system_prompt
                 row["user_prompt"] = result.user_prompt
-            for key in ("r1_count", "r2_count", "r3_count", "rag_chunk_count", "rag_score_mean"):
-                row[key] = result.metadata.get(key, 0 if key != "rag_score_mean" else None)
+            for key in (
+                "r1_count",
+                "r2_count",
+                "r3_count",
+                "rag_chunk_count",
+                "rag_score_mean",
+            ):
+                row[key] = result.metadata.get(
+                    key, 0 if key != "rag_score_mean" else None
+                )
+            for key in ("r1_items", "r2_items", "r3_items"):
+                row[key] = list(result.metadata.get(key) or [])
             for key in (
                 "semantic_core_dominant",
                 "semantic_core_hint_only",
@@ -260,18 +295,20 @@ async def generate_one(
                 row["error"] = "empty model content"
                 row["error_type"] = "empty_response"
                 return row
-            row["reason_codes"] = list(result.guard_result.reason_codes) + list(result.hallucination_codes)
+            row["reason_codes"] = list(result.guard_result.reason_codes) + list(
+                result.hallucination_codes
+            )
             row["blocked"] = bool(result.guard_result.blocked)
             row["answer"] = answer
             row["status"] = "done"
             row["llm_final_used"] = not bool(result.guard_result.blocked)
             row["fallback_used"] = bool(result.metadata.get("artifact_fallback"))
-            row["post_safety_modified"] = bool(result.metadata.get("artifact_codes")) or bool(
-                result.guard_result.reason_codes
-            )
-            row["post_safety_rejected"] = bool(result.metadata.get("artifact_deny")) or bool(
-                result.guard_result.blocked
-            )
+            row["post_safety_modified"] = bool(
+                result.metadata.get("artifact_codes")
+            ) or bool(result.guard_result.reason_codes)
+            row["post_safety_rejected"] = bool(
+                result.metadata.get("artifact_deny")
+            ) or bool(result.guard_result.blocked)
             row["structure_error"] = bool(result.metadata.get("structure_error"))
             row["structure_ok"] = bool(result.metadata.get("structure_ok", True))
             row["news_groundedness"] = result.metadata.get("news_groundedness")
@@ -286,16 +323,24 @@ async def generate_one(
                 row["publishable"] = False
             else:
                 row["publishable"] = True
-            row["quote_candidate_found"] = bool(result.metadata.get("allowlist_size", 0))
-            row["quote_required"] = str(result.metadata.get("quote_mode") or "") == "quote"
-            row["quote_fulfilled"] = bool(result.metadata.get("allowlist_size", 0)) and "«" in answer
+            row["quote_candidate_found"] = bool(
+                result.metadata.get("allowlist_size", 0)
+            )
+            row["quote_required"] = (
+                str(result.metadata.get("quote_mode") or "") == "quote"
+            )
+            row["quote_fulfilled"] = (
+                bool(result.metadata.get("allowlist_size", 0)) and "«" in answer
+            )
             if row["quote_required"] and not row["quote_fulfilled"]:
                 row["quote_missing_reason"] = "quote_required_but_absent"
             elif not row["quote_candidate_found"]:
                 row["quote_missing_reason"] = "no_quote_candidate"
             else:
                 row["quote_missing_reason"] = None
-            row["quote_verification_failed"] = bool(result.metadata.get("quote_removed"))
+            row["quote_verification_failed"] = bool(
+                result.metadata.get("quote_removed")
+            )
             return row
         except Exception as error:  # noqa: BLE001
             last_error = error
@@ -305,7 +350,9 @@ async def generate_one(
             if error_type != "transient" or attempts >= max_tries:
                 row["status"] = "error"
                 return row
-            logger.info("retry id=%s attempt=%s error_type=%s", item.id, attempts, error_type)
+            logger.info(
+                "retry id=%s attempt=%s error_type=%s", item.id, attempts, error_type
+            )
     row["status"] = "error"
     row["error"] = str(last_error)[:500] if last_error else "unknown"
     row["error_type"] = classify_error(last_error) if last_error else "runtime"

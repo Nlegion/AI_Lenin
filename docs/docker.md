@@ -99,9 +99,14 @@ Entrypoint runs **`python src/main.py` only**. Alembic runs inside `main.py` via
 
 Default `LLM_SPAWN_LOCAL=true` (or unset) keeps spawning local `llama-server` from `llama.cpp/` and GGUF under `models/gigachat3/`.
 
+## TASS RSS from the container
+
+`NewsFetcher` sends a browser `User-Agent` and `Accept: application/rss+xml,...` (`Settings.TASS_RSS_USER_AGENT`). StormWall returns HTTP 403 for feedparser’s default UA. HTTP status ≥400 or a bozo parse with no entries logs `tass_rss_http_error` / `tass_rss_parse_failed` and returns no items. Keep TASS (and DeepSeek) off any global `HTTP(S)_PROXY`; SOCKS is Telegram-only.
+
 ## Out of scope
 
-- DeepSeek payload quirks / retries (thin OpenAI-compatible seam only)
 - CUDA / `llama-server` in the VPS image
 - Qdrant as a network service
 - Rebuilding the corpus index inside the container
+
+DeepSeek chat payloads, quote allowlists, and triad repair live in `src/core/generation/` (`deepseek_prompts.py`, `deepseek_quote_validate.py`) and [`docs/llm_client.md`](llm_client.md) — not in the Docker image.

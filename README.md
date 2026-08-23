@@ -31,7 +31,13 @@ Details: [`docs/dialectical_orchestration_r1_r3.md`](docs/dialectical_orchestrat
 
 ## Architecture
 
-Offline index (corpus → Qdrant) is separate from the online news loop. The LLM is a local GigaChat3 via `llama-server`; it is **not** fine-tuned on this corpus.
+Offline index (corpus → Qdrant) is separate from the online news loop. The corpus LLM is **not** fine-tuned. Local workstation generation uses GigaChat3 via `llama-server`; the VPS replica uses DeepSeek (`LLM_PROVIDER=deepseek`) with the same RAG, R1–R3 slots, and gates.
+
+Static diagrams: [offline RAG index](docs/architecture_offline.png) · [online publish loop](docs/architecture_online.png).
+
+![Offline RAG index](docs/architecture_offline.png)
+
+![Online publish loop](docs/architecture_online.png)
 
 ```mermaid
 flowchart TB
@@ -49,7 +55,7 @@ flowchart TB
     DB[("SQLite news + analyses")]
     Censor["PreRagCensor"]
     Brief["EvidenceBrief R1-R3"]
-    LLM["llama-server GigaChat3"]
+    LLM["llama-server / DeepSeek"]
     Post["postprocess_clean"]
     Gates["NewsGuard + warn gates"]
     TG["Telegram channel"]
@@ -124,7 +130,7 @@ RAG here means **indexing a labeled corpus**, not training a new LLM. LoRA / Sai
 | Lenin PSS (5th ed., 55 vols, Politizdat Moscow 1967) | R1 `core_self` | Local trees under `data/books/`: `intellectual/Ленин/pss/`, `ultimate_cleaned_ontology/Ленин/pss/`, plus `…/single/` (`config/source_registry_rules.yaml`) |
 | Marx / Engels | R2 `influence_agree` | `data/books/…/МарксЭнгельс/` |
 | Critical / revisionist authors | R3 `influence_critical` | Author lists in the same YAML (files may be absent; registry can show `influence_critical: 0`) |
-| Live news | Product input | TASS RSS `https://tass.ru/rss/v2.xml` only (`NewsFetcher`) |
+| Live news | Product input | TASS RSS `https://tass.ru/rss/v2.xml` only (`NewsFetcher`; browser User-Agent — StormWall returns HTTP 403 for feedparser’s default UA) |
 | Quality fixtures | Offline QA, no Telegram | `tests/fixtures/quality/`, `data/eval/` (gitignored) |
 | External news/hate sets | Censorship eval only | [`config/external_dataset_sources.yaml`](config/external_dataset_sources.yaml); attribution in [`NOTICE`](NOTICE) |
 
@@ -148,8 +154,8 @@ Providers: `llama` (default, local GigaChat3 via `llama-server`) or `deepseek` (
 
 | Provider | Runtime | Notes |
 |----------|---------|--------|
-| `llama` | Local `llama-server` + GGUF | Default; persona `base_strong` |
-| `deepseek` | Remote HTTPS API | Requires `LLM_SPAWN_LOCAL=false` and `DEEPSEEK_API_KEY` / `LLM_API_KEY` |
+| `llama` | Local `llama-server` + GGUF | Default on workstation; persona `base_strong`; prompts in [`prompt_adapter.py`](src/core/generation/prompt_adapter.py) |
+| `deepseek` | Remote HTTPS API | VPS path; `LLM_SPAWN_LOCAL=false` and `DEEPSEEK_API_KEY` / `LLM_API_KEY`; dedicated builders in [`deepseek_prompts.py`](src/core/generation/deepseek_prompts.py) (llama prompt is not reused) |
 
 Default local persona is **GigaChat3** (`persona_model: base_strong`):
 
@@ -216,6 +222,9 @@ python scripts/quality/run_quality_qa_batch.py --limit 50 --persona-model base_s
 
 # Live TASS RSS: 50 successful answers; safety rejects → *.rejected.* (not counted)
 python scripts/quality/run_live_news_qa_batch.py --target-done 50 --persona-model base_strong --start-server --start-wait 300 --allow-legacy-fallback --output-dir .cursor/artifacts/quality
+
+# News + R1/R2/R3 chunks + answer (fixtures or live RSS)
+python scripts/quality/run_r13_example_trace.py --limit 10 --fixtures
 ```
 
 - Input: `data/eval/quality_qa_batch.jsonl` (under gitignored `/data/`; regenerate via `python scripts/lib/_gen_quality_qa_dataset.py` when missing).
@@ -230,6 +239,7 @@ Full checklist and flags: [`docs/human_eval_checklist.md`](docs/human_eval_check
 
 ```powershell
 python scripts/quality/run_local_rag_dryrun.py --fixture economy --verbose
+python scripts/quality/run_r13_example_trace.py --limit 10 --fixtures
 python scripts/retrieval/evaluate_rag_quality.py
 python scripts/safety/evaluate_news_guard.py --out-json .cursor/artifacts/evaluation/news_guard_eval.json
 python scripts/quality/evaluate_anti_cliche.py
@@ -284,7 +294,7 @@ When `semantic_core` is enabled: warn-only if the model hedges around an empty/e
 |-----|----------|
 | `.cursor/artifacts/evaluation/` | Automatic eval reports (RAG, anti-cliché, NewsGuard) |
 | `.cursor/artifacts/human_eval/` | Human label batches / pilot scores |
-| `.cursor/artifacts/quality/` | Quality QA batch dumps (`.txt` / `.jsonl` / checkpoint) |
+| `.cursor/artifacts/quality/` | Quality QA batch dumps (`.txt` / `.jsonl` / checkpoint); R13 traces `r13_example_trace_*` (gitignored) |
 | `.cursor/artifacts/safety/` | Warn audits / dry-run audit logs |
 
 ## Legal notice

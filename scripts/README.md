@@ -6,7 +6,7 @@ Domain folders under `scripts/`. Root `scripts/*.py` files are thin compatibilit
 |-----------|----------|
 | `lib/` | Shared helpers (`_quality_qa_*`, `_live_news_qa_*`) |
 | `safety/` | Censor, NewsGuard, combat calib, gate rollback |
-| `quality/` | Live/QA batches, dry-run, anti-cliché metrics |
+| `quality/` | Live/QA batches, dry-run, anti-cliché metrics, R1–R3 example traces |
 | `retrieval/` | Qdrant, embeddings, RAG eval, AB sandbox |
 | `dialectics/` | Dialectical dry-runs, semantic core |
 | `corpus/` | Cleaning, chunking, ontology, source registry |
@@ -16,6 +16,7 @@ Prefer:
 
 ```powershell
 python scripts/quality/run_local_rag_dryrun.py --fixture economy --verbose
+python scripts/quality/run_r13_example_trace.py --limit 10
 ```
 
 Legacy still works via shim:

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.core.settings.dialectical_constants import TRACE_QUERY_MAX_CHARS
+from src.core.settings.dialectical_constants import (
+    SLOT_TRACE_TEXT_CAP,
+    TRACE_QUERY_MAX_CHARS,
+)
 
 
 @dataclass(frozen=True)
@@ -87,6 +90,29 @@ class EvidenceBrief:
                 quote = item.text.strip() or "(без текста)"
                 parts.append(f'{marker}[{index}] ({source}) "{quote}"')
         return "\n\n".join(parts)
+
+
+def items_trace_payload(
+    items: list[EvidenceItem], *, text_cap: int = SLOT_TRACE_TEXT_CAP
+) -> list[dict[str, object]]:
+    payload: list[dict[str, object]] = []
+    for item in items:
+        text = (item.text or "").strip()
+        truncated = len(text) > text_cap
+        if truncated:
+            text = text[:text_cap].rstrip() + "…"
+        payload.append(
+            {
+                "chunk_id": item.chunk_id,
+                "source_path": item.source_path or item.source_id,
+                "score": float(item.score),
+                "retriever": item.retriever,
+                "stance_type": item.stance_type,
+                "truncated": truncated,
+                "text": text,
+            }
+        )
+    return payload
 
 
 def truncate_query_for_trace(query: str) -> dict[str, str | bool]:

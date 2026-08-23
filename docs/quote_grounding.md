@@ -31,6 +31,16 @@ Normalize (NFKC, casefold, ё→е, unify quotes/dashes/whitespace). An answer q
 grounded iff the normalized span is a substring of its candidate’s chunk text.
 No paraphrase fuzzy match. No cross-chunk splicing.
 
+## DeepSeek quote path
+
+When `generation.provider` / `LLM_PROVIDER` is `deepseek`, the pipeline builds an R1-only
+allowlist (`deepseek_r1_excerpts.py`) and injects it into the user prompt. Validation
+(`deepseek_quote_validate.py`) requires a verbatim «…» span from that list **or** the
+explicit no-quote sentence without quotation marks. Failed checks get one regenerate with
+`DEEPSEEK_QUOTE_FEEDBACK`. Missing `том`/`стр` is still omitted, never invented.
+
+Llama / GigaChat3 keeps the shared `prompt_adapter` (softer “≥1 quote from context”).
+
 ## Feature flags
 
 See `config/quality_postcheck.yaml`. Update marker lists via code review

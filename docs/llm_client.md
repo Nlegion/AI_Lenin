@@ -1,6 +1,6 @@
 # LLM client (`src/core/llm/`)
 
-Transport and process lifecycle for the local OpenAI-compatible llama-server, plus an explicit remote provider switch for DeepSeek and a generic OpenAI-compatible HTTP seam (`LLM_SPAWN_LOCAL=false`). Prompting, pipeline, and postprocess stay in `src/core/generation/`.
+Transport and process lifecycle for the local OpenAI-compatible llama-server, plus an explicit remote provider switch for DeepSeek and a generic OpenAI-compatible HTTP seam (`LLM_SPAWN_LOCAL=false`). Prompting, pipeline, and postprocess stay in `src/core/generation/`. DeepSeek does **not** reuse the llama `prompt_adapter` structure/quote rules: builders are [`deepseek_prompts.py`](../src/core/generation/deepseek_prompts.py) (shared persona, stricter triad, R1 quote allowlist + one regenerate).
 
 ## Layout
 

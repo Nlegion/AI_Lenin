@@ -8,6 +8,7 @@
 | Dialectical slot orchestration | `config/retrieval_pipeline.yaml` → `dialectical_orchestration` | `src/core/analysis/dialectical_config.py` |
 | Dialectical reasoning limits | `config/retrieval_pipeline.yaml` → `dialectical_reasoning` | `src/core/dialectics/config.py` |
 | LLM runtime knobs (ctx/temp/max_tokens) | `config/generation.yaml` | `src/core/settings/generation_config.py` (**SoT**); factory: `src/core/llm/factory.py` |
+| TASS RSS URL / fetch headers | `src/core/settings/config.py` (`TASS_RSS_*`) | `src/modules/news_system/fetcher.py` |
 | Semantic core | `config/semantic_core.yaml` | `src/core/analysis/semantic_core_config.py` |
 | Anti-cliché | `config/anti_cliche.yaml` | `src/core/safety/anti_cliche_config.py` |
 | Censorship runtime | `config/safety_gate_config.yaml` | `src/core/settings/censorship_runtime_config.py` |
